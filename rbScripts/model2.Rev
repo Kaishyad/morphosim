@@ -1,1 +1,45 @@
-# Model 2: Single-partition, symmetric Mk
+# Model 2: Single-partition, symmetric Mk, informative coding (Adapated from sp_kv.Rev)
+# applies ascertainment bias correction, all other components (tree prior, branch lengths) are identical to Model 1.
+
+# Single partition: concatenate neomorphic and transformational characters
+allChars <- concatenate(neo, trans)
+taxa <- allChars.names()
+nTaxa <- allChars.size()
+nEdge <- 2 * nTaxa - 3
+moves = VectorMoves()
+
+#--- Tree topology - Uniform prior
+topology ~ dnUniformTopology(taxa)
+moves.append( mvNNI(topology, weight = nEdge / 2.0) )
+moves.append( mvSPR(topology, weight = nEdge / 8.0) )
+
+#--- Branch lengths
+# Compound Dirichlet prior on edge length variability
+# See https://revbayes.github.io/tutorials/ctmc/
+gamma_shape <- 2
+exp_steps <- 1 
+tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
+moves.append( mvScale(tree_length, weight = 1.0) )
+
+rel_br_lengths ~ dnDirichlet( rep(1.0, nEdge) )
+moves.append( mvBetaSimplex(rel_br_lengths, weight = nEdge / 3.0) )
+moves.append( mvDirichletSimplex(rel_br_lengths, weight = nEdge / 20.0) )
+br_lengths := rel_br_lengths * tree_length
+
+phylogeny := treeAssembly(topology, br_lengths)
+
+# Symmetric Mk Q matrix (Jukes-Cantor for 2 states)
+#coding = "informative" applies the Lewis (2001) ascertainment bias correction:
+#the likelihood is conditioned on characters being parsimony-informative, correcting for the exclusion of constant and autapomorphic characters from the matrix.
+m_morph ~ dnPhyloCTMC(
+  tree = phylogeny,
+  Q = fnJC(2),
+  type = "Standard",
+  coding = "informative"
+)
+m_morph.clamp(allChars)
+
+#--- Model and monitors
+mymodel = model(phylogeny)
+monitors = VectorMonitors()
+monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )
