@@ -1,1 +1,51 @@
 # Model 3: Single-partition, symmetric Mk, neomorphic characters only
+# Adapted from sp_kv.Rev (Model 1) and sp_kv_nonly.Rev (neo-only baseline).
+
+# Main differences from Model 1:
+#   - Only neomorphic characters are included and transformational characters are excluded.
+#   - coding = "variable": conditions on characters being variable
+
+# This model gives a single-partition baseline that ignores transformational variation,
+# so that it can be assessed of whether including transformational characters at all (vs. Model 1)
+# affects inference under the symmetric Mk framework.
+
+#--- Dataset properties: use neomorphic partition only
+taxa <- neo.names()
+nTaxa <- neo.size()
+nEdge <- 2 * nTaxa - 3
+
+moves = VectorMoves()
+
+#---Tree topology-  Uniform prior on tree topologies
+topology ~ dnUniformTopology(taxa)
+moves.append( mvNNI(topology, weight = nEdge / 2.0) )
+moves.append( mvSPR(topology, weight = nEdge / 8.0) )
+
+#---Branch lengths - Compound Dirichlet prior on edge length variability
+gamma_shape <- 2
+exp_steps <- 1 # Expected changes per site across the tree.
+tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
+moves.append( mvScale(tree_length, weight = 1.0) )
+
+rel_br_lengths ~ dnDirichlet( rep(1.0, nEdge) )
+moves.append( mvBetaSimplex(rel_br_lengths, weight = nEdge / 3.0) )
+moves.append( mvDirichletSimplex(rel_br_lengths, weight = nEdge / 20.0) )
+br_lengths := rel_br_lengths * tree_length
+
+phylogeny := treeAssembly(topology, br_lengths)
+
+
+#--- Symmetric Mk Q matrix 
+# applied to neomorphic characters only.
+m_morph ~ dnPhyloCTMC(
+  tree = phylogeny,
+  Q = fnJC(2),
+  type = "Standard",
+  coding = "variable"
+)
+m_morph.clamp(neo)
+
+#--- Monitors
+mymodel = model(phylogeny)
+monitors = VectorMonitors()
+monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )

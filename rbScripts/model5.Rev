@@ -1,1 +1,93 @@
-# Model 5: Two-partition, asymmetric neomorphic + symmetric transformational, with separate partition-level branch rates (rate_neo free parameter).
+# Model 5: Two-partition, asymmetric neomorphic + symmetric transformational,
+#           with separate partition-level branch rates (rate_neo free parameter).
+
+# Main differences from Model 4:
+#   - rate_neo is estimated as a free parameter, scaling the neomorphic partition's
+#     branch rates relative to the transformational partition via partition_rate.
+#   - Model 4 uses a single shared branch rate across both partitions.
+
+#Allows NT model have the two character types to evolve at different overall rates
+#expectation that neomorphic and transformational characters follow distinct evolutionary tempos (Sereno 2007, Wright et al. 2016).
+
+#Separate neomorphic and transformational partitions
+nChar <- v(neo.nchar(), trans.nchar())
+
+#Dataset properties
+taxa <- neo.names()
+nTaxa <- neo.size()
+nEdge <- 2 * nTaxa - 3
+
+moves = VectorMoves()
+
+#--- Tree topology- Uniform prior 
+topology ~ dnUniformTopology(taxa)
+moves.append( mvNNI(topology, weight = nEdge / 2.0) )
+moves.append( mvSPR(topology, weight = nEdge / 8.0) )
+
+
+#--- Branch lengths
+#Compound Dirichlet prior on edge length variability, See https://revbayes.github.io/tutorials/ctmc/
+gamma_shape <- 2
+exp_steps <- 1 
+tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
+moves.append( mvScale(tree_length, weight = 1.0) )
+
+rel_br_lengths ~ dnDirichlet( rep(1.0, nEdge) )
+moves.append( mvBetaSimplex(rel_br_lengths, weight = nEdge / 3.0) )
+moves.append( mvDirichletSimplex(rel_br_lengths, weight = nEdge / 20.0) )
+br_lengths := rel_br_lengths * tree_length
+
+phylogeny := treeAssembly(topology, br_lengths)
+
+
+#--- Partition rates
+
+#Neomorphic partition may evolve at a different overall rate than transformational.
+#rate_neo controls the relative scaling annd partition_rate normalises so that the
+#character-weighted mean rate across both partitions equals tree_length.
+#From https://revbayes.github.io/tutorials/partition/
+rate_neo ~ dnLognormal(mean = 0, sd = 2)
+moves.append( mvScale(rate_neo, weight = 0.5) )
+partition_rate := [ rate_neo / (1 + rate_neo), (1 / (1 + rate_neo)) ] / nChar * sum(nChar)
+
+# Forward (gain) and reverse (loss) rates are allowed to differ for neomorphic characters.
+# rate_loss parameterises the asymmetry: rate_loss > 1 means losses are more probable
+# than gains, complex traits are harder to gain than to lose (Muller & Wagner 1991; Sereno 2007).
+#rate01 and rate10 are normalised so that the mean rate equals 1.
+rate_loss ~ dnLognormal(mean = 0, sd = 2)
+moves.append( mvScale(rate_loss, lambda = 1, weight = 0.5) )
+
+rate01 := 2 / (1 + rate_loss)
+rate10 := 2 * rate_loss / (1 + rate_loss)
+rates := [ [0.0, rate01],
+           [rate10, 0.0] ]
+neoQ := fnFreeK(rates)
+
+#Stationary distribution implied by the asymmetric Q matrix used as root frequencies.
+stationaryDist := Simplex( rate10, rate01 )
+
+#--- Neomorphic partition: asymmetric binary Q matrix, partition-scaled branch rates.
+m_morph[1] ~ dnPhyloCTMC(
+  tree = phylogeny,
+  branchRates = partition_rate[1],
+  Q = neoQ,
+  rootFrequencies = stationaryDist,
+  type = "Standard",
+  coding = "variable"
+)
+m_morph[1].clamp(neo)
+
+#--- Transformational partition: symmetric Mk (JC) for 2-state characters, partition-scaled branch rates.
+m_morph[2] ~ dnPhyloCTMC(
+  tree = phylogeny,
+  branchRates = partition_rate[2],
+  Q = fnJC(2),
+  type = "Standard",
+  coding = "variable"
+)
+m_morph[2].clamp(trans)
+
+#--- Conduct MCMC analysis
+mymodel = model(phylogeny)
+monitors = VectorMonitors()
+monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE, rate_neo, rate_loss) )

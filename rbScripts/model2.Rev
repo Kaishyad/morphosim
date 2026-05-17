@@ -14,8 +14,7 @@ moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
 #--- Branch lengths
-# Compound Dirichlet prior on edge length variability
-# See https://revbayes.github.io/tutorials/ctmc/
+# Compound Dirichlet prior on edge length variability, See https://revbayes.github.io/tutorials/ctmc/
 gamma_shape <- 2
 exp_steps <- 1 
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
