@@ -1,1 +1,56 @@
-# model 1 
+#Model 1: Single-partition symmetric Mk baseline (exact copy of sp_kv.Rev)
+#All neomorphic and transformational characters are analysed together under
+#a single symmetric Q matrix with no partitioning or rate heterogeneity
+
+#Single partition
+allChars <- concatenate(neo, trans)
+
+# Dataset properties
+taxa <- allChars.names() # taxon names from the character matrix
+nTaxa <- allChars.size() # number of taxa
+nEdge <- 2 * nTaxa - 3 # number of edges in an unrooted binary tree
+
+moves = VectorMoves()
+
+
+#--- Tree topology
+# Uniform prior: all topologies equally probable a priori
+topology ~ dnUniformTopology(taxa)
+moves.append( mvNNI(topology, weight = nEdge / 2.0) )
+moves.append( mvSPR(topology, weight = nEdge / 8.0) )
+
+#--- Branch lengths
+#compound Dirichlet parameterisation
+gamma_shape <- 2 #Gamma(2, 2) prior centres on 1 change per site with moderate variance
+exp_steps <- 1 #Expected changes per site across the tree.
+tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps) #total expected character changes across all branches
+moves.append( mvScale(tree_length, weight = 1.0) )
+
+rel_br_lengths ~ dnDirichlet( rep(1.0, nEdge) ) #proportional allocation of tree_length across edges
+#Dirichlet(1,...,1) = uniform over the simplex means no branch favoured a priori
+moves.append( mvBetaSimplex(rel_br_lengths, weight = nEdge / 3.0) )
+moves.append( mvDirichletSimplex(rel_br_lengths, weight = nEdge / 20.0) ) 
+
+#Absolute branch lengths = proportions * total length
+br_lengths := rel_br_lengths * tree_length
+
+#Assemble the time-tree object from topology and branch lengths
+phylogeny := treeAssembly(topology, br_lengths)
+
+
+#--- Substitution model
+# Mk model: symmetric Jukes-Cantor Q matrix for 2 states (gain = loss)
+m_morph ~ dnPhyloCTMC(
+  tree = phylogeny,  
+  Q = fnJC(2), #symmetric 2-state Q matrix
+  type = "Standard",
+  coding = "variable" #ascertainment bias correction for variable characters
+)
+m_morph.clamp(allChars) #fix observed data to the likelihood node
+
+#--- Model and monitors
+mymodel = model(phylogeny)
+monitors = VectorMonitors()
+#print to screen every 300 iterations, omit prior/posterior to reduce noise
+monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )
+
