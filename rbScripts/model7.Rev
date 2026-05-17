@@ -1,3 +1,109 @@
-# Model 7: Two-partition, lognormal among-character rate variation,
+# Model 7:  (based on ns_t_ki.Rev) Two-partition, lognormal among-character rate variation,
 #           symmetric neomorphic Q, separate partition rates, k-partitioned
 #           transformational characters, informative (ascertainment-corrected) coding.
+
+
+# Separate neomorphic and transformational partitions
+partitioned[1] <- neo
+partitioned[2] <- trans
+nChar <- v(neo.nchar(), trans.nchar())
+
+# Dataset properties
+taxa <- neo.names()
+nTaxa <- neo.size()
+nEdge <- 2 * nTaxa - 3
+
+moves = VectorMoves()
+
+# Uniform prior on tree topologies
+topology ~ dnUniformTopology(taxa)
+moves.append( mvNNI(topology, weight = nEdge / 2.0) )
+moves.append( mvSPR(topology, weight = nEdge / 8.0) )
+
+# Compound Dirichlet prior on edge length variability
+# See https://revbayes.github.io/tutorials/ctmc/
+gamma_shape <- 2
+exp_steps <- 1 # Expected changes per site across the tree.
+tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
+moves.append( mvScale(tree_length, weight = 1.0) )
+
+rel_br_lengths ~ dnDirichlet( rep(1.0, nEdge) )
+moves.append( mvBetaSimplex(rel_br_lengths, weight = nEdge / 3.0) )
+moves.append( mvDirichletSimplex(rel_br_lengths, weight = nEdge / 20.0) )
+br_lengths := rel_br_lengths * tree_length
+
+phylogeny := treeAssembly(topology, br_lengths)
+
+# Lognormal among-character rate variation (Wagner 2012, doi: 10.1098/rsbl.2011.0523).
+# rate_log_sd controls the spread of the lognormal; a Gamma(1,1) prior allows
+# values near zero (effectively rate-homogeneous) and heavier heterogeneity.
+# Mean = 1, so tree length is interpretable as character changes per site.
+# 6 categories following Wright & Wynd (2024).
+rate_log_sd ~ dnGamma(1, 1)
+moves.append( mvScale(rate_log_sd, weight = 1.0) )
+rate_categories := fnDiscretizeDistribution( dnLognormal(0, rate_log_sd), 6 )
+
+# Neomorphic partition may evolve at a different overall rate than transformational.
+# partition_rate normalises so the character-weighted mean rate equals tree_length.
+# From https://revbayes.github.io/tutorials/partition/
+rate_neo ~ dnLognormal(mean = 0, sd = 2)
+moves.append( mvScale(rate_neo, weight = 1.0) )
+partition_rate := [ rate_neo / (1 + rate_neo), (1 / (1 + rate_neo)) ] / nChar * sum(nChar)
+
+# Root frequency prior for neomorphic characters.
+root_freqs ~ dnDirichlet([1, 1])
+moves.append( mvBetaSimplex(root_freqs, weight = 1.0) )
+rtfq1 := root_freqs[1]
+
+# Neomorphic partition: symmetric Mk (JC) Q matrix.
+# Gain and loss rates are constrained equal; the asymmetric rate_loss parameter
+# is absent here (contrast with Model 8).
+neoQ := fnJC(2)
+
+m_morph[1] ~ dnPhyloCTMC(
+  tree = phylogeny,
+  branchRates = partition_rate[1],
+  siteRates = rate_categories,
+  Q = neoQ,
+  rootFrequencies = root_freqs,
+  type = "Standard",
+  coding = "informative"
+)
+m_morph[1].clamp(neo)
+
+# Transformational partition: k-partitioned by number of states.
+# Each sub-partition uses a symmetric JC Q matrix for its k states.
+# Partitioning by k avoids conflating characters with different numbers of
+# states under a single Q matrix (Wright et al. 2016).
+# coding = "informative" applies the ascertainment bias correction within
+# each sub-partition (Lewis 2001).
+maxK = 10
+idx = 1
+for (k in 2:maxK) {
+  transByState[k - 1] <- partitioned[2]
+  transByState[k - 1].setNumStatesPartition(k)
+  # Reduce memory footprint, per https://github.com/revbayes/revbayes/issues/552
+  transByState[k - 1].removeExcludedCharacters()
+  nc = transByState[k - 1].nchar()
+
+  if (nc > 0) {
+    print(nc, "characters in partition with", k, "states")
+    q[idx] <- fnJC(k)
+    m_morph[idx + 1] ~ dnPhyloCTMC(
+      tree = phylogeny,
+      branchRates = partition_rate[2],
+      siteRates = rate_categories,
+      Q = q[idx],
+      type = "Standard",
+      coding = "informative"
+    )
+    m_morph[idx + 1].clamp(transByState[k - 1])
+    idx = idx + 1
+  }
+}
+
+# Conduct MCMC analysis
+mymodel = model(phylogeny)
+
+monitors = VectorMonitors()
+monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE, rate_neo, rate_log_sd, rtfq1) )
