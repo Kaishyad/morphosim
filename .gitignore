@@ -1,0 +1,21 @@
+# R
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# Large local test outputs — these live in nt-sim-data, not here
+inst/simdata/
+
+# OS
+.DS_Store
+__MACOSX/
+Thumbs.db
+
+# RevBayes binaries / Singularity images
+*.simg
+*.lnk
+
+# Temporary files
+*.tmp
+*.bak
