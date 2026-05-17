@@ -1,0 +1,95 @@
+# pilot_sim.Rev
+# Small pilot simulation under the NT generative model.
+# Produces neo.nex, trans.nex, and tree.nwk in the output directory.
+# Adapted from sim-by_nt_kv.Rev (supervisor).
+#
+# Arguments (passed via --args or hardcoded below):
+#   args[1]  outDir   output directory
+#   args[2]  n_taxa   number of taxa
+#   args[3]  n_neo    neomorphic characters to simulate
+#   args[4]  n_trans  transformational characters to simulate
+#   args[5]  n        gain-to-loss rate ratio
+#   args[6]  t        relative rate of transformational partition
+#   args[7]  length   total tree length
+#   args[8]  seed_v   random seed
+
+# --- Default values (small pilot experiment) ---
+outDir  = "simulations/pilot/sim001"
+n_taxa  = 20      # small taxon set for speed
+n_neo   = 30      # modest character counts
+n_trans = 30
+n       = 0.497   # gain-to-loss ratio (supervisor's empirical median)
+t       = 2.47    # transformational partition rate scalar
+length  = 1.43    # tree length (supervisor's empirical median)
+seed_v  = 1
+
+# Override defaults with command-line args if provided
+if (args.size() >= 1) { outDir  = args[1] }
+if (args.size() >= 2) { n_taxa  = args[2] }
+if (args.size() >= 3) { n_neo   = args[3] }
+if (args.size() >= 4) { n_trans = args[4] }
+if (args.size() >= 5) { n       = args[5] }
+if (args.size() >= 6) { t       = args[6] }
+if (args.size() >= 7) { length  = args[7] }
+if (args.size() >= 8) { seed_v  = args[8] }
+
+# Reparameterise into rate matrix terms (matching generative model convention)
+rate_loss := 1 / n   # loss rate relative to gain
+rate_neo  := 1 / t   # neomorphic partition rate scalar
+n_char    <- v(n_neo, n_trans)
+
+write("Writing pilot simulation output to", outDir)
+seed(seed_v)
+
+# --- Taxa ---
+for (i in 1:n_taxa) {
+  taxa[i] = taxon("tip_" + i)
+}
+
+# --- Tree ---
+n_edge = 2 * n_taxa - 3
+rel_br_lengths ~ dnDirichlet(rep(1.0, n_edge))
+br_lengths     := rel_br_lengths * length
+topology       ~ dnUniformTopology(taxa, clade(taxa[1]))
+tr             := treeAssembly(topology, br_lengths)
+write(tr, filename = outDir + "/tree.nwk")
+
+# --- Q matrices ---
+# Partition rates: neo scaled by rate_neo, trans gets remainder, weighted by nChar
+partition_rate := [ rate_neo / (1 + rate_neo),
+                    (1 / (1 + rate_neo)) ] / n_char * sum(n_char)
+
+# Asymmetric binary Q for neomorphic characters
+rate01 := 2 / (1 + rate_loss)
+rate10 := 2 * rate_loss / (1 + rate_loss)
+rates  := [ [0.0, rate01],
+            [rate10, 0.0] ]
+neoQ           := fnFreeK(rates)
+stationaryDist := Simplex(rate10, rate01)  # stationary frequencies
+
+# --- Simulate neomorphic characters ---
+neo_chars ~ dnPhyloCTMC(
+  tree           = tr,
+  Q              = neoQ,
+  rootFrequencies = stationaryDist,
+  branchRates    = partition_rate[1],
+  coding         = "variable",
+  nSites         = n_neo,
+  type           = "Standard"
+)
+writeNexus(filename = outDir + "/neo.nex", neo_chars)
+
+# --- Simulate transformational characters ---
+# Symmetric Mk (JC) for transformational characters
+trans_chars ~ dnPhyloCTMC(
+  tree        = tr,
+  Q           = fnJC(2),
+  branchRates = partition_rate[2],
+  coding      = "variable",
+  nSites      = n_trans,
+  type        = "Standard"
+)
+writeNexus(filename = outDir + "/trans.nex", trans_chars)
+
+write("Simulation complete.")
+q()

@@ -1,0 +1,90 @@
+# pilot_infer.Rev
+# Runs Model 1 (single-partition symmetric Mk) on simulated pilot data.
+# Adapted from sim-mc3.Rev (supervisor).
+# Outputs .log, .p.log, and .trees files to the simulation directory.
+#
+# Arguments:
+#   args[1]  simDir   directory containing neo.nex and trans.nex
+#   args[2]  script   model script name (default: model1_sp_kv)
+#   args[3]  minEss   minimum ESS stopping criterion (default: 200 for pilot)
+
+# --- Defaults ---
+simDir = "simulations/pilot/sim001"
+script = "model1_sp_kv"
+minEss = 200   # lower than production (333) for a fast pilot run
+
+if (args.size() >= 1) { simDir = args[1] }
+if (args.size() >= 2) { script = args[2] }
+if (args.size() >= 3) { minEss = args[3] }
+
+print("Timestamp:", time("year"), time("day"), time("seconds") / 60 / 60)
+seed(0)
+
+maxPSRF = 1.01
+
+write(getwd())
+
+# --- Read simulated data ---
+neo   <- readDiscreteCharacterData(simDir + "/neo.nex")
+trans <- readDiscreteCharacterData(simDir + "/trans.nex")
+
+# --- File paths ---
+filePrefix = simDir + "/" + script
+ckpFile    = filePrefix + ".ckp"
+paramFile  = filePrefix + ".p.log"
+
+# --- Source the model script ---
+# Loads model definition: topology, branch lengths, Q matrix, likelihood node
+source("inst/rbScripts/" + script + ".Rev")
+
+checkFreq = 100
+
+# --- Monitors ---
+monitors.append( mnModel(filename = filePrefix + ".log",   printgen = 36) )
+monitors.append( mnModel(filename = paramFile,             printgen = 6,
+                         stochasticOnly = TRUE,
+                         exclude = ["rel_br_lengths"]) )
+monitors.append( mnFile(filename  = filePrefix + ".trees", printgen = 12,
+                        phylogeny) )
+
+# --- MCMCMC setup ---
+# 4 chains (2 cold + 2 hot) for pilot; production uses 8
+mymc3 = mcmcmc(
+  mymodel, monitors, moves,
+  nruns      = 2,
+  nchains    = 4,
+  tuneHeat   = TRUE,
+  swapMethod = "both",
+  swapMode   = "multiple",
+  combine    = "none"
+)
+print("   Created MCMCMC object")
+
+# --- Burnin or resume from checkpoint ---
+if (fileExists(filePrefix + "_run_1_chain_0.ckp")) {
+  print("   Initializing from checkpoint")
+  mymc3.initializeFromCheckpoint(ckpFile)
+  runHours = 2   # short continuation for pilot
+} else {
+  mymc3.burnin(generations = 600, tuningInterval = checkFreq * 3)
+  runHours = 2   # 2-hour cap — enough to confirm the pipeline works
+}
+
+# --- Stopping rules ---
+stopping_rules[1] = srMaxTime(runHours, "hours")
+stopping_rules[2] = srMinESS(minEss, paramFile, checkFreq, "ESS")
+stopping_rules[3] = srGelmanRubin(maxPSRF, paramFile, checkFreq)
+
+print("   Commencing MCMCMC run with " + script + " at",
+      time("year"), time("day"), time("seconds") / 60 / 60)
+
+mymc3.run(
+  rules              = stopping_rules,
+  checkpointFile     = ckpFile,
+  checkpointInterval = checkFreq,
+  verbose            = 1
+)
+
+print("  # # # RUN COMPLETE # # #  ")
+print("Timestamp:", time("year"), time("day"), time("seconds") / 60 / 60)
+q()
