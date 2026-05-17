@@ -1,1 +1,98 @@
-# model 4
+# Model 4: Two-partition NT model (sp_nt_kv)
+# Neomorphic and transformational characters modelled under separate Q matrices,
+# sharing a common tree topology and branch lengths.
+# Neomorphic partition: asymmetric binary Q (gain ≠ loss).
+# Transformational partition: symmetric Mk (JC), gain = loss.
+
+# Character counts per partition, used to normalise partition rates
+nChar <- v(neo.nchar(), trans.nchar())
+
+# Dataset properties
+taxa <- neo.names()
+nTaxa <- neo.size()
+nEdge <- 2 * nTaxa - 3
+
+moves = VectorMoves()
+
+#--- Tree topology 
+#Uniform prior
+topology ~ dnUniformTopology(taxa)
+moves.append( mvNNI(topology, weight = nEdge / 2.0) )  #nearest-neighbour interchange
+moves.append( mvSPR(topology, weight = nEdge / 8.0) )  #subtree pruning and regrafting
+
+
+#--- Branch lengths
+gamma_shape <- 2
+exp_steps <- 1 
+tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
+moves.append( mvScale(tree_length, weight = 1.0) )
+
+rel_br_lengths ~ dnDirichlet( rep(1.0, nEdge) )
+moves.append( mvBetaSimplex(rel_br_lengths, weight = nEdge / 3.0) )
+moves.append( mvDirichletSimplex(rel_br_lengths, weight = nEdge / 20.0) )
+
+
+# := defines a deterministic relationship: br_lengths updates automatically
+# whenever tree_length or rel_br_lengths change during MCMC.
+br_lengths := rel_br_lengths * tree_length
+
+#Assemble tree object from topology and branch lengths
+phylogeny := treeAssembly(topology, br_lengths)
+
+
+
+#--- Partition rates
+# rate_neo scales the neomorphic partition relative to the transformational.
+# partition_rate normalises both so the character-weighted mean equals tree_length.
+rate_neo ~ dnLognormal(mean = 0, sd = 2)
+moves.append( mvScale(rate_neo, weight = 0.5) )
+partition_rate := [ rate_neo / (1 + rate_neo), (1 / (1 + rate_neo)) ] / nChar * sum(nChar)
+
+
+
+#--- Asymmetric Q matrix for neomorphic characters 
+# rate_loss > 1: losses more probable than gains, reflecting that complex traits are harder to gain than to lose
+# rate01 and rate10 are normalised so their mean equals 1.
+rate_loss ~ dnLognormal(mean = 0, sd = 2)
+moves.append( mvScale(rate_loss, lambda = 1, weight = 0.5) )
+
+# Make Q matrix from rates, with mean = rate_neo
+# https://revbayes.github.io/tutorials/morph/morph_more.html
+rate01 := 2 / (1 + rate_loss)
+rate10 := 2 * rate_loss / (1 + rate_loss)
+rates := [ [0.0, rate01],
+           [rate10, 0.0] ]
+neoQ := fnFreeK(rates)
+#Stationary distribution of the asymmetric Q matrix used as root frequencies. Assumes the evolutionary process is at equilibrium at the root.
+stationaryDist := Simplex( rate10, rate01 )
+
+
+#--- Neomorphic partition likelihood 
+# dnPhyloCTMC defines the probability distribution of character states on the tree
+m_morph[1] ~ dnPhyloCTMC(
+  tree            = phylogeny,
+  branchRates     = partition_rate[1],
+  Q               = neoQ,
+  rootFrequencies = stationaryDist,
+  type            = "Standard",
+  coding          = "variable"
+)
+m_morph[1].clamp(neo)
+
+
+#--- Transformational partition likelihood 
+#Same tree and branch lengths as neomorphic partition, scaled by partition_rate[2].
+m_morph[2] ~ dnPhyloCTMC(
+  tree        = phylogeny,
+  branchRates = partition_rate[2],
+  Q           = fnJC(2),
+  type        = "Standard",
+  coding      = "variable"
+)
+m_morph[2].clamp(trans)
+
+
+# Conduct MCMC analysis
+mymodel = model(phylogeny)
+monitors = VectorMonitors()
+monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE, rate_neo, rate_loss) )
