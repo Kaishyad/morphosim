@@ -15,13 +15,13 @@ nEdge <- 2 * nTaxa - 3
 
 moves = VectorMoves()
 
-# Uniform prior on tree topologies
+#--- Tree topology- Uniform prior 
 topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-# Compound Dirichlet prior on edge length variability
-# See https://revbayes.github.io/tutorials/ctmc/
+#--- Branch lengths
+#Compound Dirichlet prior on edge length variability, See https://revbayes.github.io/tutorials/ctmc/
 gamma_shape <- 2
 exp_steps <- 1 # Expected changes per site across the tree.
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
@@ -34,7 +34,9 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-# Lognormal among-character rate variation (Wagner 2012, doi: 10.1098/rsbl.2011.0523).
+#--- Partition rates
+
+#--- Lognormal among-character rate variation (Wagner 2012, doi: 10.1098/rsbl.2011.0523).
 # rate_log_sd controls the spread of the lognormal; a Gamma(1,1) prior allows
 # values near zero (effectively rate-homogeneous) and heavier heterogeneity.
 # Mean = 1, so tree length is interpretable as character changes per site.
@@ -43,7 +45,7 @@ rate_log_sd ~ dnGamma(1, 1)
 moves.append( mvScale(rate_log_sd, weight = 1.0) )
 rate_categories := fnDiscretizeDistribution( dnLognormal(0, rate_log_sd), 6 )
 
-# Neomorphic partition may evolve at a different overall rate than transformational.
+#--- Neomorphic partition may evolve at a different overall rate than transformational.
 # partition_rate normalises so the character-weighted mean rate equals tree_length.
 # From https://revbayes.github.io/tutorials/partition/
 rate_neo ~ dnLognormal(mean = 0, sd = 2)
@@ -55,7 +57,7 @@ root_freqs ~ dnDirichlet([1, 1])
 moves.append( mvBetaSimplex(root_freqs, weight = 1.0) )
 rtfq1 := root_freqs[1]
 
-# Neomorphic partition: symmetric Mk (JC) Q matrix.
+#--- Neomorphic partition: symmetric Mk (JC) Q matrix.
 # Gain and loss rates are constrained equal; the asymmetric rate_loss parameter
 # is absent here (contrast with Model 8).
 neoQ := fnJC(2)
@@ -71,7 +73,7 @@ m_morph[1] ~ dnPhyloCTMC(
 )
 m_morph[1].clamp(neo)
 
-# Transformational partition: k-partitioned by number of states.
+#--- Transformational partition: k-partitioned by number of states.
 # Each sub-partition uses a symmetric JC Q matrix for its k states.
 # Partitioning by k avoids conflating characters with different numbers of
 # states under a single Q matrix (Wright et al. 2016).
@@ -102,7 +104,7 @@ for (k in 2:maxK) {
   }
 }
 
-# Conduct MCMC analysis
+#--- Conduct MCMC analysis
 mymodel = model(phylogeny)
 
 monitors = VectorMonitors()

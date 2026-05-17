@@ -1,6 +1,6 @@
 #Model 1: Single-partition symmetric Mk baseline (exact copy of sp_kv.Rev)
-#All neomorphic and transformational characters are analysed together under
-#a single symmetric Q matrix with no partitioning or rate heterogeneity
+#         All neomorphic and transformational characters are analysed together under
+#         a single symmetric Q matrix with no partitioning or rate heterogeneity
 
 #Single partition
 allChars <- concatenate(neo, trans)

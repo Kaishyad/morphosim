@@ -1,5 +1,5 @@
 # Model 3: Single-partition, symmetric Mk, neomorphic characters only
-# Adapted from sp_kv.Rev (Model 1) and sp_kv_nonly.Rev (neo-only baseline).
+#          Adapted from sp_kv.Rev (Model 1) and sp_kv_nonly.Rev (neo-only baseline).
 
 # Main differences from Model 1:
 #   - Only neomorphic characters are included and transformational characters are excluded.

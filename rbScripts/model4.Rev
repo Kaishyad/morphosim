@@ -1,6 +1,6 @@
-# Model 4: Two-partition NT model (sp_nt_kv)
-# Neomorphic and transformational characters modelled under separate Q matrices,
-# sharing a common tree topology and branch lengths.
+# Model 4: Two-partition NT model (adapted from sp_nt_kv)
+#          Neomorphic and transformational characters modelled under separate Q matrices,
+#          sharing a common tree topology and branch lengths.
 # Neomorphic partition: asymmetric binary Q (gain ≠ loss).
 # Transformational partition: symmetric Mk (JC), gain = loss.
 

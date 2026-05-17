@@ -1,5 +1,5 @@
 # Model 2: Single-partition, symmetric Mk, informative coding (Adapated from sp_kv.Rev)
-# applies ascertainment bias correction, all other components (tree prior, branch lengths) are identical to Model 1.
+#         applies ascertainment bias correction, all other components (tree prior, branch lengths) are identical to Model 1.
 
 # Single partition: concatenate neomorphic and transformational characters
 allChars <- concatenate(neo, trans)
