@@ -10,7 +10,6 @@
 #SBATCH -n 4                          # 4 tasks (4 MPI chains for pilot)
 #SBATCH --mem=4G                      # modest memory for small dataset
 #SBATCH --time=3:00:00                # 3-hour cap (sim + 2-hr inference)
-#SBATCH --gres=tmp:8G                 # temp disk for RevBayes
 #SBATCH --job-name=pilot_model1
 #SBATCH --output=/nobackup/%u/morphosim/pilot_model1.out
 #SBATCH --error=/nobackup/%u/morphosim/pilot_model1.err
@@ -52,10 +51,10 @@ echo "Simulation complete at $(date)"
 module load openmpi/4.1.1
 echo "Starting inference at $(date)"
 
-mpirun /nobackup/$USER/revbayes/projects/cmake/build-mpi/rb-mpi \
+mpirun ~/diss/revbayes/projects/cmake/build-mpi/rb-mpi \
   $WORK/inst/rbScripts/pilot_infer.Rev \
   $MATRIX/$SIM_SUBDIR model1_sp_kv 200
-
+  
 echo "Inference complete at $(date)"
 
 # --- Step 3: Compress tree files ---
