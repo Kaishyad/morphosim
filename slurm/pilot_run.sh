@@ -51,7 +51,7 @@ echo "Simulation complete at $(date)"
 echo "Starting inference at $(date)"
 mpirun $RB \
   $WORK/rbScripts/pilot_infer.Rev \
-  $MATRIX/$SIM_SUBDIR model1_sp_kv 200
+  $MATRIX/$SIM_SUBDIR model1 200
 echo "Inference complete at $(date)"
  
 # --- Step 3: Compress tree files ---
@@ -63,7 +63,7 @@ done
 # --- Step 4: Push outputs to the-matrix ---
 cd $MATRIX
 git add $SIM_SUBDIR/
-git commit -m "Pilot run: sim001 model1_sp_kv output"
+git commit -m "Pilot run: sim001 model1 output"
 git pull origin main --rebase
 git push origin main
  

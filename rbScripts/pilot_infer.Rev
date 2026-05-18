@@ -10,7 +10,7 @@
 
 # --- Defaults ---
 simDir = "simulations/pilot/sim001"
-script = "model1_sp_kv"
+script = "model1"
 minEss = 200   # lower than production (333) for a fast pilot run
 
 if (args.size() >= 1) { simDir = args[1] }
