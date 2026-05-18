@@ -35,7 +35,7 @@ paramFile  = filePrefix + ".p.log"
 
 # --- Source the model script ---
 # Loads model definition: topology, branch lengths, Q matrix, likelihood node
-source("inst/rbScripts/" + script + ".Rev")
+source("rbScripts/" + script + ".Rev")
 
 checkFreq = 100
 
