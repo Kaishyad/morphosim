@@ -41,9 +41,13 @@ n_char    <- v(n_neo, n_trans)
 write("Writing pilot simulation output to", outDir)
 seed(seed_v)
 
-# --- Taxa ---
+# --- Taxa --- this fixes the tip numbering, like discussed with martin
 for (i in 1:n_taxa) {
-  taxa[i] = taxon("tip_" + i)
+  if (i < 10) {
+    taxa[i] = taxon("tip_0" + i)
+  } else {
+    taxa[i] = taxon("tip_" + i)
+  }
 }
 
 # --- Tree ---

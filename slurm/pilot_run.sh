@@ -2,7 +2,7 @@
 # pilot_run.sh
 # Pilot SLURM job: simulate data under NT model and run Model 1 inference.
 # Adapted from mc3sim.sh (supervisor).
-# Runs a single replicate (sim001) with reduced resources for a quick pipeline test.
+# Runs a single replicate (sim002) with reduced resources for a quick pipeline test.
 # Outputs are written to the-matrix repo and pushed to GitHub.
  
 # --- Resource requests ---
@@ -22,7 +22,7 @@ module load openmpi/4.1.1
 RB=~/diss/revbayes/projects/cmake/build-mpi/rb-mpi
 WORK=/nobackup/$USER/morphosim
 MATRIX=/nobackup/$USER/the-matrix
-SIM_SUBDIR=simulations/pilot/sim001
+SIM_SUBDIR=simulations/pilot/sim002
  
 # Clone/pull morphosim (code)
 if [ -d "$WORK/.git" ]; then
@@ -63,7 +63,7 @@ done
 # --- Step 4: Push outputs to the-matrix ---
 cd $MATRIX
 git add $SIM_SUBDIR/
-git commit -m "Pilot run: sim001 model1 output"
+git commit -m "Pilot run: sim002 model1 output"
 git pull origin main --rebase
 git push origin main
  
