@@ -1,3 +1,110 @@
 # Model 9: Two-partition, lognormal among-character rate variation,
 #           asymmetric neomorphic Q (fnFreeK), NO separate partition rates,
 #           k-partitioned transformational characters, informative coding.
+
+# (Adapted from ns_n_ki.Rev) - the 'n' denotes no partition rates.
+
+# Identical to Model 8 except that rate_neo and partition_rate are removed;
+# both partitions share the same branch rates directly from br_lengths.
+# This isolates the contribution of partition-level rate scaling: comparing
+# Model 9 vs Model 8 shows whether allowing neo and trans to evolve at
+# different overall tempos improves inference beyond shared-rate partitioning.
+
+#Separate neomorphic and transformational partitions
+partitioned[1] <- neo
+partitioned[2] <- trans
+nChar <- v(neo.nchar(), trans.nchar())
+
+#--- Dataset properties
+taxa <- neo.names()
+nTaxa <- neo.size()
+nEdge <- 2 * nTaxa - 3
+
+moves = VectorMoves()
+
+#--- Tree topology- Uniform prior 
+topology ~ dnUniformTopology(taxa)
+moves.append( mvNNI(topology, weight = nEdge / 2.0) )
+moves.append( mvSPR(topology, weight = nEdge / 8.0) )
+
+#--- Branch lengths
+#Compound Dirichlet prior on edge length variability, See https://revbayes.github.io/tutorials/ctmc/
+gamma_shape <- 2
+exp_steps <- 1 
+tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
+moves.append( mvScale(tree_length, weight = 1.0) )
+
+rel_br_lengths ~ dnDirichlet( rep(1.0, nEdge) )
+moves.append( mvBetaSimplex(rel_br_lengths, weight = nEdge / 3.0) )
+moves.append( mvDirichletSimplex(rel_br_lengths, weight = nEdge / 20.0) )
+br_lengths := rel_br_lengths * tree_length
+
+phylogeny := treeAssembly(topology, br_lengths)
+
+#Lognormal among-character rate variation
+rate_log_sd ~ dnGamma(1, 1)
+moves.append( mvScale(rate_log_sd, weight = 1.5) )
+rate_categories := fnDiscretizeDistribution( dnLognormal(0, rate_log_sd), 6 )
+
+# Root frequency prior for neomorphic characters.
+# Dirichlet weight upscaled (26.0) following ns_n_ki.Rev to allow the sampler
+# to explore root frequency space efficiently given the absence of a partition
+# rate parameter that would otherwise absorb some of this variation.
+root_freqs ~ dnDirichlet([1, 1])
+moves.append( mvBetaSimplex(root_freqs, weight = 26.0) )
+rtfq1 := root_freqs[1]
+
+# Asymmetric gain/loss rates for neomorphic characters (Muller & Wagner 1991;
+# Sereno 2007). rate_loss > 1 means losses more probable than gains.
+rate_loss ~ dnLognormal(mean = 0, sd = 2)
+moves.append( mvScale(rate_loss, lambda = 1, weight = 1.0) )
+
+rate01 := 2 / (1 + rate_loss)
+rate10 := 2 * rate_loss / (1 + rate_loss)
+rates := [ [0.0, rate01],
+           [rate10, 0.0] ]
+neoQ := fnFreeK(rates)
+
+#--- Neomorphic partition
+#asymmetric Q, shared branch rates (no partition scaling),
+#lognormal site-rate variation, informative ascertainment bias correction.
+m_morph[1] ~ dnPhyloCTMC(
+  tree = phylogeny,
+  siteRates = rate_categories,
+  Q = neoQ,
+  rootFrequencies = root_freqs,
+  type = "Standard",
+  coding = "informative"
+)
+m_morph[1].clamp(neo)
+
+#--- Transformational partition
+#k-partitioned by number of states, symmetric JC Q,
+#shared branch rates (no partition scaling), lognormal site-rate variation.
+maxK = 10
+idx = 1
+for (k in 2:maxK) {
+  transByState[k - 1] <- partitioned[2]
+  transByState[k - 1].setNumStatesPartition(k)
+  transByState[k - 1].removeExcludedCharacters()
+  nc = transByState[k - 1].nchar()
+
+  if (nc > 0) {
+    print(nc, "characters in partition with", k, "states")
+    q[idx] <- fnJC(k)
+    m_morph[idx + 1] ~ dnPhyloCTMC(
+      tree = phylogeny,
+      siteRates = rate_categories,
+      Q = q[idx],
+      type = "Standard",
+      coding = "informative"
+    )
+    m_morph[idx + 1].clamp(transByState[k - 1])
+    idx = idx + 1
+  }
+}
+
+#--- Conduct MCMC analysis
+mymodel = model(phylogeny)
+monitors = VectorMonitors()
+monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE, rate_loss, rate_log_sd, rtfq1) )

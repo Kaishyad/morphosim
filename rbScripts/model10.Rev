@@ -1,3 +1,106 @@
 # Model 10: Two-partition, lognormal among-character rate variation,
 #            asymmetric neomorphic Q (fnFreeK), separate partition rates,
 #            single (non-k-partitioned) transformational partition, informative coding.
+
+# Identical to Model 8 except that the transformational partition is treated
+# as a single block under fnJC(2) rather than being sub-divided by number of
+# states k. This removes the k-partitioning from Model 8 in isolation, so that
+# comparing Model 10 vs Model 8 reveals whether resolving multistate character
+# structure (k-partitioning) provides inferential benefit beyond the other
+# rate-heterogeneity extensions.
+
+# fnJC(2) is used for the single transformational partition as a conservative
+# default; all transformational characters are treated as two-state under a
+# symmetric process, which will misfit multistate characters but avoids the
+# additional parameters introduced by k-partitioning.
+
+
+#Separate neomorphic and transformational partitions
+nChar <- v(neo.nchar(), trans.nchar())
+
+#--- Dataset properties
+taxa <- neo.names()
+nTaxa <- neo.size()
+nEdge <- 2 * nTaxa - 3
+
+moves = VectorMoves()
+
+#--- Tree topology- Uniform prior 
+topology ~ dnUniformTopology(taxa)
+moves.append( mvNNI(topology, weight = nEdge / 2.0) )
+moves.append( mvSPR(topology, weight = nEdge / 8.0) )
+
+#--- Branch lengths
+#Compound Dirichlet prior on edge length variability, See https://revbayes.github.io/tutorials/ctmc/
+gamma_shape <- 2
+exp_steps <- 1
+tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
+moves.append( mvScale(tree_length, weight = 1.0) )
+
+rel_br_lengths ~ dnDirichlet( rep(1.0, nEdge) )
+moves.append( mvBetaSimplex(rel_br_lengths, weight = nEdge / 3.0) )
+moves.append( mvDirichletSimplex(rel_br_lengths, weight = nEdge / 20.0) )
+br_lengths := rel_br_lengths * tree_length
+
+phylogeny := treeAssembly(topology, br_lengths)
+
+# Lognormal among-character rate variation 
+rate_log_sd ~ dnGamma(1, 1)
+moves.append( mvScale(rate_log_sd, weight = 1.5) )
+rate_categories := fnDiscretizeDistribution( dnLognormal(0, rate_log_sd), 6 )
+
+# Neomorphic partition may evolve at a different overall rate than transformational.
+rate_neo ~ dnLognormal(mean = 0, sd = 2)
+moves.append( mvScale(rate_neo, weight = 0.5) )
+partition_rate := [ rate_neo / (1 + rate_neo), (1 / (1 + rate_neo)) ] / nChar * sum(nChar)
+
+# Asymmetric gain/loss rates 
+rate_loss ~ dnLognormal(mean = 0, sd = 2)
+moves.append( mvScale(rate_loss, lambda = 1, weight = 0.5) )
+
+rate01 := 2 / (1 + rate_loss)
+rate10 := 2 * rate_loss / (1 + rate_loss)
+rates := [ [0.0, rate01],
+           [rate10, 0.0] ]
+neoQ := fnFreeK(rates)
+
+#Stationary distribution of the asymmetric Q matrix used as root frequencies.
+root_freqs ~ dnDirichlet([1, 1])
+moves.append( mvBetaSimplex(root_freqs, weight = 1.0) )
+rtfq1 := root_freqs[1]
+
+#--- Neomorphic partition
+#asymmetric binary Q matrix, partition-scaled branch rates,
+#lognormal site-rate variation, informative ascertainment bias correction.
+m_morph[1] ~ dnPhyloCTMC(
+  tree = phylogeny,
+  branchRates = partition_rate[1],
+  siteRates = rate_categories,
+  Q = neoQ,
+  rootFrequencies = root_freqs,
+  type = "Standard",
+  coding = "informative"
+)
+m_morph[1].clamp(neo)
+
+#--- Transformational partition
+#single block under symmetric JC(2), partition-scaled
+#branch rates, lognormal site-rate variation, informative ascertainment bias correction.
+
+#All multistate characters are collapsed into a two-state symmetric process here;
+#k-partitioning (as in Model 8) would resolve this but introduces additional
+#sub-partitions. This is the key simplification relative to Model 8.
+m_morph[2] ~ dnPhyloCTMC(
+  tree = phylogeny,
+  branchRates = partition_rate[2],
+  siteRates = rate_categories,
+  Q = fnJC(2),
+  type = "Standard",
+  coding = "informative"
+)
+m_morph[2].clamp(trans)
+
+#--- Conduct MCMC analysis
+mymodel = model(phylogeny)
+monitors = VectorMonitors()
+monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE, rate_neo, rate_loss, rate_log_sd, rtfq1) )

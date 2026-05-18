@@ -1,0 +1,130 @@
+# Model 12: three-partition NT model with transformational
+#           characters split into binary and multistate sub-partitions.
+#
+# Partition structure:
+#   Partition 1: Neomorphic characters — asymmetric binary Q (fnFreeK)
+#   Partition 2: Transformational binary — symmetric Mk JC(2)
+#   Partition 3: Transformational multistate— symmetric Mk JC(k), k > 2
+
+
+# Three partitions: neomorphic, transformational-binary, transformational-multistate
+nChar <- v(neo.nchar(), trans.nchar())
+
+#--- Dataset dimensions
+taxa  <- neo.names()
+nTaxa <- neo.size()
+nEdge <- 2 * nTaxa - 3
+
+moves = VectorMoves()
+
+# --- Tree topology - Uniform prior
+topology ~ dnUniformTopology(taxa)
+moves.append( mvNNI(topology, weight = nEdge / 2.0) )
+moves.append( mvSPR(topology, weight = nEdge / 8.0) )
+
+# --- Branch lengths: compound Dirichlet parameterisation 
+gamma_shape <- 2
+exp_steps   <- 1
+tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
+moves.append( mvScale(tree_length, weight = 1.0) )
+
+
+rel_br_lengths ~ dnDirichlet( rep(1.0, nEdge) )
+moves.append( mvBetaSimplex(rel_br_lengths, weight = nEdge / 3.0) )
+moves.append( mvDirichletSimplex(rel_br_lengths, weight = nEdge / 20.0) )
+br_lengths := rel_br_lengths * tree_length
+
+phylogeny := treeAssembly(topology, br_lengths)
+
+# --- Partition rates ---
+# Three independent rate scalars: one per partition.
+# Each rate is drawn from a lognormal prior centred on 1 (no a priori
+# preference for faster or slower evolution in any partition).
+# partition_rate normalises the three rates so their character-weighted
+# mean equals tree_length.
+nCharAll <- v(neo.nchar(), transBin.nchar(), transMulti.nchar())
+
+rate_neo   ~ dnLognormal(mean = 0, sd = 2)
+rate_tBin  ~ dnLognormal(mean = 0, sd = 2)
+rate_tMult ~ dnLognormal(mean = 0, sd = 2)
+moves.append( mvScale(rate_neo,   weight = 0.5) )
+moves.append( mvScale(rate_tBin,  weight = 0.5) )
+moves.append( mvScale(rate_tMult, weight = 0.5) )
+
+# Normalise so character-weighted mean rate equals tree_length
+raw_rates      := v(rate_neo, rate_tBin, rate_tMult)
+partition_rate := raw_rates / nCharAll * sum(nCharAll) /
+                  sum(raw_rates / nCharAll * sum(nCharAll)) * 3.0
+
+# --- Asymmetric Q matrix for neomorphic characters 
+rate_loss ~ dnLognormal(mean = 0, sd = 2)
+moves.append( mvScale(rate_loss, lambda = 1, weight = 0.5) )
+
+rate01 := 2 / (1 + rate_loss)
+rate10 := 2 * rate_loss / (1 + rate_loss)
+rates  := [ [0.0, rate01],
+            [rate10, 0.0] ]
+neoQ           := fnFreeK(rates)
+stationaryDist := Simplex(rate10, rate01)
+
+# --- Neomorphic partition likelihood
+# Asymmetric binary Q, partition-scaled branch rates,
+# variable coding (Lewis 2001 ascertainment bias correction).
+m_morph[1] ~ dnPhyloCTMC(
+  tree            = phylogeny,
+  branchRates     = partition_rate[1],
+  Q               = neoQ,
+  rootFrequencies = stationaryDist,
+  type            = "Standard",
+  coding          = "variable"
+)
+m_morph[1].clamp(neo)
+
+# --- Transformational binary partition likelihood ---
+# Binary transformational characters (exactly 2 states) under symmetric JC(2).
+# These characters have a 2-state evolutionary process and are modelled
+# separately from multistate characters to avoid conflation.
+# transBin is prepared prior to sourcing this script by subsetting trans
+# to characters with exactly 2 states: transBin <- trans; transBin.setNumStatesPartition(2)
+m_morph[2] ~ dnPhyloCTMC(
+  tree        = phylogeny,
+  branchRates = partition_rate[2],
+  Q           = fnJC(2),
+  type        = "Standard",
+  coding      = "variable"
+)
+m_morph[2].clamp(transBin)
+
+# --- Transformational multistate partition likelihood
+# Multistate transformational characters (k > 2 states) under symmetric JC(k).
+# k-partitioning within the multistate sub-partition follows ns_nt_ki.Rev:
+# each state-count sub-partition gets its own JC(k) matrix.
+# transMulti is prepared prior to sourcing by subsetting trans to k > 2.
+maxK = 10
+idx  = 1
+for (k in 3:maxK) {
+  transMultiByState[k - 2] <- transMulti
+  transMultiByState[k - 2].setNumStatesPartition(k)
+  transMultiByState[k - 2].removeExcludedCharacters()
+  nc = transMultiByState[k - 2].nchar()
+
+  if (nc > 0) {
+    print(nc, "multistate characters with", k, "states")
+    qMulti[idx] <- fnJC(k)
+    m_morph[idx + 2] ~ dnPhyloCTMC(
+      tree        = phylogeny,
+      branchRates = partition_rate[3],
+      Q           = qMulti[idx],
+      type        = "Standard",
+      coding      = "variable"
+    )
+    m_morph[idx + 2].clamp(transMultiByState[k - 2])
+    idx = idx + 1
+  }
+}
+
+# --- Model and monitors
+mymodel = model(phylogeny)
+monitors = VectorMonitors()
+monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE,
+                          rate_neo, rate_tBin, rate_tMult, rate_loss) )
