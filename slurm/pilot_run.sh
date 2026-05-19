@@ -22,11 +22,11 @@ module load openmpi/4.1.1
 RB=~/diss/revbayes/projects/cmake/build-mpi/rb-mpi
 WORK=/nobackup/$USER/morphosim
 MATRIX=/nobackup/$USER/the-matrix
-SIM_SUBDIR=simulations/pilot/sim002
+SIM_SUBDIR=simulations/pilot/sim003
  
 # Clone/pull morphosim (code)
 if [ -d "$WORK/.git" ]; then
-  cd $WORK && git pull origin main --rebase
+  cd $WORK && git pull origin analysis --rebase
 else
   git clone --depth 1 https://${MORPHOSIM_TOKEN}@github.com/Kaishyad/morphosim.git $WORK
 fi
