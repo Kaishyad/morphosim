@@ -5,12 +5,12 @@
 #
 # Arguments:
 #   args[1]  simDir   directory containing neo.nex and trans.nex
-#   args[2]  script   model script name (default: model1_sp_kv)
+#   args[2]  script   model script name (default: model8)
 #   args[3]  minEss   minimum ESS stopping criterion (default: 200 for pilot)
 
 # --- Defaults ---
-simDir = "simulations/pilot/sim001"
-script = "model1"
+simDir = "simulations/pilot/sim003"
+script = "model8"
 minEss = 200   # lower than production (333) for a fast pilot run
 
 if (args.size() >= 1) { simDir = args[1] }
