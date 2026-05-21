@@ -28,7 +28,7 @@ moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 #--- Branch lengths
 #Compound Dirichlet prior on edge length variability, See https://revbayes.github.io/tutorials/ctmc/
 gamma_shape <- 2
-exp_steps <- 1 # Expected changes per site across the tree.
+exp_steps <- 1 
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
 moves.append( mvScale(tree_length, weight = 1.0) )
 
