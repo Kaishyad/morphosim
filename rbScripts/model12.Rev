@@ -37,12 +37,9 @@ br_lengths := rel_br_lengths * tree_length
 phylogeny := treeAssembly(topology, br_lengths)
 
 # --- Partition rates ---
-# Three independent rate scalars: one per partition.
-# Each rate is drawn from a lognormal prior centred on 1 (no a priori
-# preference for faster or slower evolution in any partition).
-# partition_rate normalises the three rates so their character-weighted
-# mean equals tree_length.
-nCharAll <- v(neo.nchar(), transBin.nchar(), transMulti.nchar())
+# Three independent rate scalars, one per partition.
+nCharAll   <- v(neo.nchar(), transBin.nchar(), transMulti.nchar())
+nCharTotal <- sum(nCharAll)
 
 rate_neo   ~ dnLognormal(mean = 0, sd = 2)
 rate_tBin  ~ dnLognormal(mean = 0, sd = 2)
@@ -51,10 +48,13 @@ moves.append( mvScale(rate_neo,   weight = 0.5) )
 moves.append( mvScale(rate_tBin,  weight = 0.5) )
 moves.append( mvScale(rate_tMult, weight = 0.5) )
 
-# Normalise so character-weighted mean rate equals tree_length
+# Fixed normalisation: partition_rate[i] = raw_rate[i] / weighted_mean, so the
+# character-weighted mean equals 1 and tree_length stays in units of changes
+# per site. Previous formula contained a redundant * 3.0 term that could push
+# rates above tree_length when partition sizes are unequal.
 raw_rates      := v(rate_neo, rate_tBin, rate_tMult)
-partition_rate := raw_rates / nCharAll * sum(nCharAll) /
-                  sum(raw_rates / nCharAll * sum(nCharAll)) * 3.0
+weighted_mean  := sum(raw_rates * nCharAll) / nCharTotal
+partition_rate := raw_rates / weighted_mean
 
 # --- Asymmetric Q matrix for neomorphic characters 
 rate_loss ~ dnLognormal(mean = 0, sd = 2)

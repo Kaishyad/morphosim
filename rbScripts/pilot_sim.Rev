@@ -14,7 +14,7 @@
 #   args[8]  seed_v   random seed
 
 # --- Default values (small pilot experiment) ---
-outDir  = "simulations/pilot/sim003"
+outDir  = "simulations/pilot/sim004"
 n_taxa  = 20      # small taxon set for speed
 n_neo   = 30      # modest character counts
 n_trans = 30

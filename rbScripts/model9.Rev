@@ -47,11 +47,12 @@ moves.append( mvScale(rate_log_sd, weight = 1.5) )
 rate_categories := fnDiscretizeDistribution( dnLognormal(0, rate_log_sd), 6 )
 
 # Root frequency prior for neomorphic characters.
-# Dirichlet weight upscaled (26.0) following ns_n_ki.Rev to allow the sampler
-# to explore root frequency space efficiently given the absence of a partition
-# rate parameter that would otherwise absorb some of this variation.
+# Weight restored to 1.0 (consistent with all other models): the original 26.0
+# was a tuning hack to compensate for the absence of rate_neo, but inflated
+# weights can cause over-mixing and unreliable marginal likelihoods.
+# If convergence is slow, prefer running longer chains over inflating move weights.
 root_freqs ~ dnDirichlet([1, 1])
-moves.append( mvBetaSimplex(root_freqs, weight = 26.0) )
+moves.append( mvBetaSimplex(root_freqs, weight = 1.0) )
 rtfq1 := root_freqs[1]
 
 # Asymmetric gain/loss rates for neomorphic characters (Muller & Wagner 1991;

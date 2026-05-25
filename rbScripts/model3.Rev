@@ -1,29 +1,30 @@
-# Model 3: Single-partition, symmetric Mk, neomorphic characters only
-#          Adapted from sp_kv.Rev (Model 1) and sp_kv_nonly.Rev (neo-only baseline).
+# Model 3: Single-partition, symmetric Mk, transformational characters only
+#
+# Replaces the original neo-only Model 3, which had no matching counterpart
+# and its question (does adding trans affect inference?) is already answered
+# by the 1 vs 4-12 comparisons.
+#
+# This model gives the partition comparison genuine symmetry: Model 3 (trans only)
+# mirrors Model 3-old (neo only) but for the partition that carries the
+# inapplicability problem. Comparing Model 3 vs Model 1 isolates the contribution
+# of trans characters; comparing Model 3 vs Model 4+ isolates the contribution
+# of neo characters and the asymmetric Q.
 
-# Main differences from Model 1:
-#   - Only neomorphic characters are included and transformational characters are excluded.
-#   - coding = "variable": conditions on characters being variable
-
-# This model gives a single-partition baseline that ignores transformational variation,
-# so that it can be assessed of whether including transformational characters at all (vs. Model 1)
-# affects inference under the symmetric Mk framework.
-
-#--- Dataset properties: use neomorphic partition only
-taxa <- neo.names()
-nTaxa <- neo.size()
-nEdge <- 2 * nTaxa - 3
+#--- Dataset properties: transformational partition only
+taxa   <- trans.names()
+nTaxa  <- trans.size()
+nEdge  <- 2 * nTaxa - 3
 
 moves = VectorMoves()
 
-#---Tree topology-  Uniform prior on tree topologies
+#--- Tree topology- Uniform prior
 topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-#---Branch lengths - Compound Dirichlet prior on edge length variability
+#--- Branch lengths- Compound Dirichlet
 gamma_shape <- 2
-exp_steps <- 1 # Expected changes per site across the tree.
+exp_steps   <- 1
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
 moves.append( mvScale(tree_length, weight = 1.0) )
 
@@ -34,16 +35,16 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-
-#--- Symmetric Mk Q matrix 
-# applied to neomorphic characters only.
+#--- Symmetric Mk Q matrix applied to transformational characters only
+# coding = "variable": same ascertainment correction as the neo-only baseline
+# this replaces, for direct comparability.
 m_morph ~ dnPhyloCTMC(
-  tree = phylogeny,
-  Q = fnJC(2),
-  type = "Standard",
+  tree   = phylogeny,
+  Q      = fnJC(2),
+  type   = "Standard",
   coding = "variable"
 )
-m_morph.clamp(neo)
+m_morph.clamp(trans)
 
 #--- Monitors
 mymodel = model(phylogeny)

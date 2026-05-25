@@ -1,303 +1,156 @@
-# Generates and submits SLURM batch scripts for all inference jobs on Hamilton 
-# Used in: analysis/submit_inference.R
+# MakeSlurm.R
+# Generates and submits SLURM inference jobs for the morphosim parameter grid.
+# For each combination of (scenario, grid point, replicate, model), fills in
+# the mc3sim.sh template and submits via sbatch on Hamilton.
+# Adapted from QueueSim() in simFuncs.R (supervisor / neotrans).
+#
+# Depends on: FilePaths.R, zzz.R
+# Usage:
+#   source("R/_setup.R")
+#   SubmitGrid(scenarios = c("nt", "mk"), models = paste0("model", 1:12))
 
-
-#MakeSlurm.R — use as a structural template only. QueueSim() in simFuncs.R is closer to what you need. Strip out PredictResource(), MemRequired() etc. — those rely on a historical SLURM log you don't have.
-
-
+#' Submit inference jobs for the full parameter grid
+#'
+#' @param scenarios Character vector of generative scenarios: "nt", "mk", or both.
+#' @param models Character vector of model script names (e.g. "model1" ... "model12").
+#' @param grid Data frame of parameter combinations. Defaults to .config$grid.
+#' @param nRep Integer number of replicates per grid cell. Defaults to .config$nRep.
+#' @param replace Logical: cancel and resubmit if job already in queue.
+#' @param dryRun Logical: if TRUE, print sbatch commands without submitting.
 #' @export
-EssTarget <- function(pID, scriptID) {
-  convergence <- HasConverged(pID, scriptID)
-  stats <- attr(convergence, "stats")
-  margin <- 1.3
-  if (convergence) {
-    message(pID, "_", scriptID, " has converged; ESS target set to zero")
-    0 # Complete
-  } else if (length(stats[["ess"]]) == 0 || is.na(stats[["ess"]])) {
-    margin * .config$essThreshold
-  } else {
-    margin * stats[["ess"]] * .config$essThreshold / min(stats$frechet, stats$med)
-  }
-}
+SubmitGrid <- function(scenarios  = c("nt", "mk"),
+                       models     = paste0("model", 1:12),
+                       grid       = .config$grid,
+                       nRep       = .config$nRep,
+                       replace    = FALSE,
+                       dryRun     = FALSE) {
 
-#' Create a slurm job
-#' Constructs and submits a slurm job to complete an analysis
-#' @param pID Character specifying the project identifier to analyse
-#' @param scriptID Character specifying the script to run
-#' @param ml Logical; if true, calculate the marginal likelihood; if false,
-#' run MCMCMC analysis
-#' @param ess Numeric: Estimated sample size to attempt to obtain
-#' @param replace Logical: should a corresponding job be cancelled in order to
-#' run this job instead?
-#' @importFrom ssh ssh_exec_wait
-#' @export
-MakeSlurm <- function(pID, scriptID, ml = FALSE, ess = EssTarget(pID, scriptID),
-                      replace = FALSE, generous = TRUE) {
-  if (grepl("\\d+\\-\\d+\\-\\d+", scriptID)) {
-    return(structure(FALSE, reason = "Script ID not recognized"))
-  }
-  if (ml && pID %in% .config$syab[4:5] &&
-      (scriptID %in% c("by_nt_kv", "hg_kv", "hg2_kv") ||
-       grepl("ki$", scriptID, perl = TRUE))) {
-    return(structure(FALSE, reason = "ML for _ki is futile"))
-  }
-  session <- SshSession()
-  if (isFALSE(session)) {
-    return(structure(FALSE, reason = attr(session, "e")))
-  }
-  squeue <- SlurmQueue(session)
-  jobName <- sub(".sh", "", fixed = TRUE, basename(SlurmFile(pID, scriptID, ml)))
-  if (jobName %in% squeue[["JobName"]]) {
-    if (isTRUE(replace)) {
-      ssh_exec_wait(
-        session,
-        paste("scancel", squeue[["JobID"]][[match(jobName, squeue[["JobName"]])]])
-      )
-    } else {
-      return(structure(FALSE, reason = "Job already in queue"))
-    }
-  }
-  
-  if (ml) {
-    cores <- Cores(pID, scriptID)
-    time <- cores[["time"]]
-    cores <- cores[["cores"]]
-    if (generous && time == .config$maxTime && cores < .config$maxCores) {
-      # Allow a little wriggle room to avoid near misses
-      cores <- ceiling(128 / (ceiling(128 / cores) - 1))
-    }
-    if (is.na(cores)) {
-      if (is.null(getOption("longRuns"))) {
-        return(structure(FALSE, "reason" = "Unlikely to complete in time"))
-      } else {
-        cores <- 128L
-        time <- .config$longTime
+  template  <- readLines(SlurmTemplate())
+  submitted <- 0
+  skipped   <- 0
+
+  for (scenario in scenarios) {
+    for (gi in seq_len(nrow(grid))) {
+
+      # Build grid tag from parameter values: used in dir names and job names
+      gridTag <- GridTag(grid[gi, ])
+
+      for (rep in seq_len(nRep)) {
+        repID  <- sprintf("sim%03d", rep)
+        simDir <- SimDir(scenario, gridTag, repID)
+
+        # Skip if simulated data doesn't exist yet
+        if (!file.exists(file.path(MatrixDir(), simDir, "neo.nex"))) {
+          message("Skipping ", simDir, ": no simulated data found")
+          skipped <- skipped + 1
+          next
+        }
+
+        for (scriptID in models) {
+
+          jobName <- paste(gridTag, repID, scriptID, sep = "_")
+
+          # Check if output already exists
+          outLog <- file.path(MatrixDir(), simDir,
+                              paste0(scriptID, "_run_1.log"))
+          treeGz <- file.path(MatrixDir(), simDir,
+                              paste0(scriptID, "_run_1.tar.gz"))
+          if (file.exists(outLog) || file.exists(treeGz)) {
+            next  # Already completed
+          }
+
+          # Fill in SLURM template placeholders
+          jobLines <- gsub("%SIMSCENARIO%", scenario,       template)
+          jobLines <- gsub("%SIMREP%",      repID,          jobLines)
+          jobLines <- gsub("%SCRIPTID%",    scriptID,       jobLines)
+          jobLines <- gsub("%SEED%",        as.character(rep), jobLines)
+          jobLines <- gsub("%GRID_TAG%",    gridTag,        jobLines)
+
+          # Write filled template to slurm directory
+          slurmFile <- file.path(SlurmDir(),
+                                 paste0(jobName, ".sh"))
+          writeLines(jobLines, slurmFile)
+
+          # Submit
+          cmd <- paste("sbatch", slurmFile)
+          if (dryRun) {
+            message("[DRY RUN] ", cmd)
+          } else {
+            result <- system(cmd)
+            if (result == 0) {
+              submitted <- submitted + 1
+            } else {
+              warning("sbatch failed for ", jobName)
+            }
+          }
+        }
       }
     }
-  } else {
-    time <-
-      if (length(list.files(AnalysisDir(pID, scriptID), "*_run_1.log"))) {
-        .config$mc3ContinueTime # Standard time for MCMCMC continuation jobs
-      } else {
-        .config$maxTime
+  }
+
+  message("Submitted: ", submitted, "  Skipped: ", skipped)
+  invisible(submitted)
+}
+
+#' Build a short tag string from a grid row
+#'
+#' @param gridRow Single row of the parameter grid data frame.
+#' @return Character string e.g. "tl1.43_n0.50_c50"
+#' @export
+GridTag <- function(gridRow) {
+  sprintf("tl%s_n%s_c%s",
+          formatC(gridRow$tree_length, format = "f", digits = 2),
+          formatC(gridRow$rate_loss,   format = "f", digits = 2),
+          as.integer(gridRow$n_chars))
+}
+
+#' Path to simulation data directory within the-matrix
+#'
+#' @param scenario "nt" or "mk"
+#' @param gridTag  Grid tag string from GridTag()
+#' @param repID    Replicate ID string e.g. "sim001"
+#' @return Relative path string
+#' @export
+SimDir <- function(scenario, gridTag, repID) {
+  file.path("simulations", scenario, gridTag, repID)
+}
+
+#' Path to the SLURM template file
+#' @export
+SlurmTemplate <- function() {
+  file.path(SlurmDir(), "mc3sim.sh")
+}
+
+#' Check which grid cells still need inference for a given model
+#'
+#' @param scenario "nt" or "mk"
+#' @param scriptID Model script name
+#' @param grid Parameter grid data frame
+#' @param nRep Number of replicates
+#' @return Data frame of incomplete combinations
+#' @export
+CheckIncomplete <- function(scenario, scriptID,
+                            grid = .config$grid,
+                            nRep = .config$nRep) {
+  incomplete <- vector("list", nrow(grid) * nRep)
+  k <- 1
+  for (gi in seq_len(nrow(grid))) {
+    gridTag <- GridTag(grid[gi, ])
+    for (rep in seq_len(nRep)) {
+      repID  <- sprintf("sim%03d", rep)
+      simDir <- SimDir(scenario, gridTag, repID)
+      logFile <- file.path(MatrixDir(), simDir,
+                           paste0(scriptID, "_run_1.log"))
+      treeGz  <- file.path(MatrixDir(), simDir,
+                           paste0(scriptID, "_run_1.tar.gz"))
+      if (!file.exists(logFile) && !file.exists(treeGz)) {
+        incomplete[[k]] <- data.frame(scenario = scenario,
+                                      gridTag  = gridTag,
+                                      rep      = repID,
+                                      model    = scriptID)
+        k <- k + 1
       }
-    cores <- 16L
-  }
-  
-  # --args no longer supported in RevBayes 1.4.0, but serves as a placeholder
-  # in the template file.
-  rbLine <- grep(" --args \\d+", newLines)
-  
-  if (!ml && length(rbLine)) {
-    newLines[[rbLine]] <- gsub(" --args \\d+",
-                               sprintf(" %d", ceiling(ess)),
-                               newLines[[rbLine]])
-  }
-  
-  remoteFile <- file.path(RemoteDir(), SlurmFile(pID, scriptID, ml))
-  .shLines <- function(lines) {
-    paste(gsub("$", "\\$", fixed = TRUE, lines), collapse = "\n")
-  }
-  ssh_exec_wait(session, paste0("cat > ", remoteFile, " <<EOF\n",
-                                .shLines(newLines), "\nEOF"))
-  command <- paste0("sbatch",
-                    " -n ", cores,
-                    " -p ", if (time > .config$maxTime) "long" else
-                      if (myMem > .config$maxSharedMem) "bigmem" else "shared",
-                    " --mem=", myMem, "M",
-                    " --time=", AsHMS(time),
-                    " --gres=tmp:", ceiling(TmpRequired(pID, scriptID, ml, cores)), "M ",
-                    remoteFile
-  )
-  if (ml) {
-    message(command)
-  } else {
-    message(command, "; ESS = ", ceiling(ess))
-  }
-  ssh_exec_wait(session, command)
-  ssh_exec_wait(session, paste("rm", remoteFile))
-  TRUE
-}
-
-#' @importFrom ssh ssh_exec_wait
-#' @export
-SimSlurm <- function(pID, scriptID, stat = TRUE, replace = FALSE) {
-  if (grepl("\\d+\\-\\d+\\-\\d+", scriptID)) {
-    return(structure(FALSE, reason = "Script ID not recognized"))
-  }
-  session <- SshSession()
-  squeue <- SlurmQueue(session)
-  mc3Name <- sub(".sh", "", fixed = TRUE, basename(SlurmFile(pID, scriptID, FALSE)))
-  if (mc3Name %in% squeue[["JobName"]]) {
-    return(structure(FALSE, reason = "MC3 job in queue"))
-  }
-  
-  atStat <- if (isTRUE(stat)) "stat" else "obs"
-  jobName <- paste0(atStat, "-", mc3Name)
-  if (jobName %in% squeue[["JobName"]]) {
-    if (isTRUE(replace)) {
-      ssh_exec_wait(
-        session,
-        paste("scancel", squeue[["JobID"]][[match(jobName, squeue[["JobName"]])]])
-      )
-    } else {
-      return(structure(FALSE, reason = "Job already in queue"))
     }
   }
-  
-  mem <- MemRequired(pID, scriptID, FALSE, 1)
-  if (mem[["fit"]] > .config$maxMem) {
-    return(structure(FALSE, "reason" = "Cannot allocate enough memory"))
-  }
-  
-  myMem <- if (mem[["upr"]] > .config$bigSharedMem &&
-               mem[["fit"]] < .config$bigSharedMem) {
-    message("Trying bigSharedMem")
-    .config$bigSharedMem
-  } else {
-    min(mem[["upr"]], .config$maxMem)
-  }
-  
-  myMem <- min(ceiling(myMem), .config$maxMem)
-  
-  burninF <- ExistingResults(pID, scriptID)[["convergence"]][["burnin"]]
-  
-  template <- file.path(SlurmDir(), "pp-sim.sh")
-  newLines <- gsub(
-    "%PID%", fixed = TRUE, pID, gsub(
-      "%SCRIPTID%", fixed = TRUE, scriptID, gsub(
-        "%BURNIN%", fixed = TRUE, burninF, gsub(
-          "%STAT%", fixed = TRUE, atStat, gsub(
-            "%SCRIPTBASE%", fixed = TRUE,
-            ScriptBase(pID, scriptID),
-            readLines(template))))))
-  
-  slurmFile <- SlurmFile(pID, scriptID, FALSE)
-  remoteFile <- file.path(RemoteDir(), "slurm",
-                          paste0("ppsim_", basename(slurmFile)))
-  .shLines <- function(lines) {
-    paste(gsub("$", "\\$", fixed = TRUE, lines), collapse = "\n")
-  }
-  ssh_exec_wait(session, paste0("cat > ", remoteFile, " <<EOF\n",
-                                .shLines(newLines), "\nEOF"))
-  
-  localScript <- paste0("rbScripts/ppsim_", scriptID, ".Rev")
-  remoteScript <- file.path(RemoteDir(),
-                            ScriptBase(pID, scriptID), basename(localScript))
-  ssh_exec_wait(session, paste0("cat > ", remoteScript, " <<EOF\n",
-                                .shLines(readLines(localScript)), "\nEOF"))
-  command <- paste0("sbatch",
-                    " -n 1",
-                    " -p ", if (myMem > .config$maxSharedMem) "bigmem" else "shared",
-                    " --mem=", myMem, "M",
-                    " --time=", AsHMS(12 * 60 * 60),
-                    " --gres=tmp:", ceiling(TmpRequired(pID, scriptID, FALSE, 1)), "M ",
-                    remoteFile
-  )
-  message(command)
-  ssh_exec_wait(session, command)
-  ssh_exec_wait(session, paste("rm", remoteFile))
-  TRUE
-}
-
-#' @importFrom ssh ssh_exec_wait
-#' @export
-TimeSlurm <- function(pID, scriptID, replace = FALSE) {
-  if (grepl("\\d+\\-\\d+\\-\\d+", scriptID)) {
-    return(structure(FALSE, reason = "Script ID not recognized"))
-  }
-  session <- SshSession()
-  squeue <- SlurmQueue(session)
-  jobName <- sub(".sh", "", fixed = TRUE, basename(SlurmFile(pID, scriptID, FALSE)))
-  if (any(c(jobName, paste0("time-", jobName)) %in% squeue[["JobName"]])) {
-    if (isTRUE(replace)) {
-      ssh_exec_wait(
-        session,
-        paste("scancel", squeue[["JobID"]][[match(jobName, squeue[["JobName"]])]])
-      )
-    } else {
-      return(structure(FALSE, reason = "Job already in queue"))
-    }
-  }
-  
-  time <- 60 * 60 * 12 # in seconds
-  cores <- 1L
-  
-  mem <- MemRequired(pID, scriptID, FALSE, cores)
-  
-  if (mem[["fit"]] > .config$maxMem) {
-    return(structure(FALSE, "reason" = "Cannot allocate enough memory"))
-  }
-  
-  myMem <- if (mem[["upr"]] > .config$bigSharedMem && 
-               mem[["fit"]] < .config$bigSharedMem) {
-    message("Trying bigSharedMem")
-    .config$bigSharedMem
-  } else {
-    min(mem[["upr"]], .config$maxMem)
-  }
-  
-  slog <- SlurmLog()
-  oom <- slog[slog$pID == pID & slog$scriptID == scriptID & slog$State == "OUT_OF_MEMORY", ]
-  if (nrow(oom)) {
-    lastMem <- as.numeric(
-      gsub(" ", "", fixed = TRUE,
-           sub("M", "000000", fixed = TRUE,
-               sub("K", "000", fixed = TRUE,
-                   oom[["ReqMem"]]))))
-    myMem <- max(
-      myMem,
-      2 * lastMem / 1e6, # ~Mb, per hack above
-      na.rm = TRUE
-    )
-  }
-  myMem <- min(ceiling(myMem), .config$maxMem)
-  
-  # Write RevBayes script on remote server
-  template <- "rbScripts/mc3time.Rev"
-  newLines <- gsub(
-    "%PID%", fixed = TRUE, pID, gsub(
-      "%SCRIPT%", scriptID, fixed = TRUE, gsub(
-        "%SCRIPTBASE%", fixed = TRUE, ScriptBase(pID, scriptID), gsub(
-          "%MATRIXBASE.%", fixed = TRUE, basename(MatrixFile(pID, "")),
-          readLines(template)))))
-  
-  remoteFile <- file.path(RemoteDir(), ScriptBase(pID, scriptID), 
-                          "mc3time.Rev")
-  .shLines <- function(lines) {
-    paste(gsub("$", "\\$", fixed = TRUE, lines), collapse = "\n")
-  }
-  ssh::ssh_exec_wait(session, paste0("cat > ", remoteFile, " <<EOF\n",
-                                     .shLines(newLines), "\nEOF"))
-  
-  # Write Slurm script to remote server
-  template <- file.path(SlurmDir(), "mc3time.sh")
-  newLines <- gsub(
-    "%PID%", fixed = TRUE, pID, gsub(
-      "%SCRIPTBASE%", fixed = TRUE, ScriptBase(pID, scriptID),
-      readLines(template)))
-  
-  remoteFile <- file.path(RemoteDir(),
-                          paste0("time-",
-                                 basename(SlurmFile(pID, scriptID, FALSE))))
-  .shLines <- function(lines) {
-    paste(gsub("$", "\\$", fixed = TRUE, lines), collapse = "\n")
-  }
-  ssh_exec_wait(session, paste0("cat > ", remoteFile, " <<EOF\n",
-                                .shLines(newLines), "\nEOF"))
-  
-  command <- paste0("sbatch",
-                    " -n ", cores,
-                    " -p ", if (time > .config$maxTime) "long" else
-                      if (myMem > .config$maxSharedMem) "bigmem" else "shared",
-                    " --mem=", myMem, "M",
-                    " --time=", AsHMS(time),
-                    " --gres=tmp:", ceiling(TmpRequired(pID, scriptID, FALSE, cores)), "M ",
-                    remoteFile
-  )
-  message(command)
-  
-  ssh_exec_wait(session, command)
-  ssh_exec_wait(session, paste("rm", remoteFile))
-  TRUE
+  do.call(rbind, incomplete[seq_len(k - 1)])
 }

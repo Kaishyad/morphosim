@@ -2,16 +2,16 @@
 # pilot_run.sh
 # Pilot SLURM job: simulate data under NT model and run Model 1 inference.
 # Adapted from mc3sim.sh (supervisor).
-# Runs a single replicate (sim003) with reduced resources for a quick pipeline test.
+# Runs a single replicate (sim004) with reduced resources for a quick pipeline test.
 # Outputs are written to the-matrix repo and pushed to GitHub.
  
 # --- Resource requests ---
 #SBATCH -n 4                          # 4 tasks (4 MPI chains for pilot)
 #SBATCH --mem=4G                      # modest memory for small dataset
 #SBATCH --time=3:00:00                # 3-hour cap (sim + 2-hr inference)
-#SBATCH --job-name=pilot_model8
-#SBATCH --output=/nobackup/%u/morphosim/pilot_model8.out
-#SBATCH --error=/nobackup/%u/morphosim/pilot_model8.err
+#SBATCH --job-name=pilot_model11
+#SBATCH --output=/nobackup/%u/morphosim/pilot_model11.out
+#SBATCH --error=/nobackup/%u/morphosim/pilot_model11.err
 #SBATCH -p shared
 #SBATCH --export=ALL
 # --- Load modules before anything else ---
@@ -22,7 +22,7 @@ module load openmpi/4.1.1
 RB=~/diss/revbayes/projects/cmake/build-mpi/rb-mpi
 WORK=/nobackup/$USER/morphosim
 MATRIX=/nobackup/$USER/the-matrix
-SIM_SUBDIR=simulations/pilot/sim003
+SIM_SUBDIR=simulations/pilot/sim004
  
 # Clone/pull morphosim (code)
 if [ -d "$WORK/.git" ]; then
@@ -51,7 +51,7 @@ echo "Simulation complete at $(date)"
 echo "Starting inference at $(date)"
 mpirun $RB \
   $WORK/rbScripts/pilot_infer.Rev \
-  $MATRIX/$SIM_SUBDIR model8 200
+  $MATRIX/$SIM_SUBDIR model11 200
 echo "Inference complete at $(date)"
  
 # --- Step 3: Compress tree files ---
@@ -63,7 +63,7 @@ done
 # --- Step 4: Push outputs to the-matrix ---
 cd $MATRIX
 git add $SIM_SUBDIR/
-git commit -m "Pilot run: sim003 model8 output"
+git commit -m "Pilot run: sim004 model11 output"
 git pull origin main --rebase
 git push origin main
  

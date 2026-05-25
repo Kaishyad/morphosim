@@ -1,7 +1,7 @@
 # Model 11: inapplicable-aware NT model
 #           Partition structure follows Model 4: rate priors identical.
 
-# Key difference: transformational characters are coded with inapplicable states
+#main difference: transformational characters are coded with inapplicable states
 #                 (coded as "?" in standard Nexus but logically distinct from missing data) and
 #                 the likelihood is evaluated under the Brazeau, Guillerme & Smith (2019)
 #                 algorithm, which treats inapplicable entries as a separate logical state rather
@@ -61,13 +61,16 @@ neoQ           := fnFreeK(rates)
 stationaryDist := Simplex(rate10, rate01)
 
 # --- Neomorphic partition likelihood
+# Changed from coding = "variable" to "informative" for consistency: if the
+# motivation is biological realism around inapplicability, both partitions should
+# apply the same ascertainment bias correction (Lewis 2001).
 m_morph[1] ~ dnPhyloCTMC(
   tree            = phylogeny,
   branchRates     = partition_rate[1],
   Q               = neoQ,
   rootFrequencies = stationaryDist,
   type            = "Standard",
-  coding          = "variable"
+  coding          = "informative"
 )
 m_morph[1].clamp(neo)
 
