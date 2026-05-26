@@ -1,4 +1,3 @@
-#what needs to be removed from this for the project
 
 #' Effective sample size
 #'

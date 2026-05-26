@@ -1,0 +1,80 @@
+# sim-by_mk_kv.Rev
+# Generative model: symmetric Mk (contrast scenario).
+#
+# Arguments (positional, supplied by MkSimArgs() in R/Grid.R):
+#   args[1]  outDir     output directory (absolute path in the-matrix)
+#   args[2]  n_taxa     number of taxa
+#   args[3]  n_neo      neomorphic characters to simulate
+#   args[4]  n_trans    transformational characters to simulate
+#   args[5]  gain_loss  passed for interface compatibility; ignored under Mk
+#   args[6]  part_rate  passed for interface compatibility; ignored under Mk
+#   args[7]  length     total tree length
+#   args[8]  seed_v     random seed
+#
+# Outputs (written to outDir):
+#   neo.nex    simulated neomorphic character matrix (symmetric Mk)
+#   trans.nex  simulated transformational character matrix (symmetric Mk)
+#   tree.nwk   true tree (gold standard for accuracy assessment)
+#
+# Key differences from sim-by_nt_kv.Rev:
+#   - Both partitions use fnJC(2): gain rate = loss rate, no asymmetry.
+#   - No partition rate scaling: both character types evolve at the same rate.
+#   - args[5] and args[6] are accepted but unused (interface compatibility with
+#     NtSimArgs / MkSimArgs so the same SLURM template works for both scenarios).
+
+# --- Argument parsing: all values come from R/Grid.R and SimArgs
+outDir = args[1]
+n_taxa = args[2]
+n_neo  = args[3]
+n_trans= args[4]
+# args[5] (gain_loss) and args[6] (part_rate) intentionally unused under Mk
+length = args[7]
+seed_v = args[8]
+
+write("Writing Mk simulation output to", outDir)
+seed(seed_v)
+
+# --- Taxa ---
+# Zero-padded names (tip_01 ... tip_20) so alphabetic and numeric order match.
+for (i in 1:n_taxa) {
+  if (i < 10) {
+    taxa[i] = taxon("tip_0" + i)
+  } else {
+    taxa[i] = taxon("tip_" + i)
+  }
+}
+
+# --- Tree ---
+# Identical tree prior to sim-by_nt_kv.Rev so any difference in downstream
+# inference results is attributable to the character model, not the tree.
+n_edge = 2 * n_taxa - 3
+rel_br_lengths ~ dnDirichlet(rep(1.0, n_edge))
+br_lengths     := rel_br_lengths * length
+topology       ~ dnUniformTopology(taxa, clade(taxa[1]))
+tr             := treeAssembly(topology, br_lengths)
+write(tr, filename = outDir + "/tree.nwk")
+
+# --- Simulate neomorphic characters under symmetric Mk ---
+# fnJC(2): gain rate = loss rate, no asymmetry, no partition rate scaling.
+# coding = "variable": conditions on characters being non-constant (Lewis 2001).
+neo_chars ~ dnPhyloCTMC(
+  tree   = tr,
+  Q      = fnJC(2),
+  coding = "variable",
+  nSites = n_neo,
+  type   = "Standard"
+)
+writeNexus(filename = outDir + "/neo.nex", neo_chars)
+
+# --- Simulate transformational characters under symmetric Mk ---
+# Identical process to neomorphic partition: same Q, no rate scaling.
+trans_chars ~ dnPhyloCTMC(
+  tree   = tr,
+  Q      = fnJC(2),
+  coding = "variable",
+  nSites = n_trans,
+  type   = "Standard"
+)
+writeNexus(filename = outDir + "/trans.nex", trans_chars)
+
+write("Mk simulation complete.")

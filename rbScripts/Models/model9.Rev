@@ -2,7 +2,7 @@
 #           asymmetric neomorphic Q (fnFreeK), NO separate partition rates,
 #           k-partitioned transformational characters, informative coding.
 
-# (Adapted from ns_n_ki.Rev) - the 'n' denotes no partition rates.
+# (Adapted from ns_n_ki.Rev), the 'n' means no partition rates.
 
 # Identical to Model 8 except that rate_neo and partition_rate are removed;
 # both partitions share the same branch rates directly from br_lengths.

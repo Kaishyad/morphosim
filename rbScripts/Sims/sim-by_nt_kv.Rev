@@ -1,0 +1,95 @@
+# sim-by_nt_kv.Rev
+# Generative model: NT (neomorphic + transformational, asymmetric gain/loss).
+#
+# Arguments (positional, supplied by NtSimArgs() in R/Grid.R):
+#   args[1]  outDir     output directory (absolute path in the-matrix)
+#   args[2]  n_taxa     number of taxa
+#   args[3]  n_neo      neomorphic characters to simulate
+#   args[4]  n_trans    transformational characters to simulate
+#   args[5]  gain_loss  gain-to-loss rate ratio (n in supervisor notation)
+#   args[6]  part_rate  transformational partition rate scalar (t)
+#   args[7]  length     total tree length
+#   args[8]  seed_v     random seed
+#
+# Outputs (written to outDir):
+#   neo.nex    simulated neomorphic character matrix
+#   trans.nex  simulated transformational character matrix
+#   tree.nwk   true tree (gold standard for accuracy assessment)
+
+# --- Argument parsing: all values come from R/Grid.R and SimArgs ---
+outDir    = args[1]
+n_taxa    = args[2]
+n_neo     = args[3]
+n_trans   = args[4]
+rate_loss = 1 / args[5]   # reparameterise: gain_loss -> loss rate
+rate_neo  = 1 / args[6]   # reparameterise: part_rate -> neo rate scalar
+length    = args[7]
+seed_v    = args[8]
+
+n_char <- v(n_neo, n_trans)
+
+write("Writing NT simulation output to", outDir)
+seed(seed_v)
+
+# --- Taxa ---
+# Zero-padded names (tip_01 ... tip_20) so alphabetic and numeric order match,
+# avoiding tip index confusion in RevBayes tree output.
+for (i in 1:n_taxa) {
+  if (i < 10) {
+    taxa[i] = taxon("tip_0" + i)
+  } else {
+    taxa[i] = taxon("tip_" + i)
+  }
+}
+
+# --- Tree ---
+# Uniform topology prior; branch lengths drawn from Dirichlet scaled to length.
+n_edge = 2 * n_taxa - 3
+rel_br_lengths ~ dnDirichlet(rep(1.0, n_edge))
+br_lengths     := rel_br_lengths * length
+topology       ~ dnUniformTopology(taxa, clade(taxa[1]))
+tr             := treeAssembly(topology, br_lengths)
+write(tr, filename = outDir + "/tree.nwk")
+
+# --- Partition rates ---
+# Neomorphic partition scaled by rate_neo relative to transformational.
+# Normalised so character-weighted mean rate equals tree length.
+partition_rate := [ rate_neo / (1 + rate_neo),
+                    (1 / (1 + rate_neo)) ] / n_char * sum(n_char)
+
+# --- Asymmetric Q matrix for neomorphic characters ---
+# rate_loss > 1: losses more probable than gains (Muller & Wagner 1991).
+# rate01 and rate10 normalised so their mean equals 1.
+rate01 := 2 / (1 + rate_loss)
+rate10 := 2 * rate_loss / (1 + rate_loss)
+rates  := [ [0.0, rate01],
+            [rate10, 0.0] ]
+neoQ           := fnFreeK(rates)
+stationaryDist := Simplex(rate10, rate01)
+
+# --- Simulate neomorphic characters ---
+# coding = "variable": conditions on characters being non-constant (Lewis 2001).
+neo_chars ~ dnPhyloCTMC(
+  tree            = tr,
+  Q               = neoQ,
+  rootFrequencies = stationaryDist,
+  branchRates     = partition_rate[1],
+  coding          = "variable",
+  nSites          = n_neo,
+  type            = "Standard"
+)
+writeNexus(filename = outDir + "/neo.nex", neo_chars)
+
+# --- Simulate transformational characters ---
+# Symmetric Mk (JC): gain rate = loss rate.
+trans_chars ~ dnPhyloCTMC(
+  tree        = tr,
+  Q           = fnJC(2),
+  branchRates = partition_rate[2],
+  coding      = "variable",
+  nSites      = n_trans,
+  type        = "Standard"
+)
+writeNexus(filename = outDir + "/trans.nex", trans_chars)
+
+write("NT simulation complete.")
