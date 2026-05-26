@@ -36,6 +36,15 @@ cd $MATRIX    && git pull origin main --rebase
 
 mkdir -p $MORPHOSIM/logs
 
+echo "DEBUG: RB=$RB"
+echo "DEBUG: NT_DIR=$NT_DIR"
+echo "DEBUG: N_TAXA=$N_TAXA"
+echo "DEBUG: N_NEO=$N_NEO"
+echo "DEBUG: N_TRANS=$N_TRANS"
+echo "DEBUG: GAIN_LOSS=$GAIN_LOSS"
+echo "DEBUG: PART_RATE=$PART_RATE"
+echo "DEBUG: TREE_LEN=$TREE_LEN"
+echo "DEBUG: SEED=$SEED"
 # ── NT simulation ──────────────────────────────────────────────────────────────
 NT_DIR=$MATRIX/simulations/testsim/nt/${GRID_TAG}/sim001
 mkdir -p $NT_DIR
