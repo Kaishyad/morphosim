@@ -10,14 +10,14 @@
 
 
 # --- Argument parsing: all values come from R/Grid.R and SimArgs ---
-outDir    = args[1]
-n_taxa    = args[2]
-n_neo     = args[3]
-n_trans   = args[4]
+n_taxa  = Integer(args[2])
+n_neo   = Integer(args[3])
+n_trans = Integer(args[4])
+length  = Decimal(args[7])
+seed_v  = Integer(args[8])
 rate_loss = 1 / args[5]   # reparameterise: gain_loss -> loss rate
 rate_neo  = 1 / args[6]   # reparameterise: part_rate -> neo rate scalar
-length    = args[7]
-seed_v    = args[8]
+
 
 n_char <- v(n_neo, n_trans)
 

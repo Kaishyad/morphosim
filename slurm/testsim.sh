@@ -51,7 +51,7 @@ mkdir -p $NT_DIR
 
 echo "NT simulation starting at $(date)"
 $RB $MORPHOSIM/rbScripts/Sims/sim-by_nt_kv.Rev \
-  --args $NT_DIR $N_TAXA $N_NEO $N_TRANS $GAIN_LOSS $PART_RATE $TREE_LEN $SEED
+   $NT_DIR $N_TAXA $N_NEO $N_TRANS $GAIN_LOSS $PART_RATE $TREE_LEN $SEED
 echo "NT simulation done at $(date)"
 
 for f in neo.nex trans.nex tree.nwk; do
@@ -65,7 +65,7 @@ mkdir -p $MK_DIR
 
 echo "Mk simulation starting at $(date)"
 $RB $MORPHOSIM/rbScripts/Sims/sim-by_mk_kv.Rev \
-  --args $MK_DIR $N_TAXA $N_NEO $N_TRANS $GAIN_LOSS $PART_RATE $TREE_LEN $SEED
+   $MK_DIR $N_TAXA $N_NEO $N_TRANS $GAIN_LOSS $PART_RATE $TREE_LEN $SEED
 echo "Mk simulation done at $(date)"
 
 for f in neo.nex trans.nex tree.nwk; do
