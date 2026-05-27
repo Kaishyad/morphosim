@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH -n 4
 #SBATCH --mem=8G
-#SBATCH --time=24:00:00
-#SBATCH --job-name=testsim-mc3
-#SBATCH --output=/nobackup/%u/morphosim/logs/testsim-mc3.out
-#SBATCH --error=/nobackup/%u/morphosim/logs/testsim-mc3.err
+#SBATCH --time=1:00:00
+#SBATCH --job-name=testsim-mc3-test
+#SBATCH --output=/nobackup/%u/morphosim/logs/testsim-mc3-test.out
+#SBATCH --error=/nobackup/%u/morphosim/logs/testsim-mc3-test.err
 #SBATCH -p shared
 #SBATCH --export=ALL
 
@@ -24,38 +24,31 @@ MIN_ESS=333
 SEED=1
 
 # --- Pull latest code ---
-cd $MORPHOSIM && git pull origin main --rebase
+cd $MORPHOSIM && git pull origin models --rebase
 
 mkdir -p $MORPHOSIM/logs
 
 # ── NT x model1 ───────────────────────────────────────────────────────────────
 echo "NT model1 starting at $(date)"
-$RB $MORPHOSIM/rbScripts/Sims/sim-mc3.Rev \
+$RB $MORPHOSIM/rbScripts/Sims/sim-mc3-test.Rev \
   $NT_DIR model1 $MIN_ESS $SEED
 echo "NT model1 done at $(date)"
 
-# ── NT x model7 ───────────────────────────────────────────────────────────────
-echo "NT model7 starting at $(date)"
-$RB $MORPHOSIM/rbScripts/Sims/sim-mc3.Rev \
-  $NT_DIR model7 $MIN_ESS $SEED
-echo "NT model7 done at $(date)"
+cd $MATRIX
+git add simulations/testsim/nt/
+git commit -m "Testsim: mc3-test model1 NT results" || true
+git pull origin main --rebase
+git push origin main
 
 # ── Mk x model1 ───────────────────────────────────────────────────────────────
 echo "Mk model1 starting at $(date)"
-$RB $MORPHOSIM/rbScripts/Sims/sim-mc3.Rev \
+$RB $MORPHOSIM/rbScripts/Sims/sim-mc3-test.Rev \
   $MK_DIR model1 $MIN_ESS $SEED
 echo "Mk model1 done at $(date)"
 
-# ── Mk x model7 ───────────────────────────────────────────────────────────────
-echo "Mk model7 starting at $(date)"
-$RB $MORPHOSIM/rbScripts/Sims/sim-mc3.Rev \
-  $MK_DIR model7 $MIN_ESS $SEED
-echo "Mk model7 done at $(date)"
-
-# ── Push results to the-matrix ────────────────────────────────────────────────
 cd $MATRIX
-git add simulations/testsim/
-git commit -m "Testsim: mc3 inference model1 and model7 on nt and mk" || true
+git add simulations/testsim/mk/
+git commit -m "Testsim: mc3-test model1 Mk results" || true
 git pull origin main --rebase
 git push origin main
 

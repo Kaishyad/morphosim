@@ -1,0 +1,111 @@
+# Inference wrapper for morphosim simulation study.
+# Reads simulated neo.nex and trans.nex, sources the specified model script,
+# runs MC³ with stopping rules, and writes outputs to the-matrix.
+# Adapted from sim-mc3.Rev
+#
+# Arguments (positional):
+#   args[1]  simDir   path to simulation directory containing neo.nex, trans.nex
+#   args[2]  script   model script name without .Rev (e.g. "model1")
+#   args[3]  minEss   minimum ESS stopping criterion (default: 333)
+#   args[4]  seed_v   random seed (default: 0)
+
+# --- Defaults ---
+simDir = "simulations/pilot/sim001"
+script = "model1"
+minEss = 333
+seed_v = 0
+
+# --- Argument parsing ---
+if (args.size() >= 1) { simDir = args[1] }
+if (args.size() >= 2) { script = args[2] }
+if (args.size() >= 3) { minEss = args[3] }
+if (args.size() >= 4) { seed_v = args[4] }
+
+print("Timestamp:", time("year"), time("day"), time("seconds") / 60 / 60)
+seed(seed_v)
+
+maxPSRF = 1.01
+
+write(getwd())
+
+# --- Read simulated data ---
+# Both partitions always required; sourced from the-matrix directory.
+neo   <- readDiscreteCharacterData(simDir + "/neo.nex")
+trans <- readDiscreteCharacterData(simDir + "/trans.nex")
+
+# --- File paths ---
+# Outputs go into the same simDir so all results for a replicate are co-located.
+filePrefix = simDir + "/" + script
+ckpFile = filePrefix + ".ckp"
+paramFile = filePrefix + ".p.log"
+
+# --- Source model script ---
+# The working directory is set to /nobackup/$USER/morphosim by mc3sim.sh,
+source("rbScripts/Models/" + script + ".Rev")
+
+checkFreq = 100
+
+# --- Monitors ---
+# Full parameter log (every 36 iterations) for convergence checking.
+# Stochastic-only parameter log (every 6 iterations) for ESS stopping rule;
+# rel_br_lengths excluded as it is high-dimensional and not of direct interest.
+# Tree file (every 12 iterations) for topology accuracy assessment.
+monitors.append( mnModel(filename = filePrefix + ".log",   printgen = 36) )
+monitors.append( mnModel(filename = paramFile,             printgen = 6,
+                         stochasticOnly = TRUE,
+                         exclude = ["rel_br_lengths"]) )
+monitors.append( mnFile(filename  = filePrefix + ".trees", printgen = 12,
+                        phylogeny) )
+
+# --- MC³ setup ---
+# 2 independent runs for ASDSF convergence assessment.
+# 8 chains per run: 1 cold + 7 heated
+# tuneHeat = TRUE: chain temperatures adapt during burnin for efficient swapping.
+# swapMethod = "both", swapMode = "multiple": maximise chain communication.
+# combine = "none": runs kept separate for PSRF / ASDSF calculation in R.
+mymc3 = mcmcmc(
+  mymodel, monitors, moves,
+  nruns      = 2,
+  nchains    = 8,
+  tuneHeat   = TRUE,
+  swapMethod = "both",
+  swapMode   = "multiple",
+  combine    = "none"
+)
+print("   Created MCMCMC object")
+
+# --- Burnin or resume from checkpoint ---
+# If a checkpoint exists (continuation job), initialise from it and skip burnin.
+# burnin: 1200 generations, tuning every 300 iterations (3 * checkFreq).
+# runHours: 23 hours gives a comfortable margin under Hamilton's 24-hour limit.
+if (fileExists(filePrefix + "_run_1_chain_0.ckp")) {
+  print("   Initializing from checkpoint")
+  mymc3.initializeFromCheckpoint(ckpFile)
+  runHours = 0.167
+} else {
+  mymc3.burnin(generations = 200, tuningInterval = checkFreq * 3)
+  runHours = 0.167
+}
+
+# --- Stopping rules ---
+# Three rules applied simultaneously; whichever triggers first stops the run.
+# srMaxTime:      hard wall at runHours, always triggers at Hamilton time limit.
+# srMinESS:       stops early if minimum ESS across parameters exceeds minEss.
+# srGelmanRubin:  stops early if all parameters have PSRF < maxPSRF.
+stopping_rules[1] = srMaxTime(runHours, "hours")
+stopping_rules[2] = srMinESS(minEss, paramFile, checkFreq, "ESS")
+stopping_rules[3] = srGelmanRubin(maxPSRF, paramFile, checkFreq)
+
+print("   Commencing MCMCMC run with " + script + " at",
+      time("year"), time("day"), time("seconds") / 60 / 60)
+
+mymc3.run(
+  rules              = stopping_rules,
+  checkpointFile     = ckpFile,
+  checkpointInterval = checkFreq,
+  verbose            = 1
+)
+
+print("  # # # RUN COMPLETE # # #  ")
+print("Timestamp:", time("year"), time("day"), time("seconds") / 60 / 60)
+q()

@@ -48,9 +48,5 @@ m_morph ~ dnPhyloCTMC(
 )
 m_morph.clamp(allChars) #fix observed data to the likelihood node
 
-#--- Model and monitors
+#--- Model object 
 mymodel = model(phylogeny)
-monitors = VectorMonitors()
-#print to screen every 300 iterations, omit prior/posterior to reduce noise
-monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )
-
