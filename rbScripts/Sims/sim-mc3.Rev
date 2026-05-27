@@ -1,8 +1,7 @@
-# sim-mc3.Rev
 # Inference wrapper for morphosim simulation study.
 # Reads simulated neo.nex and trans.nex, sources the specified model script,
 # runs MC³ with stopping rules, and writes outputs to the-matrix.
-# Adapted from sim-mc3.Rev (supervisor / neotrans).
+# Adapted from sim-mc3.Rev
 #
 # Arguments (positional):
 #   args[1]  simDir   path to simulation directory containing neo.nex, trans.nex
@@ -37,14 +36,12 @@ trans <- readDiscreteCharacterData(simDir + "/trans.nex")
 # --- File paths ---
 # Outputs go into the same simDir so all results for a replicate are co-located.
 filePrefix = simDir + "/" + script
-ckpFile    = filePrefix + ".ckp"
-paramFile  = filePrefix + ".p.log"
+ckpFile = filePrefix + ".ckp"
+paramFile = filePrefix + ".p.log"
 
 # --- Source model script ---
-# Model scripts live in rbScripts/ in the morphosim repo.
 # The working directory is set to /nobackup/$USER/morphosim by mc3sim.sh,
-# so this path resolves correctly on Hamilton.
-source("rbScripts/" + script + ".Rev")
+source("rbScripts/Models/" + script + ".Rev")
 
 checkFreq = 100
 
@@ -62,7 +59,7 @@ monitors.append( mnFile(filename  = filePrefix + ".trees", printgen = 12,
 
 # --- MC³ setup ---
 # 2 independent runs for ASDSF convergence assessment.
-# 8 chains per run: 1 cold + 7 heated, following supervisor's production setting.
+# 8 chains per run: 1 cold + 7 heated
 # tuneHeat = TRUE: chain temperatures adapt during burnin for efficient swapping.
 # swapMethod = "both", swapMode = "multiple": maximise chain communication.
 # combine = "none": runs kept separate for PSRF / ASDSF calculation in R.
@@ -92,7 +89,7 @@ if (fileExists(filePrefix + "_run_1_chain_0.ckp")) {
 
 # --- Stopping rules ---
 # Three rules applied simultaneously; whichever triggers first stops the run.
-# srMaxTime:      hard wall at runHours — always triggers at Hamilton time limit.
+# srMaxTime:      hard wall at runHours, always triggers at Hamilton time limit.
 # srMinESS:       stops early if minimum ESS across parameters exceeds minEss.
 # srGelmanRubin:  stops early if all parameters have PSRF < maxPSRF.
 stopping_rules[1] = srMaxTime(runHours, "hours")

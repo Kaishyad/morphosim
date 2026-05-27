@@ -18,26 +18,25 @@ MATRIX=/nobackup/$USER/the-matrix
 
 # --- Reduced grid midpoint row (R/Grid.R: REDUCED_GRID row 14) ---
 # tree_length=2.0, gain_loss=2.5, n_char=200, n_taxa=20
-# n_neo  = round(200 * 0.40) = 80
-# n_trans = 200 - 80         = 120
+# n_neo   = round(200 * 0.40) = 80
+# n_trans = 200 - 80          = 120
 # part_rate = 2.47 (supervisor empirical median, fixed in Grid.R)
-GRID_TREE_LEN=2.00
-GRID_GAIN_LOSS=2.50
-GRID_N_TAXA=30
-GRID_N_NEO=80
-GRID_N_TRANS=120
-GRID_PART_RATE=2.47
-GRID_TAG="tl2.00_gl2.50_c200"
+TREE_LEN=2.00
+GAIN_LOSS=2.50
+N_TAXA=30     
+N_NEO=80
+N_TRANS=120
+PART_RATE=2.47
+TAG="tl2.00_gl2.50_c200"
 SEED=1
 
 # --- Pull latest code and data ---
-cd $MORPHOSIM && git pull origin main --rebase
+cd $MORPHOSIM && git pull origin models --rebase
 cd $MATRIX    && git pull origin main --rebase
 
 mkdir -p $MORPHOSIM/logs
 
 echo "DEBUG: RB=$RB"
-echo "DEBUG: NT_DIR=$NT_DIR"
 echo "DEBUG: N_TAXA=$N_TAXA"
 echo "DEBUG: N_NEO=$N_NEO"
 echo "DEBUG: N_TRANS=$N_TRANS"
@@ -45,8 +44,9 @@ echo "DEBUG: GAIN_LOSS=$GAIN_LOSS"
 echo "DEBUG: PART_RATE=$PART_RATE"
 echo "DEBUG: TREE_LEN=$TREE_LEN"
 echo "DEBUG: SEED=$SEED"
+
 # ── NT simulation ──────────────────────────────────────────────────────────────
-NT_DIR=$MATRIX/simulations/testsim/nt/${GRID_TAG}/sim001
+NT_DIR=$MATRIX/simulations/testsim/nt/${TAG}/sim001
 mkdir -p $NT_DIR
 
 echo "NT simulation starting at $(date)"
@@ -60,7 +60,7 @@ for f in neo.nex trans.nex tree.nwk; do
 done
 
 # ── Mk simulation ──────────────────────────────────────────────────────────────
-MK_DIR=$MATRIX/simulations/testsim/mk/${GRID_TAG}/sim001
+MK_DIR=$MATRIX/simulations/testsim/mk/${TAG}/sim001
 mkdir -p $MK_DIR
 
 echo "Mk simulation starting at $(date)"

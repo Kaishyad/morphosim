@@ -15,11 +15,10 @@ options("ntRemoteDir"   = paste0("/nobackup/", Sys.getenv("USER")))
 library(ape)
 library(TreeTools)
 library(TreeDist)
-library(mgcv)      # GAM threshold analysis
+library(mgcv)      
 library(ggplot2)
 library(cli)
 
-# Load all project R functions except this file
 for (f in list.files("R", pattern = "^(?!_setup).*\\.R$",
                      full.names = TRUE, perl = TRUE)) {
   source(f)

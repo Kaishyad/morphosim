@@ -1,6 +1,3 @@
-# R/FilePaths.R
-# Path helpers for the morphosim simulation study.
-# All functions read options set in R/_setup.R.
 
 # --- Null-coalescing operator
 `%||%` <- function(a, b) if (!is.null(a)) a else b
