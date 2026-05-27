@@ -16,13 +16,13 @@
 #     NtSimArgs / MkSimArgs so the same SLURM template works for both scenarios).
 
 # --- Argument parsing: all values come from R/Grid.R and SimArgs
-n_taxa  = Integer(args[2])
-n_neo   = Integer(args[3])
-n_trans = Integer(args[4])
-length  = Decimal(args[7])
-seed_v  = Integer(args[8])
+outDir = args[1]
+n_taxa = args[2] * 1
+n_neo  = args[3] * 1
+n_trans= args[4] * 1
 # args[5] (gain_loss) and args[6] (part_rate) intentionally unused under Mk
-
+length = args[7] * 1
+seed_v = args[8] * 1
 
 write("Writing Mk simulation output to", outDir)
 seed(seed_v)
