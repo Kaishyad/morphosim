@@ -20,7 +20,7 @@ library(cli)
 # are all sourced. Without this, nothing below R/ was found.
 for (f in list.files("R", pattern = "\\.R$",
                      full.names = TRUE, recursive = TRUE)) {
-  if (grepl("_setup\\.R$", f)) next
+  if (grepl("_setup\\.R", f)) next
   source(f)
 }
 
