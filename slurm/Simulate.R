@@ -91,8 +91,7 @@ message(sprintf(
 
 # Paths resolved once (Hamilton remote layout)
 remote_dir  <- getOption("ntRemoteDir")            # /nobackup/<user>
-rb_bin      <- file.path(remote_dir,
-                         "diss/revbayes/projects/cmake/build/rb")
+rb_bin      <- "rb"
 log_dir     <- file.path(remote_dir, "morphosim", "logs")
 rb_scripts  <- file.path(remote_dir, "morphosim", "rbScripts")
 
