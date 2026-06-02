@@ -1,7 +1,6 @@
 # Source this at the top of every analysis script: source("R/core/_setup.R")
 
 # --- Paths ---
-# Local clone of the-matrix data repository
 options("ntOutDir"      = file.path(dirname(getwd()), "the-matrix"))
 options("ntRepoDir"     = file.path(getOption("ntOutDir"), "simulations"))
 options("ntSlurmDir"    = file.path(getwd(), "slurm"))
@@ -17,17 +16,18 @@ library(ggplot2)
 library(cli)
 
 # Source core files first so FilePaths.R, Grid.R etc are defined
-# before any analysis/validation files that depend on them.
+# before anything that depends on them.
 for (f in list.files("R/core", pattern = "\\.R$", full.names = TRUE)) {
   if (grepl("_setup\\.R", f)) next
   source(f)
 }
 
-# Then source everything else
-for (f in list.files("R", pattern = "\\.R$", full.names = TRUE, recursive = TRUE)) {
-  if (grepl("_setup\\.R", f)) next
-  if (grepl("R/core/", f, fixed = TRUE)) next
-  source(f)
+# Source function libraries only — not analysis/validation scripts
+# which are meant to be run standalone after inference.
+for (d in c("R/model", "R/simulation", "R/outputs")) {
+  for (f in list.files(d, pattern = "\\.R$", full.names = TRUE)) {
+    source(f)
+  }
 }
 
 # --- Reproducibility ---
