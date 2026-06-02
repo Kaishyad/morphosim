@@ -18,8 +18,9 @@ library(cli)
 
 # FIX: added recursive = TRUE so files in R/core/, R/analysis/, R/model/ etc
 # are all sourced. Without this, nothing below R/ was found.
-for (f in list.files("R", pattern = "^(?!_setup).*\\.R$",
-                     full.names = TRUE, recursive = TRUE, perl = TRUE)) {
+for (f in list.files("R", pattern = "\\.R$",
+                     full.names = TRUE, recursive = TRUE)) {
+  if (grepl("_setup\\.R$", f)) next
   source(f)
 }
 
