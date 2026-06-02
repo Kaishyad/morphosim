@@ -153,6 +153,7 @@ for (scenario in scenarios) {
         "--error",    shQuote(err_log),
         "--time=00:30:00",
         "--wrap", shQuote(paste(
+          "module load boost/1.77.0;",
           shQuote(rb_bin),
           file.path(rb_scripts, paste0(simScript, ".Rev")),
           paste(rb_args, collapse = " ")
