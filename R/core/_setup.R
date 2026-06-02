@@ -16,11 +16,17 @@ library(mgcv)
 library(ggplot2)
 library(cli)
 
-# FIX: added recursive = TRUE so files in R/core/, R/analysis/, R/model/ etc
-# are all sourced. Without this, nothing below R/ was found.
-for (f in list.files("R", pattern = "\\.R$",
-                     full.names = TRUE, recursive = TRUE)) {
+# Source core files first so FilePaths.R, Grid.R etc are defined
+# before any analysis/validation files that depend on them.
+for (f in list.files("R/core", pattern = "\\.R$", full.names = TRUE)) {
   if (grepl("_setup\\.R", f)) next
+  source(f)
+}
+
+# Then source everything else
+for (f in list.files("R", pattern = "\\.R$", full.names = TRUE, recursive = TRUE)) {
+  if (grepl("_setup\\.R", f)) next
+  if (grepl("R/core/", f, fixed = TRUE)) next
   source(f)
 }
 
@@ -28,7 +34,6 @@ for (f in list.files("R", pattern = "\\.R$",
 set.seed(636)
 
 # --- Constants ---
-# FIX: was 30L, but Grid.R sets n_taxa = 50L. Use 50L everywhere.
 N_TIP     <- 50L
 N_REP     <- 100L
 MODEL_IDS <- paste0("model", 1:12)
