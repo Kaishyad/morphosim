@@ -2,9 +2,9 @@
 #           characters split into binary and multistate sub-partitions.
 #
 # Partition structure:
-#   Partition 1: Neomorphic characters — asymmetric binary Q (fnFreeK)
-#   Partition 2: Transformational binary — symmetric Mk JC(2)
-#   Partition 3: Transformational multistate— symmetric Mk JC(k), k > 2
+#   Partition 1: Neomorphic characters - asymmetric binary Q (fnFreeK)
+#   Partition 2: Transformational binary - symmetric Mk JC(2)
+#   Partition 3: Transformational multistate- symmetric Mk JC(k), k > 2
 
 
 # Three partitions: neomorphic, transformational-binary, transformational-multistate

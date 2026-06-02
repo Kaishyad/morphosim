@@ -1,9 +1,8 @@
-# R/Imputation.R
 # Missing-data imputation accuracy
 # Reads ancestral state posteriors from imp-mc3.Rev output (.states files),
 # compares them to the known true character states, and computes accuracy
 # metrics for each model × replicate × grid cell combination.
-#
+
 # Workflow per replicate:
 #   1. MaskReplicate()    (in simFuncsImp.R) — mask neo.nex / trans.nex
 #   2. imp-mc3.Rev        (on Hamilton)      — run inference on masked matrices

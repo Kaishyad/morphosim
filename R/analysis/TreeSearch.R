@@ -1,3 +1,5 @@
+#maximum parsimoney - do i need this 
+
 library("TreeTools")
 library("TreeSearch")
 

@@ -1,5 +1,5 @@
-#Analyses.R — ModelBF() and .OutwithError() are useful for PPS adequacy comparisons later. Skip if not useful EvaluatePartitioning() and InfNeo().
-
+#Analyses.R ModelBF() and .OutwithError() are useful for PPS adequacy comparisons later. 
+#Skip if not useful EvaluatePartitioning() and InfNeo().
 
 epsBF <- log(10^2) # "Decisive" support, per Jeffries 1939
 epsBF <- log(10^1.5) # "Very strong" support, per Jeffries

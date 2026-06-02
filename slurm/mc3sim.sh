@@ -1,15 +1,12 @@
 #!/bin/bash
-
-# mc3sim.sh
-# SLURM template for morphosim inference jobs.
-# One job = one model × one simulation replicate.
-# Filled in by MakeSlurm.R before submission; placeholders:
+#SLURM for inference
+#One job is one model × one simulation replicate.
+# Filled in by MakeSlurm.R before submission, placeholders:
 #   %SIMSCENARIO%  generative scenario ("nt" or "mk")
 #   %SIMREP%       replicate ID, zero-padded to 3 digits (e.g. "sim001")
 #   %SCRIPTID%     model script name without .Rev (e.g. "model1")
 #   %SEED%         integer random seed
 #   %GRID_TAG%     parameter combination tag (e.g. "tl1.0_n0.5_c50")
-# Adapted from mc3sim.sh (supervisor / neotrans).
 
 # --- Resource requests ---
 #SBATCH -n 16
@@ -48,7 +45,7 @@ echo "Starting inference: %SCRIPTID% on %SIMSCENARIO%/%GRID_TAG%/%SIMREP% at $(d
 cd $MORPHOSIM
 
 mpirun $RB \
-  $MORPHOSIM/rbScripts/sim-mc3.Rev \
+  $MORPHOSIM/rbScripts/Inference/sim-mc3.Rev \
   $MATRIX/$SIM_SUBDIR \
   %SCRIPTID% \
   333 \

@@ -1,12 +1,8 @@
-# R/KnownAnswer.R
-# Simulation-based calibration (Cook, Gelman & Rubin 2006).
+#Simulation-based calibration (Cook, Gelman & Rubin 2006).
 # Verifies that the 95% posterior credible interval contains the known true
 # parameter value in approximately 95% of replicates across the parameter grid.
-# Applied to tree_length and gain-to-loss rate ratio (rate_loss) under the
-# NT generative model with Model 4 (sp_nt_kv) or Model 8 (full NT+RH).
 
-# Used in: analysis/known_answer.R
-# Dissertation section: 6.1 Correctness
+
 
 #' Extract posterior credible interval for a named parameter
 #'

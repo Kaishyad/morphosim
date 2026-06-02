@@ -1,13 +1,13 @@
-# MCMC convergence diagnostics for inference runs.
-# Called by analysis/check_convergence.R after Hamilton jobs complete.
-#
+# MCMC convergence diagnostics for inference runs
+
+#Called by analysis/check_convergence.R after Hamilton jobs complete.
 # Three criteria must all pass before a run's results are used:
-#   1. Rank-normalised R-hat < RHAT_MAX  (Vehtari et al. 2021)
+#   1. Rank-normalised R-hat < RHAT_MAX  
 #   2. ESS > ESS_MIN for all continuous parameters
 #   3. ASDSF < ASDSF_MAX across paired tree files
 
 
-# --- R-hat
+# --- R-hat ---
 
 #' Rank-normalised split R-hat (Vehtari et al. 2021)
 #'
@@ -64,7 +64,7 @@ ComputeRhat <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   }, numeric(1))
 }
 
-# --- ESS 
+# --- ESS ---
 
 #' Effective Sample Size per parameter
 #'
@@ -108,7 +108,7 @@ ComputeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   pooled
 }
 
-# ---ASDSF
+# ---ASDSF ---
 
 #' Average Standard Deviation of Split Frequencies
 #'
@@ -165,7 +165,7 @@ ComputeASDSF <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   mean(abs(f1 - f2))
 }
 
-# --- Combined check
+# --- Combined check ---
 
 #' Check convergence for one inference run
 #'

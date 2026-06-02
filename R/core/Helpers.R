@@ -1,4 +1,3 @@
-#Update for the project
 
 #' Remove burnin
 #' @param values series of parameter estimates

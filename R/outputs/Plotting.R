@@ -1,4 +1,4 @@
-#Plotting.R — SpindlePlot() and ColErrPlot() are directly useful for your interaction plots and threshold figures. Skip TreeSimSpindleRow(), TreeSimPlot(), DiffDepth() — those are for empirical well-corroborated tree comparisons.
+#Plotting.R = SpindlePlot() and ColErrPlot() are directly useful for your interaction plots and threshold figures. Skip TreeSimSpindleRow(), TreeSimPlot(), DiffDepth() — those are for empirical well-corroborated tree comparisons.
 
 
 #' @importFrom stats quantile

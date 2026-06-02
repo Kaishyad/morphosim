@@ -1,3 +1,8 @@
+#imputation masking utilities. 
+#.AmbDist() profiles ambiguity in a nexus file; .DecodeTips() reorders tips to match RevBayes index conventions; 
+#.Invariant() identifies invariant characters in imputed matrices.
+
+
 #' @export
 .AmbDist <- function(path) {
   if (file.exists(path)) {

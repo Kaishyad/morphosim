@@ -98,10 +98,10 @@ SubmitGrid <- function(scenarios  = c("nt", "mk"),
 #' @return Character string e.g. "tl1.43_n0.50_c50"
 #' @export
 GridTag <- function(gridRow) {
-  sprintf("tl%s_n%s_c%s",
+  sprintf("tl%s_gl%s_c%s",
           formatC(gridRow$tree_length, format = "f", digits = 2),
-          formatC(gridRow$rate_loss,   format = "f", digits = 2),
-          as.integer(gridRow$n_chars))
+          formatC(gridRow$gain_loss,   format = "f", digits = 2),
+          as.integer(gridRow$n_char))
 }
 
 #' Path to simulation data directory within the-matrix

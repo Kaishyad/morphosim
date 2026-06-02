@@ -1,4 +1,4 @@
-#keep as-is. Needed for Models 9/10.
+#keep as-is needed for Models 9/10
 
 
 #' Discretized beta distribution

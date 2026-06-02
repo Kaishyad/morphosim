@@ -1,19 +1,17 @@
-# analysis/simulate.R
 # Generates simulated character matrices across the parameter grid.
-# Loops over PARAM_GRID (defined in R/Grid.R), builds RevBayes argument
-# vectors via R/SimArgs.R, creates output directories in the-matrix,
-# and submits simulation jobs to Hamilton via sbatch.
-#
-# Usage:
+# Loops over PARAM_GRID, builds RevBayes argument vectors , creates output directories in the-matrix,
+# and submits simulation jobs to Hamilton with sbatch.
+
+
+#Usage:
 #   Rscript analysis/simulate.R              # dry-run: prints args only
 #   Rscript analysis/simulate.R --run        # submits all grid cells
 #   Rscript analysis/simulate.R --run --reduced  # submits reduced grid only
 #   Rscript analysis/simulate.R --run --scenario nt  # NT scenario only
 
-source("R/_setup.R")
+source("R/core/_setup.R")
 
-# ── Argument parsing ───────────────────────────────────────────────────────────
-
+# --- Argument parsing---
 args_cli  <- commandArgs(trailingOnly = TRUE)
 dry_run   <- !("--run"     %in% args_cli)
 reduced   <- "--reduced"   %in% args_cli
@@ -22,8 +20,7 @@ scenarios <- if (!is.na(scenario_flag)) scenario_flag else c("nt", "mk")
 
 if (dry_run) message("Dry run — pass --run to submit jobs")
 
-# ── Grid selection ─────────────────────────────────────────────────────────────
-
+# --- Grid selection---
 grid <- if (reduced) {
   message("Using REDUCED_GRID (", nrow(REDUCED_GRID), " combinations)")
   REDUCED_GRID
@@ -37,8 +34,7 @@ message(sprintf(
   nrow(grid), N_REP, length(scenarios), nrow(grid) * N_REP * length(scenarios)
 ))
 
-# ── Simulation loop ────────────────────────────────────────────────────────────
-
+# ---Simulation loop---
 submitted <- 0L
 skipped   <- 0L
 

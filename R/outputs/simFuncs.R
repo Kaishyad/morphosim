@@ -1,4 +1,5 @@
-#what is needed to change in this
+#Visualisation helper for exploratory runs. PlotParamViolin() produces violin plots of posterior parameter medians 
+#(rate_loss, rate_neo, tree_length) on a log-scale y-axis with true-value markers. 
 
 
 #' Violin plot of posterior parameter medians with exp-scale y-axis

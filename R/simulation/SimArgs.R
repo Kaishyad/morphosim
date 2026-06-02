@@ -1,12 +1,5 @@
-# Argument builder functions 
-# Converts rows of PARAM_GRID (defined in R/Grid.R) into positional argument
-# vectors for passing to RevBayes scripts via rb --args on Hamilton.
+#Converts rows of PARAM_GRID into positional argument vectors for passing to RevBayes scripts via rb --args on Hamilton.
 
-# Each function returns a character vector that maps directly onto the
-# positional args[] interface of the corresponding .Rev script.
-# All parameter values from Grid.R 
-#
-# Usage (in simulate.R or MakeSlurm.R):
 #   row     <- PARAM_GRID[i, ]
 #   simDir  <- SimDirAbs("nt", GridTag(row), SimID(rep))
 #   rb_args <- NtSimArgs(row, simDir, seed = rep)

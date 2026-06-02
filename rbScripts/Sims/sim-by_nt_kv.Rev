@@ -1,21 +1,23 @@
-# Arguments (positional, supplied by NtSimArgs() in R/Grid.R):
-#   args[1]  outDir     output directory (absolute path in the-matrix)
-#   args[2]  n_taxa     number of taxa
-#   args[3]  n_neo      neomorphic characters to simulate
-#   args[4]  n_trans    transformational characters to simulate
-#   args[5]  gain_loss  gain-to-loss rate ratio (n in supervisor notation)
-#   args[6]  part_rate  transformational partition rate scalar (t)
-#   args[7]  length     total tree length
-#   args[8]  seed_v     random seed
+#Generative sim: NT
+
+# Arguments from NtSimArgs() in R/Grid.R
+#   args[1]  outDir =output directory 
+#   args[2]  n_taxa =number of taxa
+#   args[3]  n_neo  =neomorphic characters to simulate
+#   args[4]  n_trans =transformational characters to simulate
+#   args[5]  gain_loss =gain-to-loss rate ratio 
+#   args[6]  part_rate =transformational partition rate scalar (t)
+#   args[7]  length =total tree length
+#   args[8]  seed_v = random seed
 
 
-# --- Argument parsing: all values come from R/Grid.R and SimArgs ---
+# --- Arguments ---
 outDir    = args[1]
 n_taxa    = args[2] * 1
 n_neo     = args[3] * 1
 n_trans   = args[4] * 1
-rate_loss = 1 / (args[5] * 1)   # reparameterise: gain_loss -> loss rate
-rate_neo  = 1 / (args[6] * 1)   # reparameterise: part_rate -> neo rate scalar
+rate_loss = 1 / (args[5] * 1) #gain_loss -> loss rate
+rate_neo  = 1 / (args[6] * 1) #part_rate -> neo rate scalar
 length    = args[7] * 1
 seed_v    = args[8] * 1
 
@@ -43,8 +45,7 @@ tr := treeAssembly(topology, br_lengths)
 write(tr, filename = outDir + "/tree.nwk")
 
 # --- Partition rates ---
-# Neomorphic partition scaled by rate_neo relative to transformational.
-# Normalised so character-weighted mean rate equals tree length.
+# Neomorphic partition scaled by rate_neo relative to transformational.Normalised so character-weighted mean rate equals tree length.
 partition_rate := [ rate_neo / (1 + rate_neo),
                     (1 / (1 + rate_neo)) ] / n_char * sum(n_char)
 

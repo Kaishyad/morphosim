@@ -1,5 +1,4 @@
-#Aesthetic.R — adapt modelCol and modelLabel for your 12 models. The ModelCol() and ModelLabel() functions are directly reusable.
-#delete what isnt needed
+#Aesthetic.R The ModelCol() and ModelLabel() functions are reusable from superviros code
 
 # Labels
 modelLabel <- c(

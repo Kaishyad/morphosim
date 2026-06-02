@@ -9,7 +9,7 @@ This repository contains all R scripts, RevBayes (`.Rev`) inference scripts, and
 batch scripts needed to:
 
 1. Simulate morphological character matrices under the NT generative model across a parameter grid.
-2. Run Bayesian inference under twelve models via RevBayes on the Hamilton HPC cluster.
+2. Run Bayesian inference under twelve models via RevBayes on the HPC cluster.
 3. Assess tree accuracy, missing-data imputation accuracy, MCMC convergence, and posterior predictive adequacy.
 
 Simulation outputs (MCMC logs, tree files, result `.rds` files) are stored in the companion
@@ -19,11 +19,11 @@ data repository: **the-matrix**.
 
 | Parameter              | Values                    |
 |------------------------|---------------------------|
-| Tree length            | 0.5, 1.0, 2.0, 4.0       |
-| Gain-to-loss ratio (t) | 0.5, 1.0, 2.5, 5.0       |
-| Character count        | 50, 100, 200, 400         |
-| Taxon number           | 28 (fixed)                |
-| Replicates per cell    | TBD (≥10 target)          |
+| Tree length            |        |
+| Gain-to-loss ratio (t) |       |
+| Character count        |         |
+| Taxon number           |                 |
+| Replicates per cell    |           |
 
 ## Models
 
