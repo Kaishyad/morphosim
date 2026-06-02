@@ -153,7 +153,7 @@ for (scenario in scenarios) {
         "--error",    shQuote(err_log),
         "--time=00:30:00",
         "--wrap", shQuote(paste(
-          "module load boost/1.77.0;",
+          "module load gcc/11.2 boost/1.77.0 bioinformatics revbayes;",
           shQuote(rb_bin),
           file.path(rb_scripts, paste0(simScript, ".Rev")),
           paste(rb_args, collapse = " ")
