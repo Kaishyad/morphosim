@@ -1,21 +1,13 @@
 # Computes Clustering Information Distance (CID) between posterior trees and
 # the known true tree for all converged runs under both generative scenarios.
 
-#TO DO:
-#- Load converged run list from check_convergence.R.
-#- For each (simID, modelID): call TreeAnalysis.R::TreeAccuracy()
-#     which reads posterior trees, calls TreeDist::ClusteringInfoDist(), and
-#     returns median and IQR.
-#- Combine NT-generated and Mk-generated scenarios side by side.
-#- Save combined result .rds to the-matrix/results/ for plotting.
-
 source("R/core/_setup.R")
 
 # --- Configuration ---
 SCENARIOS <- c("nt", "mk")
 
 # Output paths
-cid_rds <- file.path(OutputDir(), "results", "tree_accuracy_summary.rds")
+cid_rds     <- file.path(OutputDir(), "results", "tree_accuracy_summary.rds")
 cid_rep_rds <- file.path(OutputDir(), "results", "tree_accuracy_per_rep.rds")
 
 dir.create(dirname(cid_rds), showWarnings = FALSE, recursive = TRUE)
@@ -25,7 +17,7 @@ conv_rds <- file.path(OutputDir(), "results", "convergence_summary.rds")
 
 if (!file.exists(conv_rds)) {
   stop("Convergence summary not found: ", conv_rds,
-       "\nRun analysis/check_convergence.R first.")
+       "\nRun run/check_convergence.R first.")
 }
 
 conv_df   <- readRDS(conv_rds)
@@ -36,7 +28,6 @@ cli::cli_alert_info(
 )
 
 # --- Per-replicate CID ---
-# Collect one row per (scenario, gridTag, repID, modelID) with median CID.
 
 per_rep_rows <- vector("list", nrow(converged))
 
@@ -90,12 +81,12 @@ for (scenario in SCENARIOS) {
     for (gt in unique(sub$gridTag)) {
       cell <- sub[sub$gridTag == gt, ]
       summary_rows[[length(summary_rows) + 1L]] <- data.frame(
-        scenario      = scenario,
-        gridTag       = gt,
-        modelID       = mid,
-        median_cid    = median(cell$median_cid, na.rm = TRUE),
-        iqr_cid       = IQR(cell$median_cid,    na.rm = TRUE),
-        n_reps        = sum(!is.na(cell$median_cid)),
+        scenario   = scenario,
+        gridTag    = gt,
+        modelID    = mid,
+        median_cid = median(cell$median_cid, na.rm = TRUE),
+        iqr_cid    = IQR(cell$median_cid,    na.rm = TRUE),
+        n_reps     = sum(!is.na(cell$median_cid)),
         stringsAsFactors = FALSE
       )
     }
@@ -104,9 +95,12 @@ for (scenario in SCENARIOS) {
 
 summary_df <- do.call(rbind, summary_rows)
 
-#Join grid parameters for downstream plotting
-grid_lookup        <- PARAM_GRID
-grid_lookup$gridTag <- GridTag(PARAM_GRID)
+# Join grid parameters for downstream plotting.
+# FIX: GridTag() takes a single row, not a full data frame. Was calling
+# GridTag(PARAM_GRID) which would silently return only the first row's tag
+# recycled across all rows. Now uses apply() to call GridTag() row by row.
+grid_lookup         <- PARAM_GRID
+grid_lookup$gridTag <- apply(PARAM_GRID, 1, GridTag)
 summary_df <- merge(summary_df, grid_lookup, by = "gridTag", all.x = TRUE)
 
 saveRDS(summary_df, cid_rds)

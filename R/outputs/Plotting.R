@@ -1,4 +1,46 @@
-#Plotting.R = SpindlePlot() and ColErrPlot() are directly useful for your interaction plots and threshold figures. Skip TreeSimSpindleRow(), TreeSimPlot(), DiffDepth() — those are for empirical well-corroborated tree comparisons.
+# Plotting.R
+# SpindlePlot() and ColErrPlot() are directly useful for interaction plots and
+# threshold figures. Most other functions below are legacy neotrans code that
+# depend on undefined functions (MakeSlurm, ModelCol, ModelLabel, etc.) and
+# will crash if called — they are retained for reference only.
+
+# --- Simulation-study plotting ---
+
+#' Violin plot of posterior parameter medians with exp-scale y-axis
+#'
+#' Exploratory plot for checking posterior parameter recovery after inference.
+#' Plots log-transformed posterior medians for rate_loss, rate_neo, and
+#' tree_length as violins, with the y-axis labelled on the original
+#' (non-log-transformed) scale and true simulation values marked.
+#'
+#' @param loss,neo,lng Summary matrices (rows = summary stats, cols = replicates)
+#'   as returned by \code{sapply(..., summary)}.
+#' @param true_vals Named numeric vector of true simulation values, in order
+#'   \code{c(n, t, length)}.
+#' @export
+PlotParamViolin <- function(loss, neo, lng, true_vals) {
+  vioplot::vioplot(
+    log(loss["Median", ]), log(neo["Median", ]), log(lng["Median", ]),
+    names = c("", "", ""),
+    col = 5:3,
+    axes = FALSE,
+    xaxt = "n",
+    yaxt = "n",
+    frame.plot = FALSE
+  )
+  axis(1, at = 1:3,
+       labels = expression(italic(n), italic(t), "tree length"),
+       las = 1, lty = 0)
+  log_ticks <- pretty(range(log(c(loss["Median", ], neo["Median", ],
+                                  lng["Median", ]))))
+  axis(2, at = log_ticks, labels = round(exp(log_ticks), 2), las = 2)
+  abline(h = 0, lty = "dashed", col = "#888888")
+  points(1:3, log(true_vals), pch = 95, cex = 2, col = 2, lwd = 3)
+  points(1:3, c(median(log(loss["Median", ])),
+                median(log(neo["Median", ])),
+                median(log(lng["Median", ]))),
+         pch = 20, cex = 0.8, col = "white")
+}
 
 
 #' @importFrom stats quantile

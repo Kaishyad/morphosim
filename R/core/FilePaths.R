@@ -29,7 +29,7 @@ RemoteDir <- function() {
   getOption("ntRemoteDir") %||% paste0("/nobackup/", Sys.getenv("USER"))
 }
 
-# --- Simulation helpers=
+# --- Simulation helpers ---
 
 #' Format a replicate ID from an integer seed, e.g. "sim001"
 SimID <- function(seed) sprintf("sim%03d", seed)
@@ -43,8 +43,11 @@ SimDir <- function(scenario, gridTag, repID) {
 }
 
 #' Absolute path to a simulation directory in the local the-matrix clone
+#'
+#' FIX: was file.path(MatrixDir(), "..", SimDir(...)) which double-traversed
+#' through simulations/ unnecessarily. Now resolves cleanly via OutputDir().
 SimDirAbs <- function(scenario, gridTag, repID) {
-  file.path(MatrixDir(), "..", SimDir(scenario, gridTag, repID))
+  file.path(OutputDir(), SimDir(scenario, gridTag, repID))
 }
 
 #' Path to the true tree file for a replicate
@@ -58,10 +61,23 @@ SimMatrixFile <- function(scenario, gridTag, repID, type = c("neo", "trans")) {
   file.path(SimDirAbs(scenario, gridTag, repID), paste0(type, ".nex"))
 }
 
-#' Path to a RevBayes MCMC log file
+#' Path to a RevBayes MCMC full log file ({modelID}_run_{N}.log)
+#'
+#' Written every 36 iterations. Used for tree and general parameter inspection.
 LogFile <- function(scenario, gridTag, repID, modelID, run = 1) {
   file.path(SimDirAbs(scenario, gridTag, repID),
             paste0(modelID, "_run_", run, ".log"))
+}
+
+#' Path to the stochastic-only parameter log ({modelID}_run_{N}.p.log)
+#'
+#' FIX: Convergence.R (ComputeRhat, ComputeESS) must read the .p.log file,
+#' not the full .log. sim-mc3.Rev writes both:
+#'   {filePrefix}.log    - full log, every 36 iterations
+#'   {filePrefix}.p.log  - stochastic-only, every 6 iterations (used for ESS/Rhat)
+ParamLogFile <- function(scenario, gridTag, repID, modelID, run = 1) {
+  file.path(SimDirAbs(scenario, gridTag, repID),
+            paste0(modelID, "_run_", run, ".p.log"))
 }
 
 #' Path to a compressed tree file
@@ -84,6 +100,14 @@ DiagFile <- function(scenario, gridTag, repID, modelID) {
   file.path(d, paste0(modelID, "-conv.txt"))
 }
 
+#' Alias for DiagFile — used by legacy Helpers.R::HasConverged()
+#'
+#' FIX: ConvergenceFile was called in Helpers.R, Posterior.R, and
+#' CheckComplete.R but never defined anywhere. Maps to DiagFile().
+ConvergenceFile <- function(scenario, gridTag, repID, modelID) {
+  DiagFile(scenario, gridTag, repID, modelID)
+}
+
 #' Path to a RevBayes .Rev script
 RBScript <- function(modelID) {
   file.path(RBScriptDir(), paste0(modelID, ".Rev"))
@@ -99,8 +123,8 @@ SlurmTemplate <- function() {
   file.path(SlurmDir(), "mc3sim.sh")
 }
 
-#' Build a grid tag string from a grid row
-#' @param gridRow Single row of PARAM_GRID
+#' Build a grid tag string from a single grid row
+#' @param gridRow Single row of PARAM_GRID (data.frame with one row)
 GridTag <- function(gridRow) {
   sprintf("tl%s_gl%s_c%s",
           formatC(gridRow$tree_length, format = "f", digits = 2),

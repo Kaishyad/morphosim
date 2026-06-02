@@ -1,4 +1,3 @@
-
 #' Remove burnin
 #' @param values series of parameter estimates
 #' @param burnin fraction or number of samples to omit from start
@@ -81,9 +80,11 @@ AsHMS <- function(secs) {
   }
 }
 
+# FIX: colClasses = rep("real", 5) is not a valid R type — changed to "numeric".
+# The original silently fell through to the warning handler on every call.
 .ReadTable <- function(x) {
   tryCatch(
-    res <- read.table(x, header = TRUE, colClasses = rep("real", 5)),
+    read.table(x, header = TRUE, colClasses = rep("numeric", 5)),
     warning = function(w) {
       res <- withCallingHandlers(
         read.table(x, header = TRUE),
@@ -92,13 +93,11 @@ AsHMS <- function(secs) {
       res[!apply(is.na(res), 1, any), ]
     }, error = function(e) {
       msg <- e[["message"]]
-      
-      if (msg ==  "scan() expected 'a real', got 'Iteration'") {
+
+      if (msg == "scan() expected 'a real', got 'Iteration'") {
         read.table(x, header = TRUE)
       } else {
         nrows <- as.numeric(sub(".*?(\\d+).*", "\\1", msg, perl = TRUE)) - 2
-        # Why 2, not 1? I don't know!
-        #  Sometimes nrows = 10 fails with "line 11 didn't have enough elements"
         tryCatch(read.table(x, header = TRUE, nrows = nrows),
                  error = function(e) {
                    stop("Error reading ", x, ":\r\n ", e)
@@ -108,28 +107,27 @@ AsHMS <- function(secs) {
   )
 }
 
-
-#' Has an analysis converged?
-#' @param pt Gelman-Rubin statistic (potential scale reduction factor) threshold;
-#' analyses with PSRF > `pt` have not converged.
-#' @param et Estimated sample size threshold; analyses with ESS < `et` have
-#' not converged.
-#' @inheritParams MakeSlurm
-#' @returns `HasConverged()` returns a logical specifying whether the specified
-#' analysis has converged at the specified thresholds.
+# NOTE: HasConverged() below is retained from legacy neotrans code.
+# It uses a different signature (pID, scriptID) from the current project's
+# CheckConvergence() in Convergence.R, which is what should be used for
+# this simulation study. HasConverged() is not called by any current script
+# and is kept here only for reference.
+#
+#' Has an analysis converged? (legacy neotrans interface)
+#' @param pt Gelman-Rubin statistic threshold
+#' @param et Estimated sample size threshold
 #' @export
-HasConverged <- function(pID, scriptID, pt = .config$psrfThreshold, et = .config$essThreshold) {
+HasConverged <- function(pID, scriptID,
+                         pt = .config$psrfThreshold,
+                         et = .config$essThreshold) {
   convFile <- ConvergenceFile(pID, scriptID)
   if (!file.exists(convFile)) {
     return(structure(FALSE, reason = "No convergence file; UpdateRecords()?"))
   }
   convStats <- read.table(ConvergenceFile(pID, scriptID))
-  conv <- c(psrf = convStats[["psrf"]] < pt,
-            ess = convStats[["ess"]] > et,
+  conv <- c(psrf    = convStats[["psrf"]]                < pt,
+            ess     = convStats[["ess"]]                  > et,
             frechet = convStats[["frechetCorrelationESS"]] > et,
-            median = convStats[["medianPseudoESS"]] > et)
-  # Return:
-  structure(all(conv),
-            stats = convStats,
-            atThreshold = conv)
+            median  = convStats[["medianPseudoESS"]]       > et)
+  structure(all(conv), stats = convStats, atThreshold = conv)
 }
