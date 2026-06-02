@@ -155,7 +155,8 @@ for (scenario in scenarios) {
         "--wrap", shQuote(paste(
           "module load gcc/11.2 boost/1.77.0 bioinformatics revbayes;",
           shQuote(rb_bin),
-          file.path(rb_scripts, paste0(simScript, ".Rev")),
+          shQuote(file.path(rb_scripts, paste0(simScript, ".Rev"))),
+          "--args",
           paste(rb_args, collapse = " ")
         ))
       )
