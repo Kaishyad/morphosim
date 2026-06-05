@@ -1,21 +1,22 @@
-# Model 10: Two-partition, lognormal among-character rate variation,
-#            asymmetric neomorphic Q (fnFreeK), separate partition rates,
-#            single (non-k-partitioned) transformational partition, informative coding.
+# Model 8: Two-partition, lognormal among-character rate variation,
+#           asymmetric neomorphic Q (fnFreeK), separate partition rates,
+#           k-partitioned transformational characters, informative coding.
+#(Adapted from ns_nt_ki.Rev)
 
-# Identical to Model 8 except that the transformational partition is treated
-# as a single block under fnJC(2) rather than being sub-divided by number of
-# states k. This removes the k-partitioning from Model 8 in isolation, so that
-# comparing Model 10 vs Model 8 reveals whether resolving multistate character
-# structure (k-partitioning) provides inferential benefit beyond the other
-# rate-heterogeneity extensions.
+# This is the direct analogue of Model 4 (NT baseline) with lognormal rate
+# heterogeneity added. 
+#   - Asymmetric gain/loss rates for neomorphic characters (rate_loss)
+#   - Among-character rate variation via lognormal (rate_log_sd)
+#   - Separate overall rates per partition (rate_neo)
+#   - k-partitioned transformational characters
 
-# fnJC(2) is used for the single transformational partition as a conservative
-# default; all transformational characters are treated as two-state under a
-# symmetric process, which will misfit multistate characters but avoids the
-# additional parameters introduced by k-partitioning.
-
+# Comparing against Model 7 isolates the contribution of Q-matrix asymmetry.
+# Comparing against Model 9 isolates the contribution of partition rates.
+# Comparing against Model 10 isolates the contribution of k-partitioning.
 
 #Separate neomorphic and transformational partitions
+partitioned[1] <- neo
+partitioned[2] <- trans
 nChar <- v(neo.nchar(), trans.nchar())
 
 #--- Dataset properties
@@ -30,10 +31,9 @@ topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-#--- Branch lengths
-#Compound Dirichlet prior on edge length variability, See https://revbayes.github.io/tutorials/ctmc/
+# --- Branch lengths: compound Dirichlet parameterisation 
 gamma_shape <- 2
-exp_steps <- 1
+exp_steps <- 1 
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
 moves.append( mvScale(tree_length, weight = 1.0) )
 
@@ -44,17 +44,20 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-# Lognormal among-character rate variation 
+
+#--- Partition rates
+
+#Lognormal among-character rate variation
 rate_log_sd ~ dnGamma(1, 1)
 moves.append( mvScale(rate_log_sd, weight = 1.5) )
 rate_categories := fnDiscretizeDistribution( dnLognormal(0, rate_log_sd), 6 )
 
-# Neomorphic partition may evolve at a different overall rate than transformational.
+#Neomorphic partition 
 rate_neo ~ dnLognormal(mean = 0, sd = 2)
 moves.append( mvScale(rate_neo, weight = 0.5) )
 partition_rate := [ rate_neo / (1 + rate_neo), (1 / (1 + rate_neo)) ] / nChar * sum(nChar)
 
-# Asymmetric gain/loss rates 
+#Asymmetric gain/loss rates 
 rate_loss ~ dnLognormal(mean = 0, sd = 2)
 moves.append( mvScale(rate_loss, lambda = 1, weight = 0.5) )
 
@@ -84,21 +87,31 @@ m_morph[1] ~ dnPhyloCTMC(
 m_morph[1].clamp(neo)
 
 #--- Transformational partition
-#single block under symmetric JC(2), partition-scaled
-#branch rates, lognormal site-rate variation, informative ascertainment bias correction.
-
-#All multistate characters are collapsed into a two-state symmetric process here;
-#k-partitioning (as in Model 8) would resolve this but introduces additional
-#sub-partitions. This is the key simplification relative to Model 8.
-m_morph[2] ~ dnPhyloCTMC(
-  tree = phylogeny,
-  branchRates = partition_rate[2],
-  siteRates = rate_categories,
-  Q = fnJC(2),
-  type = "Standard",
-  coding = "informative"
-)
-m_morph[2].clamp(trans)
+#k-partitioned by number of states, symmetric JC Q
+#per sub-partition, shared partition-scaled branch rates and site-rate variation.
+maxK = 10
+idx = 1
+for (k in 2:maxK) {
+  transByState[k - 1] <- partitioned[2]
+  transByState[k - 1].setNumStatesPartition(k)
+  transByState[k - 1].removeExcludedCharacters()
+  nc = transByState[k - 1].nchar()
+  
+  if (nc > 0) {
+    print(nc, "characters in partition with", k, "states")
+    q[idx] <- fnJC(k)
+    m_morph[idx + 1] ~ dnPhyloCTMC(
+      tree = phylogeny,
+      branchRates = partition_rate[2],
+      siteRates = rate_categories,
+      Q = q[idx],
+      type = "Standard",
+      coding = "informative"
+    )
+    m_morph[idx + 1].clamp(transByState[k - 1])
+    idx = idx + 1
+  }
+}
 
 #--- Conduct MCMC analysis
 mymodel = model(phylogeny)

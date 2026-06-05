@@ -1,0 +1,86 @@
+#NT Simulator
+
+
+outDir    = args[1]     #output directory
+n_taxa    = args[2] * 1 #number of taxa
+n_neo     = args[3] * 1 #neomorphic characters to simulate
+n_trans   = args[4] * 1 #transformational characters to simulate
+rate_loss = 1 / (args[5] * 1) #gain_loss -> loss rate gain-to-loss rate ratio
+rate_neo  = 1 / (args[6] * 1) #part_rate -> neo rate scalar- transformational partition rate scalar
+length    = args[7] * 1 #total tree length
+seed_v    = args[8] * 1 #random seed
+
+n_char <- v(n_neo, n_trans)
+
+write("Writing NT simulation output to", outDir)
+seed(seed_v)
+write(seed_v, filename = outDir + "/seed.txt")
+
+#Taxa 
+for (i in 1:n_taxa) {
+  if (i < 10) {
+    taxa[i] = taxon("tip_0" + i)
+  } else {
+    taxa[i] = taxon("tip_" + i)
+  }
+}
+
+#Tree 
+#Uniform topology prior, branch lengths drawn from Dirichlet scaled to length.
+n_edge = 2 * n_taxa - 3
+rel_br_lengths ~ dnDirichlet(rep(1.0, n_edge))
+br_lengths := rel_br_lengths * length
+topology  ~ dnUniformTopology(taxa, clade(taxa[1]))
+tr        := treeAssembly(topology, br_lengths)
+write(tr, filename = outDir + "/tree.nwk")
+
+
+# Partition rate scaling 
+w_neo   := n_neo   / (n_neo + n_trans)
+w_trans := n_trans / (n_neo + n_trans)
+r_neo   := rate_neo / (w_neo * rate_neo + w_trans * 1.0)
+r_trans := 1.0      / (w_neo * rate_neo + w_trans * 1.0)
+partition_rate := v(r_neo, r_trans)
+
+
+#Among-character rate variation
+rate_log_sd ~ dnGamma(1, 1)
+rate_categories := fnDiscretizeDistribution(dnLognormal(0, rate_log_sd), 6)
+
+
+# Transition rates
+# rate01 = gain rate; rate10 = loss rate.
+rate01 := 2 / (1 + rate_loss)
+rate10 := 2 * rate_loss / (1 + rate_loss)
+rates := [ [0.0, rate01],
+         [rate10, 0.0] ]
+neoQ := fnFreeK(rates)
+stationaryDist := Simplex(rate10, rate01)
+
+
+#neomorphic characters
+neo_chars ~ dnPhyloCTMC(
+  tree = tr,
+  Q  = neoQ,
+  rootFrequencies = stationaryDist,
+  branchRates = partition_rate[1],
+  siteRates = rate_categories,
+  coding = "variable",
+  nSites = n_neo,
+  type = "Standard"
+)
+writeNexus(filename = outDir + "/neo.nex", neo_chars)
+
+#transformational characters
+trans_chars ~ dnPhyloCTMC(
+  tree = tr,
+  Q = fnJC(2),
+  branchRates = partition_rate[2],
+  siteRates = rate_categories,
+  coding = "variable",
+  nSites = n_trans,
+  type = "Standard"
+)
+
+writeNexus(filename = outDir + "/trans.nex", trans_chars)
+write("NT simulation complete.")

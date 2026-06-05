@@ -15,14 +15,12 @@ nEdge <- 2 * nTaxa - 3
 moves = VectorMoves()
 
 #--- Tree topology 
-#Uniform prior
 topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )  #nearest-neighbour interchange
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )  #subtree pruning and regrafting
 
 
 #--- Branch lengths
-#Compound Dirichlet prior on edge length variability, See https://revbayes.github.io/tutorials/ctmc/
 gamma_shape <- 2
 exp_steps <- 1 
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)

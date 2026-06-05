@@ -1,0 +1,52 @@
+# Model 3: Single-partition, symmetric Mk, transformational characters only
+#
+# Replaces the original neo-only Model 3, which had no matching counterpart
+# and its question (does adding trans affect inference?) is already answered
+# by the 1 vs 4-12 comparisons.
+#
+# This model gives the partition comparison genuine symmetry: Model 3 (trans only)
+# mirrors Model 3-old (neo only) but for the partition that carries the
+# inapplicability problem. Comparing Model 3 vs Model 1 isolates the contribution
+# of trans characters; comparing Model 3 vs Model 4+ isolates the contribution
+# of neo characters and the asymmetric Q.
+
+#--- Dataset properties: transformational partition only
+taxa   <- trans.names()
+nTaxa  <- trans.size()
+nEdge  <- 2 * nTaxa - 3
+
+moves = VectorMoves()
+
+#--- Tree topology- Uniform prior
+topology ~ dnUniformTopology(taxa)
+moves.append( mvNNI(topology, weight = nEdge / 2.0) )
+moves.append( mvSPR(topology, weight = nEdge / 8.0) )
+
+#--- Branch lengths- Compound Dirichlet
+gamma_shape <- 2
+exp_steps   <- 1
+tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
+moves.append( mvScale(tree_length, weight = 1.0) )
+
+rel_br_lengths ~ dnDirichlet( rep(1.0, nEdge) )
+moves.append( mvBetaSimplex(rel_br_lengths, weight = nEdge / 3.0) )
+moves.append( mvDirichletSimplex(rel_br_lengths, weight = nEdge / 20.0) )
+br_lengths := rel_br_lengths * tree_length
+
+phylogeny := treeAssembly(topology, br_lengths)
+
+#--- Symmetric Mk Q matrix applied to transformational characters only
+# coding = "variable": same ascertainment correction as the neo-only baseline
+# this replaces, for direct comparability.
+m_morph ~ dnPhyloCTMC(
+  tree   = phylogeny,
+  Q      = fnJC(2),
+  type   = "Standard",
+  coding = "variable"
+)
+m_morph.clamp(trans)
+
+#--- Monitors
+mymodel = model(phylogeny)
+monitors = VectorMonitors()
+monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )

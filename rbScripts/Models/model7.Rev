@@ -1,25 +1,14 @@
-# Model 8: Two-partition, lognormal among-character rate variation,
-#           asymmetric neomorphic Q (fnFreeK), separate partition rates,
-#           k-partitioned transformational characters, informative coding.
-#(Adapted from ns_nt_ki.Rev)
+# Model 7:  (based on ns_t_ki.Rev) Two-partition, lognormal among-character rate variation,
+#           symmetric neomorphic Q, separate partition rates, k-partitioned
+#           transformational characters, informative (ascertainment-corrected) coding.
 
-# This is the direct analogue of Model 4 (NT baseline) with lognormal rate
-# heterogeneity added. 
-#   - Asymmetric gain/loss rates for neomorphic characters (rate_loss)
-#   - Among-character rate variation via lognormal (rate_log_sd)
-#   - Separate overall rates per partition (rate_neo)
-#   - k-partitioned transformational characters
 
-# Comparing against Model 7 isolates the contribution of Q-matrix asymmetry.
-# Comparing against Model 9 isolates the contribution of partition rates.
-# Comparing against Model 10 isolates the contribution of k-partitioning.
-
-#Separate neomorphic and transformational partitions
+# Separate neomorphic and transformational partitions
 partitioned[1] <- neo
 partitioned[2] <- trans
 nChar <- v(neo.nchar(), trans.nchar())
 
-#--- Dataset properties
+# Dataset properties
 taxa <- neo.names()
 nTaxa <- neo.size()
 nEdge <- 2 * nTaxa - 3
@@ -31,10 +20,9 @@ topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-#--- Branch lengths
-#Compound Dirichlet prior on edge length variability, See https://revbayes.github.io/tutorials/ctmc/
+# --- Branch lengths: compound Dirichlet parameterisation 
 gamma_shape <- 2
-exp_steps <- 1 
+exp_steps <- 1 # Expected changes per site across the tree.
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
 moves.append( mvScale(tree_length, weight = 1.0) )
 
@@ -45,37 +33,34 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-
 #--- Partition rates
 
-#Lognormal among-character rate variation
+#--- Lognormal among-character rate variation (Wagner 2012, doi: 10.1098/rsbl.2011.0523).
+# rate_log_sd controls the spread of the lognormal; a Gamma(1,1) prior allows
+# values near zero (effectively rate-homogeneous) and heavier heterogeneity.
+# Mean = 1, so tree length is interpretable as character changes per site.
+# 6 categories following Wright & Wynd (2024).
 rate_log_sd ~ dnGamma(1, 1)
-moves.append( mvScale(rate_log_sd, weight = 1.5) )
+moves.append( mvScale(rate_log_sd, weight = 1.0) )
 rate_categories := fnDiscretizeDistribution( dnLognormal(0, rate_log_sd), 6 )
 
-#Neomorphic partition 
+#--- Neomorphic partition may evolve at a different overall rate than transformational.
+# partition_rate normalises so the character-weighted mean rate equals tree_length.
+# From https://revbayes.github.io/tutorials/partition/
 rate_neo ~ dnLognormal(mean = 0, sd = 2)
-moves.append( mvScale(rate_neo, weight = 0.5) )
+moves.append( mvScale(rate_neo, weight = 1.0) )
 partition_rate := [ rate_neo / (1 + rate_neo), (1 / (1 + rate_neo)) ] / nChar * sum(nChar)
 
-#Asymmetric gain/loss rates 
-rate_loss ~ dnLognormal(mean = 0, sd = 2)
-moves.append( mvScale(rate_loss, lambda = 1, weight = 0.5) )
-
-rate01 := 2 / (1 + rate_loss)
-rate10 := 2 * rate_loss / (1 + rate_loss)
-rates := [ [0.0, rate01],
-           [rate10, 0.0] ]
-neoQ := fnFreeK(rates)
-
-#Stationary distribution of the asymmetric Q matrix used as root frequencies.
+# Root frequency prior for neomorphic characters.
 root_freqs ~ dnDirichlet([1, 1])
 moves.append( mvBetaSimplex(root_freqs, weight = 1.0) )
 rtfq1 := root_freqs[1]
 
-#--- Neomorphic partition
-#asymmetric binary Q matrix, partition-scaled branch rates,
-#lognormal site-rate variation, informative ascertainment bias correction.
+#--- Neomorphic partition: symmetric Mk (JC) Q matrix.
+# Gain and loss rates are constrained equal; the asymmetric rate_loss parameter
+# is absent here (contrast with Model 8).
+neoQ := fnJC(2)
+
 m_morph[1] ~ dnPhyloCTMC(
   tree = phylogeny,
   branchRates = partition_rate[1],
@@ -87,17 +72,21 @@ m_morph[1] ~ dnPhyloCTMC(
 )
 m_morph[1].clamp(neo)
 
-#--- Transformational partition
-#k-partitioned by number of states, symmetric JC Q
-#per sub-partition, shared partition-scaled branch rates and site-rate variation.
+#--- Transformational partition: k-partitioned by number of states.
+# Each sub-partition uses a symmetric JC Q matrix for its k states.
+# Partitioning by k avoids conflating characters with different numbers of
+# states under a single Q matrix (Wright et al. 2016).
+# coding = "informative" applies the ascertainment bias correction within
+# each sub-partition (Lewis 2001).
 maxK = 10
 idx = 1
 for (k in 2:maxK) {
   transByState[k - 1] <- partitioned[2]
   transByState[k - 1].setNumStatesPartition(k)
+  # Reduce memory footprint, per https://github.com/revbayes/revbayes/issues/552
   transByState[k - 1].removeExcludedCharacters()
   nc = transByState[k - 1].nchar()
-  
+
   if (nc > 0) {
     print(nc, "characters in partition with", k, "states")
     q[idx] <- fnJC(k)
@@ -116,5 +105,6 @@ for (k in 2:maxK) {
 
 #--- Conduct MCMC analysis
 mymodel = model(phylogeny)
+
 monitors = VectorMonitors()
-monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE, rate_neo, rate_loss, rate_log_sd, rtfq1) )
+monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE, rate_neo, rate_log_sd, rtfq1) )

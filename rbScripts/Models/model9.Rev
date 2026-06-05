@@ -2,7 +2,7 @@
 #           asymmetric neomorphic Q (fnFreeK), NO separate partition rates,
 #           k-partitioned transformational characters, informative coding.
 
-# (Adapted from ns_n_ki.Rev) - the 'n' denotes no partition rates.
+# (Adapted from ns_n_ki.Rev), the 'n' means no partition rates.
 
 # Identical to Model 8 except that rate_neo and partition_rate are removed;
 # both partitions share the same branch rates directly from br_lengths.
@@ -27,8 +27,7 @@ topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-#--- Branch lengths
-#Compound Dirichlet prior on edge length variability, See https://revbayes.github.io/tutorials/ctmc/
+# --- Branch lengths: compound Dirichlet parameterisation 
 gamma_shape <- 2
 exp_steps <- 1 
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
@@ -47,11 +46,12 @@ moves.append( mvScale(rate_log_sd, weight = 1.5) )
 rate_categories := fnDiscretizeDistribution( dnLognormal(0, rate_log_sd), 6 )
 
 # Root frequency prior for neomorphic characters.
-# Dirichlet weight upscaled (26.0) following ns_n_ki.Rev to allow the sampler
-# to explore root frequency space efficiently given the absence of a partition
-# rate parameter that would otherwise absorb some of this variation.
+# Weight restored to 1.0 (consistent with all other models): the original 26.0
+# was a tuning hack to compensate for the absence of rate_neo, but inflated
+# weights can cause over-mixing and unreliable marginal likelihoods.
+# If convergence is slow, prefer running longer chains over inflating move weights.
 root_freqs ~ dnDirichlet([1, 1])
-moves.append( mvBetaSimplex(root_freqs, weight = 26.0) )
+moves.append( mvBetaSimplex(root_freqs, weight = 1.0) )
 rtfq1 := root_freqs[1]
 
 # Asymmetric gain/loss rates for neomorphic characters (Muller & Wagner 1991;
