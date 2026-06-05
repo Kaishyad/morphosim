@@ -1,12 +1,10 @@
 #!/bin/bash
-# Waits until all NT simulations are complete, then pushes to the-matrix.
-#
+
 # Run in a screen session alongside Simulate.R:
 #   screen -S push_watcher
 #   bash slurm/push_when_done.sh
-#
-# To watch Mk instead, change SCENARIO to "mk".
-# To watch both, run two separate screen sessions with different SCENARIO values.
+# watch Mk instead, change SCENARIO to "mk".
+# watch both, run two separate screen sessions with different SCENARIO values.
 
 MATRIX=/nobackup/djfb16/the-matrix
 SCENARIO=nt

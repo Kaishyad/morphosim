@@ -1,36 +1,17 @@
-# Generates simulated character matrices across the parameter grid.
-# Loops over PARAM_GRID, builds RevBayes argument vectors, creates output
-# directories in the-matrix, and submits simulation jobs to Hamilton8
-# via sbatch -- rate-limited to stay within Hamilton's queue limits for
-# postgraduate taught users.
-#
-# Usage:
+#Generates simulated character matrices across the parameter grid.
+#Loops over PARAM_GRID, builds RevBayes argument vectors, creates output
+#directories in the-matrix, and submits simulation jobs to Hamilton
+
 #   Rscript slurm/Simulate.R              # dry-run: prints args only
 #   Rscript slurm/Simulate.R --run        # submits all grid cells (both scenarios)
 #   Rscript slurm/Simulate.R --run --scenario nt   # NT only
 #   Rscript slurm/Simulate.R --run --scenario mk   # Mk only
-#
-# Safety notes for Hamilton8 postgrad-taught accounts:
-#   - Jobs are submitted in batches of MAX_QUEUE_DEPTH with a short pause
-#     between each batch, so the queue never overflows.
-#   - Each sim job requests 1 core (plain rb, not rb-mpi; sims are serial).
-#   - Walltime is set to 00:30:00 (sims typically finish in < 5 min).
-#   - Output/error logs go under $NOBACKUP/morphosim/logs/ on Hamilton.
-#   - The script polls `squeue` to track live queue depth when --run is active.
 
 source("R/core/_setup.R")
 
-# ---------------------------------------------------------------------------
+
 # Hamilton8 safety parameters
-# ---------------------------------------------------------------------------
-# Hamilton8 defaults for the shared (postgrad-taught) partition are already
-# appropriate for a serial sim job: 1 core, 1 GB RAM, 1 hour walltime.
-# The only resource we override in the sbatch call is --time (set shorter
-# than the default so jobs backfill faster).
-#
-# The main safety concern is queue flooding: submitting all 51,200 jobs in
-# one tight loop would likely exceed any per-user pending-job limit and would
-# be inconsiderate to other users.  We throttle via MAX_QUEUE_DEPTH.
+# throttle via MAX_QUEUE_DEPTH.
 MAX_QUEUE_DEPTH <- 200L
 
 # Pause (seconds) between queue-depth checks when the queue is full.
@@ -40,9 +21,8 @@ POLL_INTERVAL_SEC <- 30L
 # A small gap avoids hammering the SLURM daemon.
 SUBMIT_PAUSE_SEC <- 0.25
 
-# ---------------------------------------------------------------------------
+
 # Argument parsing
-# ---------------------------------------------------------------------------
 args_cli      <- commandArgs(trailingOnly = TRUE)
 dry_run       <- !("--run"      %in% args_cli)
 scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
@@ -57,9 +37,8 @@ message(sprintf(
   nrow(grid), N_REP, length(scenarios), nrow(grid) * N_REP * length(scenarios)
 ))
 
-# ---------------------------------------------------------------------------
+
 # Helper: current number of jobs in queue belonging to this user
-# ---------------------------------------------------------------------------
 .queue_depth <- function() {
   out <- tryCatch(
     system("squeue -u \"$USER\" -h -o '%i' 2>/dev/null | wc -l",
@@ -69,9 +48,8 @@ message(sprintf(
   as.integer(trimws(out[length(out)]))
 }
 
-# ---------------------------------------------------------------------------
+
 # Helper: wait until there is room in the queue
-# ---------------------------------------------------------------------------
 .wait_for_slot <- function(max_depth = MAX_QUEUE_DEPTH,
                            poll_sec  = POLL_INTERVAL_SEC) {
   repeat {
@@ -85,9 +63,9 @@ message(sprintf(
   }
 }
 
-# ---------------------------------------------------------------------------
+
 # Simulation loop
-# ---------------------------------------------------------------------------
+
 
 # Paths resolved once (Hamilton remote layout)
 remote_dir  <- getOption("ntRemoteDir")            # /nobackup/<user>
