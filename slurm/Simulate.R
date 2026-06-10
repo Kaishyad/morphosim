@@ -79,6 +79,13 @@ failed    <- 0L
 
 for (scenario in scenarios) {
 
+  # Mk doesn't use part_rate — collapse to unique combinations
+  grid <- if (scenario == "mk") {
+    unique(PARAM_GRID[, c("tree_length", "gain_loss", "n_char", "n_taxa", "n_neo", "n_trans")])
+  } else {
+    PARAM_GRID
+  }
+  
   argsFn    <- SimArgsFn(scenario)
   simScript <- if (scenario == "nt") "Sims/sim-by_nt_kv" else "Sims/sim-by_mk_kv"
 
