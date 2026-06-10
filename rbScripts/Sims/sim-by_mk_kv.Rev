@@ -4,7 +4,7 @@ outDir = args[1]
 n_taxa = args[2] * 1
 n_neo  = args[3] * 1
 n_trans= args[4] * 1
-# args[5] (gain_loss) and args[6] (part_rate) null?
+# args[5] (gain_loss) and args[6] (part_rate) null bc it wont be asym or partitioned
 length = args[7] * 1
 seed_v = args[8] * 1
 
@@ -34,7 +34,7 @@ write(tr, filename = outDir + "/tree.nwk")
 rootFreqMk := Simplex(1.0, 1.0) #equal root frequencies.
 
 
-#Single Partition
+#Single Partition, simulated apart but combined in the inference so its ok
 
 #Simulate neomorphic characters 
 neo_chars ~ dnPhyloCTMC(

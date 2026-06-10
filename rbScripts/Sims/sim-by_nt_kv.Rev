@@ -1,6 +1,5 @@
 #NT Simulator
-
-
+#simargs to change
 outDir    = args[1]     #output directory
 n_taxa    = args[2] * 1 #number of taxa
 n_neo     = args[3] * 1 #neomorphic characters to simulate
@@ -10,7 +9,6 @@ rate_neo  = 1 / (args[6] * 1) #part_rate -> neo rate scalar- transformational pa
 length    = args[7] * 1 #total tree length
 seed_v    = args[8] * 1 #random seed
 
-n_char <- v(n_neo, n_trans)
 
 write("Writing NT simulation output to", outDir)
 seed(seed_v)
@@ -27,35 +25,35 @@ for (i in 1:n_taxa) {
 
 #Tree 
 #Uniform topology prior, branch lengths drawn from Dirichlet scaled to length.
-n_edge = 2 * n_taxa - 3
-rel_br_lengths ~ dnDirichlet(rep(1.0, n_edge))
-br_lengths := rel_br_lengths * length
-topology  ~ dnUniformTopology(taxa, clade(taxa[1]))
-tr        := treeAssembly(topology, br_lengths)
-write(tr, filename = outDir + "/tree.nwk")
+n_edge = 2 * n_taxa - 3 #number of branches in an unrooted binary tree
+rel_br_lengths ~ dnDirichlet(rep(1.0, n_edge)) #draws relative branch length proportions from a Dirichlet distribution
+br_lengths := rel_br_lengths * length #relative proportions into actual branch lengths by multiplying by tree_length
+topology  ~ dnUniformTopology(taxa, clade(taxa[1])) #draws a random unrooted tree topology where all possible topologies are equally likely
+tr := treeAssembly(topology, br_lengths) #combines the random topology and the scaled branch lengths into a single complete tree object
+write(tr, filename = outDir + "/tree.nwk") #saves the true tree to disk 
 
 
 # Partition rate scaling 
-w_neo   := n_neo   / (n_neo + n_trans)
-w_trans := n_trans / (n_neo + n_trans)
-r_neo   := rate_neo / (w_neo * rate_neo + w_trans * 1.0)
-r_trans := 1.0      / (w_neo * rate_neo + w_trans * 1.0)
-partition_rate := v(r_neo, r_trans)
-
+w_neo   := n_neo  / (n_neo + n_trans) #the proportion of characters that are neomorphic
+w_trans := n_trans / (n_neo + n_trans) #he proportion that are transformational 
+r_neo   := rate_neo / (w_neo * rate_neo + w_trans * 1.0)#the normalised neo rate
+r_trans := 1.0  / (w_neo * rate_neo + w_trans * 1.0) #normalised trans rate
+partition_rate := v(r_neo, r_trans) #normalised rates into a vector
+partition_rate := [ rate_neo / (1 + rate_neo), (1 / (1 + rate_neo)) ] / n_char * sum(n_char)
 
 #Among-character rate variation
-rate_log_sd ~ dnGamma(1, 1)
-rate_categories := fnDiscretizeDistribution(dnLognormal(0, rate_log_sd), 6)
+rate_log_sd ~ dnGamma(1, 1) #how spread out the character rate multipliers, ACRV magnitude drawn from the prior
+rate_categories := fnDiscretizeDistribution(dnLognormal(0, rate_log_sd), 6) #lognormal distribution with mean 0
 
 
 # Transition rates
 # rate01 = gain rate; rate10 = loss rate.
-rate01 := 2 / (1 + rate_loss)
-rate10 := 2 * rate_loss / (1 + rate_loss)
+rate01 := 2 / (1 + rate_loss) #the gain rate
+rate10 := 2 * rate_loss / (1 + rate_loss) #the loss rate
 rates := [ [0.0, rate01],
          [rate10, 0.0] ]
-neoQ := fnFreeK(rates)
-stationaryDist := Simplex(rate10, rate01)
+neoQ := fnFreeK(rates) 
+stationaryDist := Simplex(rate10, rate01) #long-run expected proportion of characters in each state
 
 
 #neomorphic characters
