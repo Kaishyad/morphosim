@@ -4,9 +4,9 @@ outDir = args[1]
 n_taxa = args[2] * 1
 n_neo  = args[3] * 1
 n_trans= args[4] * 1
-# args[5] (gain_loss) and args[6] (part_rate) null bc it wont be asym or partitioned
-length = args[7] * 1
-seed_v = args[8] * 1
+# args[5] (gain_loss) null bc it wont be asym
+length = args[6] * 1
+seed_v = args[7] * 1
 
 write("Writing Mk simulation output to", outDir)
 seed(seed_v)
