@@ -126,8 +126,9 @@ SlurmTemplate <- function() {
 #' Build a grid tag string from a single grid row
 #' @param gridRow Single row of PARAM_GRID (data.frame with one row)
 GridTag <- function(gridRow) {
-  sprintf("tl%s_gl%s_c%s",
+  sprintf("tl%s_gl%s_pr%s_c%s",
           formatC(gridRow$tree_length, format = "f", digits = 2),
           formatC(gridRow$gain_loss,   format = "f", digits = 2),
+          formatC(gridRow$part_rate,   format = "f", digits = 2),
           as.integer(gridRow$n_char))
 }
