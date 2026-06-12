@@ -39,7 +39,6 @@ w_trans := n_trans / (n_neo + n_trans) #he proportion that are transformational
 r_neo   := rate_neo / (w_neo * rate_neo + w_trans * 1.0)#the normalised neo rate
 r_trans := 1.0  / (w_neo * rate_neo + w_trans * 1.0) #normalised trans rate
 partition_rate := v(r_neo, r_trans) #normalised rates into a vector
-partition_rate := [ rate_neo / (1 + rate_neo), (1 / (1 + rate_neo)) ] / n_char * sum(n_char)
 
 #Among-character rate variation
 rate_log_sd ~ dnGamma(1, 1) #how spread out the character rate multipliers, ACRV magnitude drawn from the prior
