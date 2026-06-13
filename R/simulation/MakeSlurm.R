@@ -132,3 +132,4 @@ CheckIncomplete <- function(scenario, scriptID,
   }
   do.call(rbind, incomplete[seq_len(k - 1)])
 }
+
