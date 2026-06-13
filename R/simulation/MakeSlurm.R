@@ -90,8 +90,13 @@ SubmitGrid <- function(scenarios     = c("nt", "mk"),
           jobLines <- gsub("%GRID_TAG%",    gridTag,           jobLines)
           
           # Write filled template to slurm directory
+          # Use file() with open="wb" to avoid writeLines() appending \r\n
+          # on some platforms, which causes sbatch to misread the for loop
+          # as an invalid directive.
           slurmFile <- file.path(SlurmDir(), paste0(jobName, ".sh"))
-          writeLines(jobLines, slurmFile)
+          con <- file(slurmFile, open = "wb")
+          writeLines(jobLines, con, sep = "\n")
+          close(con)
           
           # Submit
           cmd <- paste("sbatch", slurmFile)
@@ -154,4 +159,3 @@ CheckIncomplete <- function(scenario, scriptID,
   }
   do.call(rbind, incomplete[seq_len(k - 1)])
 }
-
