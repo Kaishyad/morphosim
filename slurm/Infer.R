@@ -124,7 +124,7 @@ for (scenario in scenarios) {
           "git pull origin main --rebase;",
           "echo Starting", scriptID, "on", scenario, gridTag, repID, "at $(date);",
           "cd", shQuote(morphosim), ";",
-          "mpirun -n 16", shQuote(rb_mpi),
+          "mpirun", shQuote(rb_mpi),  # slot count comes from --ntasks=16 in sbatch
             shQuote(infer_script),
             paste(sapply(rb_args, shQuote), collapse = " "), ";",
           "cd", shQuote(file.path(matrix_dir, sim_subdir)), ";",
@@ -145,7 +145,8 @@ for (scenario in scenarios) {
 
         slurmCmd <- paste(
           "sbatch",
-          "-n 16",
+          "--ntasks=16",      # 16 MPI processes: 8 chains x 2 runs
+          "--nodes=1",        # keep all on one node, avoids inter-node MPI overhead
           "--mem=4G",
           "--time=23:45:00",
           "--gres=tmp:16G",
