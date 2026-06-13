@@ -21,17 +21,33 @@
 #' @param nRep Integer number of replicates per grid cell. Defaults to .config$nRep.
 #' @param replace Logical: cancel and resubmit if job already in queue.
 #' @param dryRun Logical: if TRUE, print sbatch commands without submitting.
+#' @param maxQueueDepth Integer. Maximum number of jobs (running + pending)
+#'   allowed in this user's queue before pausing submission. Inference jobs
+#'   are much heavier than simulation jobs (16 cores each, up to ~24h), so
+#'   this defaults far lower than Simulate.R's MAX_QUEUE_DEPTH=200. Check
+#'   `sacctmgr show user $USER withassoc format=user,maxsubmit,maxjobs` and
+#'   `scontrol show partition shared | grep -i max` to set an appropriate
+#'   value for your account/partition limits.
+#' @param waitSeconds Integer. Seconds to wait between queue-depth checks
+#'   when at the limit.
 #' @export
-SubmitGrid <- function(scenarios  = c("nt", "mk"),
-                       models     = paste0("model", 1:12),
-                       grid       = .config$grid,
-                       nRep       = .config$nRep,
-                       replace    = FALSE,
-                       dryRun     = FALSE) {
+SubmitGrid <- function(scenarios     = c("nt", "mk"),
+                       models        = paste0("model", 1:12),
+                       grid          = .config$grid,
+                       nRep          = .config$nRep,
+                       replace       = FALSE,
+                       dryRun        = FALSE,
+                       maxQueueDepth = 50L,
+                       waitSeconds   = 30L) {
   
   template  <- readLines(SlurmTemplate())
   submitted <- 0
   skipped   <- 0
+  
+  QueueDepth <- function() {
+    out <- system("squeue -u $USER -h | wc -l", intern = TRUE)
+    as.integer(trimws(out))
+  }
   
   for (scenario in scenarios) {
     
@@ -82,6 +98,12 @@ SubmitGrid <- function(scenarios  = c("nt", "mk"),
           if (dryRun) {
             message("[DRY RUN] ", cmd)
           } else {
+            # Throttle: wait if queue is at capacity before submitting
+            while (QueueDepth() >= maxQueueDepth) {
+              message("  Queue depth ", QueueDepth(), " >= limit ",
+                      maxQueueDepth, " — waiting ", waitSeconds, "s ...")
+              Sys.sleep(waitSeconds)
+            }
             result <- system(cmd)
             if (result == 0) {
               submitted <- submitted + 1
