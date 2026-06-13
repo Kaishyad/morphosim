@@ -31,7 +31,7 @@ message(sprintf("Scenarios: %s | Models: %s",
 
 # --- Paths (resolved once, same layout as Simulate.R) ---
 remote_dir <- getOption("ntRemoteDir")          # /nobackup/djfb16
-rb_mpi     <- "~/diss/revbayes/projects/cmake/build-mpi/rb-mpi"
+rb_mpi <- "/home/djfb16/diss/revbayes/projects/cmake/build-mpi/rb-mpi"
 morphosim  <- file.path(remote_dir, "morphosim")
 matrix_dir <- file.path(remote_dir, "the-matrix")
 log_dir    <- file.path(morphosim, "logs")
