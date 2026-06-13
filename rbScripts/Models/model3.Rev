@@ -1,28 +1,26 @@
-# Model 3: Single-partition, symmetric Mk, transformational characters only
-#
-# Replaces the original neo-only Model 3, which had no matching counterpart
-# and its question (does adding trans affect inference?) is already answered
-# by the 1 vs 4-12 comparisons.
-#
-# This model gives the partition comparison genuine symmetry: Model 3 (trans only)
-# mirrors Model 3-old (neo only) but for the partition that carries the
-# inapplicability problem. Comparing Model 3 vs Model 1 isolates the contribution
-# of trans characters; comparing Model 3 vs Model 4+ isolates the contribution
-# of neo characters and the asymmetric Q.
+#Asymmetry alone
 
-#--- Dataset properties: transformational partition only
-taxa   <- trans.names()
-nTaxa  <- trans.size()
-nEdge  <- 2 * nTaxa - 3
+#Partitioning : Single
+#Neo Q : Asymmetric (fnFreeBinary: gain != loss)
+#Trans Q  : Symmetric  
+#APRV : Absent
+#ACRV : Absent
+# Root freq : Stationary
+
+#--- Single partition
+allChars <- concatenate(neo, trans)
+taxa  <- allChars.names()
+nTaxa <- allChars.size()
+nEdge <- 2 * nTaxa - 3
 
 moves = VectorMoves()
 
-#--- Tree topology- Uniform prior
+#--- Tree topology 
 topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-#--- Branch lengths- Compound Dirichlet
+#--- Branch lengths
 gamma_shape <- 2
 exp_steps   <- 1
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
@@ -35,16 +33,19 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-#--- Symmetric Mk Q matrix applied to transformational characters only
-# coding = "variable": same ascertainment correction as the neo-only baseline
-# this replaces, for direct comparability.
+#--- Model: single ASYMMETRIC Q for all characters (no APRV, no ACRV)
+gain_loss_ratio ~ dnLognormal(0, 1)  # prior centred on 1 (symmetric case)
+moves.append( mvScale(gain_loss_ratio, weight = 1.0) )
+
+Q_morph := fnFreeBinary( simplex(1, gain_loss_ratio), rescaled = TRUE )
+
 m_morph ~ dnPhyloCTMC(
   tree   = phylogeny,
-  Q      = fnJC(2),
+  Q      = Q_morph,
   type   = "Standard",
   coding = "variable"
 )
-m_morph.clamp(trans)
+m_morph.clamp(allChars)
 
 #--- Monitors
 mymodel = model(phylogeny)

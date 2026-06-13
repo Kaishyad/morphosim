@@ -124,11 +124,40 @@ SlurmTemplate <- function() {
 }
 
 #' Build a grid tag string from a single grid row
-#' @param gridRow Single row of PARAM_GRID (data.frame with one row)
+#'
+#' FIX: now includes part_rate when present. NT's PARAM_GRID has a part_rate
+#' column (3 levels); without including it, those 3 levels collided on the
+#' same directory name, silently dropping 2/3 of the NT grid. Mk's grid
+#' (after the unique() collapse in Simulate.R, since part_rate is irrelevant
+#' to Mk) has no part_rate column, so falls back to the original 3-field tag.
+#' @param gridRow Single row of PARAM_GRID or the Mk-reduced grid (data.frame
+#'   with one row)
 GridTag <- function(gridRow) {
-  sprintf("tl%s_gl%s_pr%s_c%s",
-          formatC(gridRow$tree_length, format = "f", digits = 2),
-          formatC(gridRow$gain_loss,   format = "f", digits = 2),
-          formatC(gridRow$part_rate,   format = "f", digits = 2),
-          as.integer(gridRow$n_char))
+  if (!is.null(gridRow$part_rate) && !is.na(gridRow$part_rate)) {
+    sprintf("tl%s_gl%s_pr%s_c%s",
+            formatC(gridRow$tree_length, format = "f", digits = 2),
+            formatC(gridRow$gain_loss,   format = "f", digits = 2),
+            formatC(gridRow$part_rate,   format = "f", digits = 2),
+            as.integer(gridRow$n_char))
+  } else {
+    sprintf("tl%s_gl%s_c%s",
+            formatC(gridRow$tree_length, format = "f", digits = 2),
+            formatC(gridRow$gain_loss,   format = "f", digits = 2),
+            as.integer(gridRow$n_char))
+  }
+}
+
+#' Return the grid appropriate for a given scenario
+#'
+#' NT uses the full PARAM_GRID (part_rate matters). Mk ignores part_rate, so
+#' uses the unique()-collapsed grid (same collapse as Simulate.R) to avoid
+#' redundant directories/jobs.
+#' @param scenario "nt" or "mk"
+ScenarioGrid <- function(scenario) {
+  if (scenario == "mk") {
+    unique(PARAM_GRID[, c("tree_length", "gain_loss", "n_char",
+                          "n_taxa", "n_neo", "n_trans")])
+  } else {
+    PARAM_GRID
+  }
 }

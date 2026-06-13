@@ -1,22 +1,29 @@
-# Model 2: Single-partition, symmetric Mk, informative coding (Adapated from sp_kv.Rev)
-#         applies ascertainment bias correction, all other components (tree prior, branch lengths) are identical to Model 1.
+# Model 2: ACRV alone
 
-# Single partition: concatenate neomorphic and transformational characters
+#Partitioning : Single
+#Neo Q : Symmetric 
+#Trans Q : Symmetric 
+#APRV : Absent
+#ACRV : Present
+#Root freq : Stationary (equal frequencies, implied by symmetric fnJC(2))
+
+
+#--- Single partition
 allChars <- concatenate(neo, trans)
-taxa <- allChars.names()
+taxa  <- allChars.names()
 nTaxa <- allChars.size()
 nEdge <- 2 * nTaxa - 3
+
 moves = VectorMoves()
 
-#--- Tree topology - Uniform prior
+#--- Tree topology 
 topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-#--- Branch lengths
-# Compound Dirichlet prior on edge length variability, See https://revbayes.github.io/tutorials/ctmc/
+#--- Branch lengths 
 gamma_shape <- 2
-exp_steps <- 1 
+exp_steps   <- 1
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
 moves.append( mvScale(tree_length, weight = 1.0) )
 
@@ -27,18 +34,24 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-# Symmetric Mk Q matrix (Jukes-Cantor for 2 states)
-#coding = "informative" applies the Lewis (2001) ascertainment bias correction:
-#the likelihood is conditioned on characters being parsimony-informative, correcting for the exclusion of constant and autapomorphic characters from the matrix.
+#--- ACRV
+NUM_RATE_CATS <- 4
+acrv_sd ~ dnExponential(1.0)  #controls spread of rate categories across sites
+moves.append( mvScale(acrv_sd, weight = 1.0) )
+# fixes the mean to 1 regardless of acrv_sd
+site_rates := fnDiscretizeDistribution( dnLognormal(-acrv_sd^2 / 2, acrv_sd), NUM_RATE_CATS )
+
+#--- Model
 m_morph ~ dnPhyloCTMC(
-  tree = phylogeny,
-  Q = fnJC(2),
-  type = "Standard",
-  coding = "informative"
+  tree      = phylogeny,
+  Q         = fnJC(2),
+  siteRates = site_rates,
+  type      = "Standard",
+  coding    = "variable"
 )
 m_morph.clamp(allChars)
 
-#--- Model and monitors
+#--- Monitors
 mymodel = model(phylogeny)
 monitors = VectorMonitors()
 monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )
