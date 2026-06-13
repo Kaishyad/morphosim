@@ -31,7 +31,7 @@ message(sprintf("Scenarios: %s | Models: %s",
 
 # --- Paths (resolved once, same layout as Simulate.R) ---
 remote_dir <- getOption("ntRemoteDir")          # /nobackup/djfb16
-rb_mpi <- "/home/djfb16/diss/revbayes/projects/cmake/build-mpi/rb-mpi"
+rb_mpi     <- "~/diss/revbayes/projects/cmake/build-mpi/rb-mpi"
 morphosim  <- file.path(remote_dir, "morphosim")
 matrix_dir <- file.path(remote_dir, "the-matrix")
 log_dir    <- file.path(morphosim, "logs")
@@ -119,9 +119,9 @@ for (scenario in scenarios) {
         wrap_cmd <- paste(
           "module load gcc/11.2 boost/1.78.0 openmpi/4.1.1;",
           "cd", shQuote(morphosim), ";",
-          "git pull origin revisions --rebase;",
+          "git fetch origin revisions && git reset --hard origin/revisions;",
           "cd", shQuote(matrix_dir), ";",
-          "git pull origin main --rebase;",
+          "git fetch origin main && git reset --hard origin/main;",
           "echo Starting", scriptID, "on", scenario, gridTag, repID, "at $(date);",
           "cd", shQuote(morphosim), ";",
           "mpirun", shQuote(rb_mpi),  # slot count comes from --ntasks=16 in sbatch
@@ -138,7 +138,7 @@ for (scenario in scenarios) {
           "git commit -m", shQuote(paste0("Inference: ", scenario, "/",
                                           gridTag, "/", repID, "/", scriptID)),
             "|| true;",
-          "git pull origin main --rebase;",
+          "git fetch origin main && git reset --hard origin/main;",
           "git push origin main;",
           "echo Done at $(date)"
         )
