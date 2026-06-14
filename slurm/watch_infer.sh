@@ -14,12 +14,12 @@ SCENARIO=mk
 MODEL=model1
 EXPECTED=6400   # 64 grid cells x 100 replicates
 
-echo "Watching for $EXPECTED completed $MODEL jobs in $MATRIX/simulations/$SCENARIO..."
+echo "Watching for $EXPECTED completed $MODEL jobs in $MATRIX/results/$SCENARIO..."
 echo ""
 
 while true; do
   # Count completed jobs (log file written by RevBayes on completion)
-  DONE=$(find $MATRIX/simulations/$SCENARIO -name "${MODEL}_run_1.log" 2>/dev/null | wc -l)
+  DONE=$(find $MATRIX/results/$SCENARIO -name "run_1.log" 2>/dev/null | wc -l)
 
   # Count running jobs in slurm queue
   RUNNING=$(squeue -u $USER -h -n "inf_${SCENARIO}_*_${MODEL}" 2>/dev/null | grep " R " | wc -l)
