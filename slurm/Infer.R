@@ -144,8 +144,11 @@ for (scenario in scenarios) {
                                           gridTag, "/", repID, "/", scriptID,
                                           " -> results/")),
             "|| true;",
-          "git fetch origin main && git reset --hard origin/main;",
-          "git push origin main;",
+          "for attempt in 1 2 3 4 5; do",
+            "sleep $((RANDOM % 60 + 10));",
+            "git fetch origin main && git rebase origin/main && git push origin main && break;",
+            "echo Push attempt $attempt failed;",
+          "done;",
           "echo Done at $(date)"
         )
 
