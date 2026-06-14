@@ -22,8 +22,8 @@ while true; do
   DONE=$(find $MATRIX/results/$SCENARIO -name "${MODEL}_run_1.log" 2>/dev/null | wc -l)
 
   # Count running jobs in slurm queue
-  RUNNING=$(squeue -u $USER -h -n "inf_${SCENARIO}_*_${MODEL}" 2>/dev/null | grep " R " | wc -l)
-  PENDING=$(squeue -u $USER -h -n "inf_${SCENARIO}_*_${MODEL}" 2>/dev/null | grep " PD " | wc -l)
+  RUNNING=$(squeue -u $USER -h 2>/dev/null | grep "inf_${SCENARIO}_" | grep "_${MODEL}" | grep " R " | wc -l)
+  PENDING=$(squeue -u $USER -h 2>/dev/null | grep "inf_${SCENARIO}_" | grep "_${MODEL}" | grep " PD " | wc -l)
 
   # Count any that errored (non-empty .err files)
   ERRORS=$(find /nobackup/$USER/morphosim/logs -name "inf_${SCENARIO}_*_${MODEL}.err" \
