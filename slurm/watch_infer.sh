@@ -34,6 +34,11 @@ while true; do
   if [ "$DONE" -ge "$EXPECTED" ]; then
     echo ""
     echo "All $MODEL inference jobs complete for scenario $SCENARIO!"
+    cd /nobackup/djfb16/the-matrix
+    git add results/$SCENARIO/
+    git commit -m "Inference: $SCENARIO $MODEL all $EXPECTED results"
+    git push origin main
+    echo "Pushed to GitHub."
     break
   fi
 
