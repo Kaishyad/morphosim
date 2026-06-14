@@ -1,19 +1,22 @@
-#Imputation inference 
+# Imputation inference
 # Identical to sim-mc3.Rev except:
-#  Reads masked matrices (imp_neo.nex, imp_trans.nex) instead of originals.
-#  Adds mnJointConditionalAncestralState monitors for both partitions,
-#      writing imp_{script}_run_{N}.states files used by ScoreImputation().
-
-#   args[1]  simDir   path to simulation directory containing imp_neo.nex, imp_trans.nex
-#   args[2]  script   model script name without .Rev (e.g. "model1")
-#   args[3]  minEss   minimum ESS stopping criterion (default: 333)
-#   args[4]  seed_v   random seed (default: 0)
+#   Reads masked matrices (imp_neo.nex, imp_trans.nex) instead of originals.
+#   Adds mnJointConditionalAncestralState monitors for both partitions,
+#       writing imp_run_{N}.states files used by ScoreImputation().
+#
+# Arguments (positional):
+#   args[1] = simDir   path to simulation directory containing imp_neo.nex, imp_trans.nex
+#   args[2] = outDir   path to inference output directory (results/scenario/gridTag/repID/modelID)
+#   args[3] = script   model script name without .Rev (e.g. "model1")
+#   args[4] = minEss   minimum ESS stopping criterion (default: 333)
+#   args[5] = seed_v   random seed (default: 0)
 
 # --- Argument parsing ---
 simDir = args[1]
-script = args[2]
-minEss = args[3]
-seed_v = args[4]
+outDir = args[2]
+script = args[3]
+minEss = args[4]
+seed_v = args[5]
 
 print("Timestamp:", time("year"), time("day"), time("seconds") / 60 / 60)
 seed(seed_v)
@@ -29,9 +32,10 @@ neo   <- readDiscreteCharacterData(simDir + "/imp_neo.nex")
 trans <- readDiscreteCharacterData(simDir + "/imp_trans.nex")
 
 # --- File paths ---
-filePrefix = simDir + "/imp_" + script
-ckpFile    = filePrefix + ".ckp"
-paramFile  = filePrefix + ".p.log"
+# All outputs go to outDir (results/), keeping inference separate from sim data.
+filePrefix = outDir + "/imp_run"
+ckpFile    = outDir + "/imp_run.ckp"
+paramFile  = outDir + "/imp_run.p.log"
 
 # --- Source model script ---
 source("rbScripts/Models/" + script + ".Rev")
@@ -48,17 +52,17 @@ monitors.append( mnFile(filename  = filePrefix + ".trees", printgen = 12,
 
 # --- Ancestral state monitors ---
 # One monitor per partition; RevBayes appends _run_{N} to the filename automatically.
-# ScoreImputation() reads imp_{script}_run_{N}.states and compares MAP tip states
+# ScoreImputation() reads imp_run_{N}.states and compares MAP tip states
 # at masked positions to the known true states from the original nexus files.
 monitors.append( mnJointConditionalAncestralState(
-  filename   = simDir + "/imp_" + script + "_neo.states",
+  filename   = outDir + "/imp_neo.states",
   printgen   = 12,
   tree       = phylogeny,
   ctmc       = m_morph[1],
   type       = "Standard"
 ) )
 monitors.append( mnJointConditionalAncestralState(
-  filename   = simDir + "/imp_" + script + "_trans.states",
+  filename   = outDir + "/imp_trans.states",
   printgen   = 12,
   tree       = phylogeny,
   ctmc       = m_morph[2],
@@ -78,7 +82,7 @@ mymc3 = mcmcmc(
 print("   Created MCMCMC object")
 
 # --- Burnin or resume from checkpoint ---
-if (fileExists(filePrefix + "_run_1_chain_0.ckp")) {
+if (fileExists(outDir + "/imp_run_run_1_chain_0.ckp")) {
   print("   Initializing from checkpoint")
   mymc3.initializeFromCheckpoint(ckpFile)
   runHours = 23

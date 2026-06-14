@@ -31,7 +31,7 @@ message(sprintf("Scenarios: %s | Models: %s",
 
 # --- Paths (resolved once, same layout as Simulate.R) ---
 remote_dir <- getOption("ntRemoteDir")          # /nobackup/djfb16
-rb_mpi     <- "~/diss/revbayes/projects/cmake/build-mpi/rb-mpi"
+rb_mpi     <- "/home/djfb16/diss/revbayes/projects/cmake/build-mpi/rb-mpi"
 morphosim  <- file.path(remote_dir, "morphosim")
 matrix_dir <- file.path(remote_dir, "the-matrix")
 log_dir    <- file.path(morphosim, "logs")
@@ -94,14 +94,19 @@ for (scenario in scenarios) {
         err_log  <- file.path(log_dir, paste0(job_name, ".err"))
 
         # Skip if inference output already exists
-        log_file <- file.path(simDirAbs, paste0(scriptID, "_run_1.log"))
-        tar_file <- file.path(simDirAbs, paste0(scriptID, "_run_1.tar.gz"))
+        inferDirAbs <- InferDirAbs(scenario, gridTag, repID, scriptID)
+        log_file <- file.path(inferDirAbs, "run_1.log")
+        tar_file <- file.path(inferDirAbs, "run_1.tar.gz")
         if (file.exists(log_file) || file.exists(tar_file)) {
           skipped <- skipped + 1L
           next
         }
 
-        rb_args <- InferArgs(simDirAbs, scriptID, minEss = 333L, seed = rep)
+        # Create inference output directory
+        if (!dir.exists(inferDirAbs)) dir.create(inferDirAbs, recursive = TRUE)
+
+        # Pass both simDirAbs (data) and inferDirAbs (outputs) to sim-mc3.Rev
+        rb_args <- InferArgs(simDirAbs, inferDirAbs, scriptID, minEss = 333L, seed = rep)
 
         if (dry_run) {
           message(sprintf("[DRY RUN] %s | %s | %s | %s",
@@ -114,7 +119,7 @@ for (scenario in scenarios) {
 
         # Build the --wrap command exactly like Simulate.R:
         # module loads + mpirun rb-mpi + git push all inline
-        sim_subdir <- file.path("simulations", scenario, gridTag, repID)
+        infer_subdir <- file.path("results", scenario, gridTag, repID, scriptID)
 
         wrap_cmd <- paste(
           "module load gcc/11.2 boost/1.78.0 openmpi/4.1.1;",
@@ -127,16 +132,17 @@ for (scenario in scenarios) {
           "mpirun", shQuote(rb_mpi),  # slot count comes from --ntasks=16 in sbatch
             shQuote(infer_script),
             paste(sapply(rb_args, shQuote), collapse = " "), ";",
-          "cd", shQuote(file.path(matrix_dir, sim_subdir)), ";",
-          "for f in", paste0(scriptID, "_run_*.trees;"),
+          "cd", shQuote(file.path(matrix_dir, infer_subdir)), ";",
+          "for f in run_*.trees;",
             "do [ -f \"$f\" ] &&",
             "tar -czf \"${f%.trees}.tar.gz\" \"$f\" &&",
             "rm \"$f\";",
           "done;",
           "cd", shQuote(matrix_dir), ";",
-          "git add", sim_subdir, ";",
+          "git add", infer_subdir, ";",
           "git commit -m", shQuote(paste0("Inference: ", scenario, "/",
-                                          gridTag, "/", repID, "/", scriptID)),
+                                          gridTag, "/", repID, "/", scriptID,
+                                          " -> results/")),
             "|| true;",
           "git fetch origin main && git reset --hard origin/main;",
           "git push origin main;",

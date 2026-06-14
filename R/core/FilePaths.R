@@ -50,6 +50,18 @@ SimDirAbs <- function(scenario, gridTag, repID) {
   file.path(OutputDir(), SimDir(scenario, gridTag, repID))
 }
 
+#' Relative path to an inference output directory within the-matrix
+#' Inference outputs are kept separate from simulated data:
+#'   results/<scenario>/<gridTag>/<repID>/<modelID>/
+InferDir <- function(scenario, gridTag, repID, modelID) {
+  file.path("results", scenario, gridTag, repID, modelID)
+}
+
+#' Absolute path to an inference output directory in the local the-matrix clone
+InferDirAbs <- function(scenario, gridTag, repID, modelID) {
+  file.path(OutputDir(), InferDir(scenario, gridTag, repID, modelID))
+}
+
 #' Path to the true tree file for a replicate
 SimTreeFile <- function(scenario, gridTag, repID) {
   file.path(SimDirAbs(scenario, gridTag, repID), "tree.nwk")
@@ -64,26 +76,27 @@ SimMatrixFile <- function(scenario, gridTag, repID, type = c("neo", "trans")) {
 #' Path to a RevBayes MCMC full log file ({modelID}_run_{N}.log)
 #'
 #' Written every 36 iterations. Used for tree and general parameter inspection.
+#' Stored in results/<scenario>/<gridTag>/<repID>/<modelID>/ (separate from sim data).
 LogFile <- function(scenario, gridTag, repID, modelID, run = 1) {
-  file.path(SimDirAbs(scenario, gridTag, repID),
-            paste0(modelID, "_run_", run, ".log"))
+  file.path(InferDirAbs(scenario, gridTag, repID, modelID),
+            paste0("run_", run, ".log"))
 }
 
-#' Path to the stochastic-only parameter log ({modelID}_run_{N}.p.log)
+#' Path to the stochastic-only parameter log (run_{N}.p.log)
 #'
 #' FIX: Convergence.R (ComputeRhat, ComputeESS) must read the .p.log file,
 #' not the full .log. sim-mc3.Rev writes both:
-#'   {filePrefix}.log    - full log, every 36 iterations
-#'   {filePrefix}.p.log  - stochastic-only, every 6 iterations (used for ESS/Rhat)
+#'   run_{N}.log    - full log, every 36 iterations
+#'   run_{N}.p.log  - stochastic-only, every 6 iterations (used for ESS/Rhat)
 ParamLogFile <- function(scenario, gridTag, repID, modelID, run = 1) {
-  file.path(SimDirAbs(scenario, gridTag, repID),
-            paste0(modelID, "_run_", run, ".p.log"))
+  file.path(InferDirAbs(scenario, gridTag, repID, modelID),
+            paste0("run_", run, ".p.log"))
 }
 
 #' Path to a compressed tree file
 TreeGzFile <- function(scenario, gridTag, repID, modelID, run = 1) {
-  file.path(SimDirAbs(scenario, gridTag, repID),
-            paste0(modelID, "_run_", run, ".tar.gz"))
+  file.path(InferDirAbs(scenario, gridTag, repID, modelID),
+            paste0("run_", run, ".tar.gz"))
 }
 
 #' Path to a processed result .rds file (in the-matrix/results/)
@@ -125,13 +138,9 @@ SlurmTemplate <- function() {
 
 #' Build a grid tag string from a single grid row
 #'
-#' FIX: now includes part_rate when present. NT's PARAM_GRID has a part_rate
-#' column (3 levels); without including it, those 3 levels collided on the
-#' same directory name, silently dropping 2/3 of the NT grid. Mk's grid
-#' (after the unique() collapse in Simulate.R, since part_rate is irrelevant
-#' to Mk) has no part_rate column, so falls back to the original 3-field tag.
-#' @param gridRow Single row of PARAM_GRID or the Mk-reduced grid (data.frame
-#'   with one row)
+#' Includes part_rate when present (NT grid). Mk uses the unique()-collapsed
+#' grid (no part_rate column) so falls back to the 3-field tag.
+#' @param gridRow Single row of PARAM_GRID or Mk-collapsed grid
 GridTag <- function(gridRow) {
   if (!is.null(gridRow$part_rate) && !is.na(gridRow$part_rate)) {
     sprintf("tl%s_gl%s_pr%s_c%s",
@@ -149,14 +158,13 @@ GridTag <- function(gridRow) {
 
 #' Return the grid appropriate for a given scenario
 #'
-#' NT uses the full PARAM_GRID (part_rate matters). Mk ignores part_rate, so
-#' uses the unique()-collapsed grid (same collapse as Simulate.R) to avoid
-#' redundant directories/jobs.
+#' NT uses the full PARAM_GRID (part_rate matters).
+#' Mk uses the unique()-collapsed grid (part_rate irrelevant).
 #' @param scenario "nt" or "mk"
 ScenarioGrid <- function(scenario) {
   if (scenario == "mk") {
     unique(PARAM_GRID[, c("tree_length", "gain_loss", "n_char",
-                          "n_taxa", "n_neo", "n_trans")])
+                           "n_taxa", "n_neo", "n_trans")])
   } else {
     PARAM_GRID
   }

@@ -55,17 +55,22 @@ MkSimArgs <- function(row, simDir, seed) {
 #' Build rb argument vector for inference (sim-mc3.Rev or imp-mc3.Rev)
 #'
 #' Argument order matches sim-mc3.Rev and imp-mc3.Rev:
-#'   [1] simDir  [2] scriptID  [3] minEss  [4] seed
+#'   [1] simDir   [2] outDir   [3] scriptID  [4] minEss  [5] seed
+#'
+#' simDir:  where neo.nex / trans.nex live (simulations/)
+#' outDir:  where logs, trees, checkpoints are written (results/)
 #'
 #' @param simDir    Absolute path to simulation directory in the-matrix.
+#' @param outDir    Absolute path to inference output directory in the-matrix.
 #' @param scriptID  Model script name without .Rev (e.g. "model1").
 #' @param minEss    Minimum ESS stopping criterion. Default 333.
 #' @param seed      Integer random seed. Default 0.
-#' @return Character vector of 4 positional arguments.
+#' @return Character vector of 5 positional arguments.
 #' @export
-InferArgs <- function(simDir, scriptID, minEss = 333L, seed = 0L) {
+InferArgs <- function(simDir, outDir, scriptID, minEss = 333L, seed = 0L) {
   c(
     simDir,
+    outDir,
     scriptID,
     as.character(minEss),
     as.character(seed)
