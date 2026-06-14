@@ -33,8 +33,11 @@ trans <- readDiscreteCharacterData(simDir + "/imp_trans.nex")
 
 # --- File paths ---
 # All outputs go to outDir (results/), keeping inference separate from sim data.
-filePrefix = outDir + "/imp_run"
-ckpFile    = outDir + "/imp_run.ckp"
+# RevBayes appends _run_{N} to monitor filenames automatically.
+# Using prefix outDir + "/" gives run_1.log, run_2.log etc.
+# imp_ prefix on ckp/paramFile distinguishes imputation from standard inference.
+filePrefix = outDir + "/"
+ckpFile    = outDir + "/imp_chain.ckp"
 paramFile  = outDir + "/imp_run.p.log"
 
 # --- Source model script ---
@@ -82,7 +85,7 @@ mymc3 = mcmcmc(
 print("   Created MCMCMC object")
 
 # --- Burnin or resume from checkpoint ---
-if (fileExists(outDir + "/imp_run_run_1_chain_0.ckp")) {
+if (fileExists(outDir + "/imp_chain_run_1_chain_0.ckp")) {
   print("   Initializing from checkpoint")
   mymc3.initializeFromCheckpoint(ckpFile)
   runHours = 23

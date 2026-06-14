@@ -12,7 +12,7 @@ source("R/core/_setup.R")
 
 # --- Safety parameters (same pattern as Simulate.R) ---
 MAX_QUEUE_DEPTH  <- 50L    # inference jobs are heavy (16 cores, ~24h) so keep low
-POLL_INTERVAL_SEC <- 300L
+POLL_INTERVAL_SEC <- 30L
 SUBMIT_PAUSE_SEC  <- 0.5
 
 # --- Argument parsing ---
@@ -95,8 +95,8 @@ for (scenario in scenarios) {
 
         # Skip if inference output already exists
         inferDirAbs <- InferDirAbs(scenario, gridTag, repID, scriptID)
-        log_file <- file.path(inferDirAbs, "run_1.log")
-        tar_file <- file.path(inferDirAbs, "run_1.tar.gz")
+        log_file <- file.path(inferDirAbs, "_run_1.log")
+        tar_file <- file.path(inferDirAbs, "_run_1.tar.gz")
         if (file.exists(log_file) || file.exists(tar_file)) {
           skipped <- skipped + 1L
           next
@@ -133,7 +133,7 @@ for (scenario in scenarios) {
             shQuote(infer_script),
             paste(sapply(rb_args, shQuote), collapse = " "), ";",
           "cd", shQuote(file.path(matrix_dir, infer_subdir)), ";",
-          "for f in run_*.trees;",
+          "for f in _run_*.trees;",
             "do [ -f \"$f\" ] &&",
             "tar -czf \"${f%.trees}.tar.gz\" \"$f\" &&",
             "rm \"$f\";",

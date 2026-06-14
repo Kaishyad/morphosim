@@ -38,9 +38,12 @@ neo   <- readDiscreteCharacterData(simDir + "/neo.nex")
 trans <- readDiscreteCharacterData(simDir + "/trans.nex")
 
 # --- File paths ---
-# All outputs go to outDir, keeping results/ separate from simulations/
-filePrefix = outDir + "/run"
-ckpFile    = outDir + "/run.ckp"
+# All outputs go to outDir, keeping results/ separate from simulations/.
+# RevBayes automatically appends _run_{N} to monitor filenames, so using
+# prefix outDir + "/run" would give run_run_1.log (doubled). Use an empty
+# trailing slash so filenames become run_1.log, run_2.log etc.
+filePrefix = outDir + "/"
+ckpFile    = outDir + "/chain.ckp"
 paramFile  = outDir + "/run.p.log"
 
 # --- Source model script ---
@@ -82,7 +85,7 @@ print("   Created MCMCMC object")
 # If a checkpoint exists, initialise from it and skip burnin.
 # burnin = 1200 generations, tuning every 300 iterations (3 * checkFreq).
 # runHours = 23 hours as a comfortable margin under 24-hour limit.
-if (fileExists(outDir + "/run_run_1_chain_0.ckp")) {
+if (fileExists(outDir + "/chain_run_1_chain_0.ckp")) {
   print("   Initializing from checkpoint")
   mymc3.initializeFromCheckpoint(ckpFile)
   runHours = 23
