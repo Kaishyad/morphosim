@@ -138,17 +138,6 @@ for (scenario in scenarios) {
             "tar -czf \"${f%.trees}.tar.gz\" \"$f\" &&",
             "rm \"$f\";",
           "done;",
-          "cd", shQuote(matrix_dir), ";",
-          "git add", infer_subdir, ";",
-          "git commit -m", shQuote(paste0("Inference: ", scenario, "/",
-                                          gridTag, "/", repID, "/", scriptID,
-                                          " -> results/")),
-            "|| true;",
-          "for attempt in 1 2 3 4 5; do",
-            "sleep $((RANDOM % 60 + 10));",
-            "git fetch origin main && git rebase origin/main && git push origin main && break;",
-            "echo Push attempt $attempt failed;",
-          "done;",
           "echo Done at $(date)"
         )
 
