@@ -118,18 +118,14 @@ for (scenario in scenarios) {
         .wait_for_slot()
 
         # Build the --wrap command exactly like Simulate.R:
-        # module loads + mpirun rb-mpi + git push all inline
+        # module loads + mpirun rb-mpi, no git push (handled by push_when_done.sh)
         infer_subdir <- file.path("results", scenario, gridTag, repID, scriptID)
 
         wrap_cmd <- paste(
           "module load gcc/11.2 boost/1.78.0 openmpi/4.1.1;",
           "cd", shQuote(morphosim), ";",
-          "git fetch origin revisions && git reset --hard origin/revisions;",
-          "cd", shQuote(matrix_dir), ";",
-          "git fetch origin main && git reset --hard origin/main;",
           "echo Starting", scriptID, "on", scenario, gridTag, repID, "at $(date);",
-          "cd", shQuote(morphosim), ";",
-          "mpirun", shQuote(rb_mpi),  # slot count comes from --ntasks=16 in sbatch
+          "mpirun", shQuote(rb_mpi),
             shQuote(infer_script),
             paste(sapply(rb_args, shQuote), collapse = " "), ";",
           "cd", shQuote(file.path(matrix_dir, infer_subdir)), ";",
