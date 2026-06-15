@@ -79,7 +79,7 @@ SimMatrixFile <- function(scenario, gridTag, repID, type = c("neo", "trans")) {
 #' Stored in results/<scenario>/<gridTag>/<repID>/<modelID>/ (separate from sim data).
 LogFile <- function(scenario, gridTag, repID, modelID, run = 1) {
   file.path(InferDirAbs(scenario, gridTag, repID, modelID),
-            paste0("run_", run, ".log"))
+            paste0(modelID, "_run_", run, ".log"))
 }
 
 #' Path to the stochastic-only parameter log (run_{N}.p.log)
@@ -90,7 +90,7 @@ LogFile <- function(scenario, gridTag, repID, modelID, run = 1) {
 #'   run_{N}.p.log  - stochastic-only, every 6 iterations (used for ESS/Rhat)
 ParamLogFile <- function(scenario, gridTag, repID, modelID, run = 1) {
   file.path(InferDirAbs(scenario, gridTag, repID, modelID),
-            paste0("run_", run, ".p.log"))
+            paste0(modelID, ".p_run_", run, ".log"))
 }
 
 #' Path to a compressed tree file
