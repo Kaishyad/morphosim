@@ -43,9 +43,6 @@ SimDir <- function(scenario, gridTag, repID) {
 }
 
 #' Absolute path to a simulation directory in the local the-matrix clone
-#'
-#' FIX: was file.path(MatrixDir(), "..", SimDir(...)) which double-traversed
-#' through simulations/ unnecessarily. Now resolves cleanly via OutputDir().
 SimDirAbs <- function(scenario, gridTag, repID) {
   file.path(OutputDir(), SimDir(scenario, gridTag, repID))
 }
@@ -83,11 +80,6 @@ LogFile <- function(scenario, gridTag, repID, modelID, run = 1) {
 }
 
 #' Path to the stochastic-only parameter log (run_{N}.p.log)
-#'
-#' FIX: Convergence.R (ComputeRhat, ComputeESS) must read the .p.log file,
-#' not the full .log. sim-mc3.Rev writes both:
-#'   run_{N}.log    - full log, every 36 iterations
-#'   run_{N}.p.log  - stochastic-only, every 6 iterations (used for ESS/Rhat)
 ParamLogFile <- function(scenario, gridTag, repID, modelID, run = 1) {
   file.path(InferDirAbs(scenario, gridTag, repID, modelID),
             paste0(modelID, ".p_run_", run, ".log"))
@@ -114,9 +106,6 @@ DiagFile <- function(scenario, gridTag, repID, modelID) {
 }
 
 #' Alias for DiagFile — used by legacy Helpers.R::HasConverged()
-#'
-#' FIX: ConvergenceFile was called in Helpers.R, Posterior.R, and
-#' CheckComplete.R but never defined anywhere. Maps to DiagFile().
 ConvergenceFile <- function(scenario, gridTag, repID, modelID) {
   DiagFile(scenario, gridTag, repID, modelID)
 }

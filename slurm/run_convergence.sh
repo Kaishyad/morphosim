@@ -8,4 +8,4 @@
 #SBATCH --error=/nobackup/djfb16/morphosim/logs/convergence.err
 
 cd /nobackup/djfb16/morphosim
-Rscript run/check_convergence.R
+Rscript run/check_convergence.R --scenario mk --model model1

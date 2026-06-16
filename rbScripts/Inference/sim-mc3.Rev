@@ -1,23 +1,22 @@
 # Inference
-# Reads simulated neo.nex and trans.nex from simDir, sources the specified
-# model script, runs MC³ with stopping rules, and writes all outputs to
-# outDir (separate from the simulation data directory).
-#
-# Arguments (positional):
+#Reads simulated neo.nex and trans.nex from simDir, sources the specified
+#model script, runs MC³ with stopping rules, and writes all outputs to
+#outDir.
+
 #   args[1] = simDir   path to simulation directory containing neo.nex, trans.nex
 #   args[2] = outDir   path to inference output directory (results/scenario/gridTag/repID/modelID)
-#   args[3] = script   model script name without .Rev (e.g. "model1")
-#   args[4] = minEss   minimum ESS stopping criterion (default: 333)
-#   args[5] = seed_v   random seed (default: 0)
+#   args[3] = script   model script name without .Rev
+#   args[4] = minEss   minimum ESS stopping criterion 
+#   args[5] = seed_v   random seed 
 
-# --- Defaults ---
+# --- Defaults
 simDir = "simulations/nt/tl1.00_gl0.25_c25/sim001"
 outDir = "results/nt/tl1.00_gl0.25_c25/sim001/model1"
 script = "model1"
 minEss = 333
 seed_v = 0
 
-# --- Argument parsing ---
+# --- Argument parsing
 if (args.size() >= 1) { simDir = args[1] }
 if (args.size() >= 2) { outDir = args[2] }
 if (args.size() >= 3) { script = args[3] }
@@ -31,33 +30,21 @@ maxPSRF = 1.01
 
 write(getwd())
 
-# --- Read simulated data ---
-# Data always read from simDir (neo.nex, trans.nex produced by simulation).
-# Outputs (logs, trees, checkpoints) written to outDir (results/).
+# --- Read simulated data
 neo   <- readDiscreteCharacterData(simDir + "/neo.nex")
 trans <- readDiscreteCharacterData(simDir + "/trans.nex")
 
 # --- File paths ---
-# All outputs go to outDir, keeping results/ separate from simulations/.
-# RevBayes appends _run_{N} to mnModel/mnFile filenames automatically,
-# and inserts _run_{N} before the extension for param logs.
-# Using script as prefix gives: model1_run_1.log, model1.p_run_1.log
-# matching the original sim-mc3.Rev naming convention.
 filePrefix = outDir + "/" + script
 ckpFile    = outDir + "/" + script + ".ckp"
 paramFile  = outDir + "/" + script + ".p.log"
 
-# --- Source model script ---
-# Working directory is set to /nobackup/$USER/morphosim by Infer.R
+# --- Source model script
 source("rbScripts/Models/" + script + ".Rev")
 
 checkFreq = 100
 
-# --- Monitors ---
-# Full parameter log (every 36 iterations) for convergence checking.
-# Stochastic-only parameter log (every 6 iterations) for ESS stopping rule;
-# rel_br_lengths excluded as it is high-dimensional and not of direct interest.
-# Tree file (every 12 iterations) for topology accuracy assessment.
+# --- Monitors
 monitors.append( mnModel(filename = filePrefix + ".log",   printgen = 36) )
 monitors.append( mnModel(filename = paramFile,             printgen = 6,
                          stochasticOnly = TRUE,
@@ -65,12 +52,12 @@ monitors.append( mnModel(filename = paramFile,             printgen = 6,
 monitors.append( mnFile(filename  = filePrefix + ".trees", printgen = 12,
                         phylogeny) )
 
-# --- MC³ setup ---
-# 2 independent runs for ASDSF convergence assessment.
-# 8 chains per run = 1 cold + 7 heated
-# tuneHeat = TRUE: chain temperatures adapt during burnin for efficient swapping.
-# swapMethod = "both", swapMode = "multiple": maximise chain communication.
-# combine = "none": runs kept separate for PSRF / ASDSF calculation in R.
+# --- MC³ setup
+#2 independent runs for ASDSF convergence assessment.
+#8 chains per run = 1 cold + 7 heated
+#tuneHeat = TRUE: chain temperatures adapt during burnin for efficient swapping.
+#swapMethod = "both", swapMode = "multiple": maximise chain communication.
+#combine = "none": runs kept separate for PSRF / ASDSF calculation in R.
 mymc3 = mcmcmc(
   mymodel, monitors, moves,
   nruns      = 2,
@@ -82,10 +69,8 @@ mymc3 = mcmcmc(
 )
 print("   Created MCMCMC object")
 
-# --- Burnin or resume from checkpoint ---
+# --- Burnin or resume from checkpoint
 # If a checkpoint exists, initialise from it and skip burnin.
-# burnin = 1200 generations, tuning every 300 iterations (3 * checkFreq).
-# runHours = 23 hours as a comfortable margin under 24-hour limit.
 if (fileExists(outDir + "/" + script + "_run_1_chain_0.ckp")) {
   print("   Initializing from checkpoint")
   mymc3.initializeFromCheckpoint(ckpFile)
@@ -95,16 +80,16 @@ if (fileExists(outDir + "/" + script + "_run_1_chain_0.ckp")) {
   runHours = 23
 }
 
-# --- Stopping rules ---
-# Three rules applied simultaneously, whichever triggers first stops the run.
-# srMaxTime: hard wall at Hamilton time limit.
-# srMinESS: stops early if minimum ESS across parameters exceeds minEss.
-# srGelmanRubin: stops early if all parameters have PSRF < maxPSRF.
+# --- Stopping rules
+#whichever triggers first stops the run.
+#srMaxTime: hard wall at Hamilton time limit.
+#srMinESS: stops early if minimum ESS across parameters exceeds minEss.
+#srGelmanRubin: stops early if all parameters have PSRF < maxPSRF.
 stopping_rules[1] = srMaxTime(runHours, "hours")
 stopping_rules[2] = srMinESS(minEss, paramFile, checkFreq, "ESS")
 stopping_rules[3] = srGelmanRubin(maxPSRF, paramFile, checkFreq)
 
-# --- Running ---
+# --- Running
 print("   Commencing MCMCMC run with " + script + " at",
       time("year"), time("day"), time("seconds") / 60 / 60)
 

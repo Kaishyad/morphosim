@@ -1,9 +1,7 @@
 #!/bin/bash
-# Push inference results for a given model to GitHub.
-# Edit MODEL below to switch between models.
-# Run from /nobackup/djfb16/the-matrix or anywhere.
+# Push inference results for a model to GitHub
 
-MODEL=model2
+MODEL=model1
 SCENARIO=mk
 
 cd /nobackup/djfb16/the-matrix

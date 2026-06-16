@@ -3,19 +3,19 @@
 # which avoids all line-ending issues that plagued mc3sim.sh.
 #
 # Usage (run from /nobackup/djfb16/morphosim):
-#   Rscript slurm/Infer.R                             # dry run, all models, both scenarios
-#   Rscript slurm/Infer.R --run                       # submit all
-#   Rscript slurm/Infer.R --run --scenario mk         # mk only
+#   Rscript slurm/Infer.R  # dry run, all models, both scenarios
+#   Rscript slurm/Infer.R --run   # submit all
+#   Rscript slurm/Infer.R --run --scenario mk  # mk only
 #   Rscript slurm/Infer.R --run --scenario mk --model model1   # mk + model1 only
 
 source("R/core/_setup.R")
 
-# --- Safety parameters (same pattern as Simulate.R) ---
-MAX_QUEUE_DEPTH  <- 70L    # inference jobs are heavy (16 cores, ~24h) so keep low
-POLL_INTERVAL_SEC <- 200L
+# --- Safety parameters 
+MAX_QUEUE_DEPTH  <- 70L    
+POLL_INTERVAL_SEC <- 120L
 SUBMIT_PAUSE_SEC  <- 0.5
 
-# --- Argument parsing ---
+# --- Argument parsing
 args_cli      <- commandArgs(trailingOnly = TRUE)
 dry_run       <- !("--run" %in% args_cli)
 scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
@@ -29,15 +29,15 @@ message(sprintf("Scenarios: %s | Models: %s",
                 paste(scenarios, collapse = ", "),
                 paste(models,    collapse = ", ")))
 
-# --- Paths (resolved once, same layout as Simulate.R) ---
-remote_dir <- getOption("ntRemoteDir")          # /nobackup/djfb16
+# --- Paths 
+remote_dir <- getOption("ntRemoteDir")          
 rb_mpi     <- "/home/djfb16/diss/revbayes/projects/cmake/build-mpi/rb-mpi"
 morphosim  <- file.path(remote_dir, "morphosim")
 matrix_dir <- file.path(remote_dir, "the-matrix")
 log_dir    <- file.path(morphosim, "logs")
 infer_script <- file.path(morphosim, "rbScripts", "Inference", "sim-mc3.Rev")
 
-# --- Queue helpers (identical to Simulate.R) ---
+# --- Queue helpers 
 .queue_depth <- function() {
   out <- tryCatch(
     system("squeue -u \"$USER\" -h -o '%i' 2>/dev/null | wc -l",
@@ -57,14 +57,14 @@ infer_script <- file.path(morphosim, "rbScripts", "Inference", "sim-mc3.Rev")
   }
 }
 
-# --- Inference loop ---
+# --- Inference loop
 submitted <- 0L
 skipped   <- 0L
 failed    <- 0L
 
 for (scenario in scenarios) {
 
-  # Mk ignores part_rate — use collapsed grid (same as Simulate.R)
+  # Mk ignores part_rate 
   grid <- if (scenario == "mk") {
     unique(PARAM_GRID[, c("tree_length", "gain_loss", "n_char",
                           "n_taxa", "n_neo", "n_trans")])
@@ -80,7 +80,7 @@ for (scenario in scenarios) {
       repID     <- SimID(rep)
       simDirAbs <- SimDirAbs(scenario, gridTag, repID)
 
-      # Skip if simulated data doesn't exist
+      #Skip if simulated data doesn't exist
       if (!file.exists(file.path(simDirAbs, "neo.nex"))) {
         skipped <- skipped + 1L
         next
@@ -93,7 +93,7 @@ for (scenario in scenarios) {
         out_log  <- file.path(log_dir, paste0(job_name, ".out"))
         err_log  <- file.path(log_dir, paste0(job_name, ".err"))
 
-        # Skip if inference output already exists
+        #Skip if inference output already exists
         inferDirAbs <- InferDirAbs(scenario, gridTag, repID, scriptID)
         log_file <- file.path(inferDirAbs, paste0(scriptID, "_run_1.log"))
         tar_file <- file.path(inferDirAbs, paste0(scriptID, "_run_1.tar.gz"))
@@ -102,10 +102,10 @@ for (scenario in scenarios) {
           next
         }
 
-        # Create inference output directory
+        #Create inference output directory
         if (!dir.exists(inferDirAbs)) dir.create(inferDirAbs, recursive = TRUE)
 
-        # Pass both simDirAbs (data) and inferDirAbs (outputs) to sim-mc3.Rev
+        #Pass both simDirAbs (data) and inferDirAbs (outputs) to sim-mc3.Rev
         rb_args <- InferArgs(simDirAbs, inferDirAbs, scriptID, minEss = 333L, seed = rep)
 
         if (dry_run) {
@@ -117,8 +117,7 @@ for (scenario in scenarios) {
 
         .wait_for_slot()
 
-        # Build the --wrap command exactly like Simulate.R:
-        # module loads + mpirun rb-mpi, no git push (handled by push_when_done.sh)
+        # module loads + mpirun rb-mpi, no git push (done by push_when_done.sh)
         infer_subdir <- file.path("results", scenario, gridTag, repID, scriptID)
 
         wrap_cmd <- paste(
@@ -139,8 +138,8 @@ for (scenario in scenarios) {
 
         slurmCmd <- paste(
           "sbatch",
-          "--ntasks=16",      # 16 MPI processes: 8 chains x 2 runs
-          "--nodes=1",        # keep all on one node, avoids inter-node MPI overhead
+          "--ntasks=16",      
+          "--nodes=1",        
           "--mem=4G",
           "--time=23:45:00",
           "--gres=tmp:16G",

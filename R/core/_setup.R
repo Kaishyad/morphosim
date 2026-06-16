@@ -1,4 +1,4 @@
-# Source this at the top of every analysis script: source("R/core/_setup.R")
+#this at the top of every analysis script: source("R/core/_setup.R")
 
 # --- Paths
 options("ntOutDir"      = file.path(dirname(getwd()), "the-matrix"))
@@ -15,24 +15,22 @@ library(mgcv)
 library(ggplot2)
 library(cli)
 
-# Source core files first so FilePaths.R, Grid.R etc are defined
-# before anything that depends on them.
+# Source core files 
 for (f in list.files("R/core", pattern = "\\.R$", full.names = TRUE)) {
   if (grepl("_setup\\.R", f)) next
   source(f)
 }
 
-# Source function libraries only, not analysis/validation scripts
-# which are meant to be run standalone after inference.
+# Source function libraries 
 for (d in c("R/model", "R/simulation", "R/outputs")) {
   for (f in list.files(d, pattern = "\\.R$", full.names = TRUE)) {
     source(f)
   }
 }
 
-set.seed(636)
 
 # --- Constants
+set.seed(636)
 N_TIP     <- 50L
 N_REP     <- 50L
 MODEL_IDS <- paste0("model", 1:12)
@@ -47,5 +45,5 @@ ASDSF_MAX <- 0.05  # average SD of split frequencies ceiling
   nRep          = N_REP,
   psrfThreshold = RHAT_MAX,
   essThreshold  = ESS_MIN,
-  eps           = 0.05   # TODO: confirm tolerance value used in Plotting.R
+  eps           = 0.05   # TODO: check tolerance value used in Plotting.R
 )

@@ -1,14 +1,8 @@
 #!/bin/bash
 
-# Run in a screen session alongside Simulate.R:
-#   screen -S push_watcher
-#   bash slurm/push_when_done.sh
-# watch Mk instead, change SCENARIO to "mk".
-# watch both, run two separate screen sessions with different SCENARIO values.
-
 MATRIX=/nobackup/djfb16/the-matrix
 SCENARIO=nt
-EXPECTED=6400   # 64 grid cells x 100 replicates
+EXPECTED=3200  
 
 echo "Watching for $EXPECTED neo.nex files in $MATRIX/simulations/$SCENARIO..."
 
@@ -27,5 +21,5 @@ while true; do
     break
   fi
 
-  sleep 300  # check every 5 minutes
+  sleep 300  #check every 5 minutes
 done

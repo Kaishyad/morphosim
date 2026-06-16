@@ -8,8 +8,17 @@
 
 source("R/core/_setup.R")
 
-# --- Configuration ---
-SCENARIOS <- c("nt", "mk")
+# --- Argument parsing ---
+args_cli      <- commandArgs(trailingOnly = TRUE)
+scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
+model_flag    <- args_cli[which(args_cli == "--model")    + 1]
+
+SCENARIOS  <- if (!is.na(scenario_flag[1])) scenario_flag else c("nt", "mk")
+MODEL_IDS  <- if (!is.na(model_flag[1]))    model_flag    else paste0("model", 1:12)
+
+message(sprintf("Scenarios: %s | Models: %s",
+                paste(SCENARIOS,  collapse = ", "),
+                paste(MODEL_IDS,  collapse = ", ")))
 
 #Output paths
 conv_rds  <- file.path(OutputDir(), "results", "convergence_summary.rds")
@@ -20,10 +29,10 @@ dir.create(dirname(conv_rds), showWarnings = FALSE, recursive = TRUE)
 #--- Helper ---
 #run is complete when both log files exist for a given (scenario, gridTag, repID, modelID) 
 .EnumerateCompleted <- function(scenario, grid = PARAM_GRID, nRep = N_REP,
-                                 model_ids = MODEL_IDS, nRuns = 2) {
+                                model_ids = MODEL_IDS, nRuns = 2) {
   rows <- vector("list", nrow(grid) * nRep * length(model_ids))
   k    <- 1L
-
+  
   for (gi in seq_len(nrow(grid))) {
     gridTag <- GridTag(grid[gi, ])
     for (rep in seq_len(nRep)) {
@@ -32,7 +41,7 @@ dir.create(dirname(conv_rds), showWarnings = FALSE, recursive = TRUE)
         logs_exist <- all(vapply(seq_len(nRuns), function(run) {
           file.exists(LogFile(scenario, gridTag, repID, mid, run))
         }, logical(1)))
-
+        
         if (logs_exist) {
           rows[[k]] <- data.frame(scenario  = scenario,
                                   gridTag   = gridTag,
@@ -44,7 +53,7 @@ dir.create(dirname(conv_rds), showWarnings = FALSE, recursive = TRUE)
       }
     }
   }
-
+  
   do.call(rbind, rows[seq_len(k - 1L)])
 }
 
@@ -54,18 +63,18 @@ all_conv <- vector("list", length(SCENARIOS))
 for (si in seq_along(SCENARIOS)) {
   scenario <- SCENARIOS[si]
   cli::cli_h1(paste("Checking convergence:", scenario))
-
+  
   completed <- .EnumerateCompleted(scenario)
-
+  
   if (is.null(completed) || nrow(completed) == 0L) {
     cli::cli_alert_warning("No completed runs found for scenario: {scenario}")
     next
   }
-
+  
   cli::cli_alert_info("{nrow(completed)} run(s) to check for scenario '{scenario}'")
-
+  
   conv_rows <- vector("list", nrow(completed))
-
+  
   for (ri in seq_len(nrow(completed))) {
     row     <- completed[ri, ]
     result  <- tryCatch(
@@ -84,7 +93,7 @@ for (si in seq_along(SCENARIOS)) {
              asdsf_pass = FALSE)
       }
     )
-
+    
     conv_rows[[ri]] <- data.frame(
       scenario   = row$scenario,
       gridTag    = row$gridTag,
@@ -99,12 +108,12 @@ for (si in seq_along(SCENARIOS)) {
       asdsf_pass = result$asdsf_pass,
       stringsAsFactors = FALSE
     )
-
+    
     if (ri %% 50L == 0L) {
       cli::cli_alert_info("  {ri}/{nrow(completed)} checked...")
     }
   }
-
+  
   all_conv[[si]] <- do.call(rbind, conv_rows)
 }
 
@@ -143,14 +152,14 @@ if (nrow(failed_runs) == 0L) {
   requeue_lines <- apply(failed_runs, 1, function(r) {
     paste(r["scenario"], r["gridTag"], r["repID"], r["modelID"], sep = "\t")
   })
-
+  
   writeLines(
     c("# Failed runs for re-submission via submit_inference.R",
       "# Columns: scenario\tgridTag\trepID\tmodelID",
       requeue_lines),
     requeue_f
   )
-
+  
   cli::cli_alert_warning(
     "{nrow(failed_runs)} failed run(s) written to: {requeue_f}"
   )
