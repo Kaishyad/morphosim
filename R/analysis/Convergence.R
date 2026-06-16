@@ -132,7 +132,7 @@ ComputeASDSF <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
     gz <- TreeGzFile(scenario, gridTag, repID, modelID, run)
     tr <- sub("\\.tar\\.gz$", ".trees", gz)
     if (file.exists(gz)) {
-      tmp <- tempfile(fileext = ".trees")
+      tmp <- tempfile(fileext = ".trees", tmpdir = "/nobackup/djfb16/tmp")
       system(paste("tar -xzf", shQuote(gz), "-O >", shQuote(tmp)))
       tmp
     } else if (file.exists(tr)) {
