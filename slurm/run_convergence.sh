@@ -7,7 +7,7 @@
 #SBATCH --output=/nobackup/djfb16/morphosim/logs/convergence.out
 #SBATCH --error=/nobackup/djfb16/morphosim/logs/convergence.err
 
-module load R
+
 cd /nobackup/djfb16/morphosim
 Rscript run/check_convergence.R --scenario mk --model model1
 
