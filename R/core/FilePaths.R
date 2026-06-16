@@ -88,7 +88,7 @@ ParamLogFile <- function(scenario, gridTag, repID, modelID, run = 1) {
 #' Path to a compressed tree file
 TreeGzFile <- function(scenario, gridTag, repID, modelID, run = 1) {
   file.path(InferDirAbs(scenario, gridTag, repID, modelID),
-            paste0("run_", run, ".tar.gz"))
+            paste0(modelID, "_run_", run, ".tar.gz"))
 }
 
 #' Path to a processed result .rds file (in the-matrix/results/)
