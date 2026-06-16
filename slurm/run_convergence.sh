@@ -9,3 +9,8 @@
 
 cd /nobackup/djfb16/morphosim
 Rscript run/check_convergence.R --scenario mk --model model1
+
+cd /nobackup/djfb16/the-matrix
+git add results/convergence_summary.rds results/requeue_list.txt
+git commit -m "Convergence check: mk model1"
+git push origin main
