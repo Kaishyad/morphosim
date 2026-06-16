@@ -12,7 +12,7 @@
 MATRIX=/nobackup/djfb16/the-matrix
 SCENARIO=nt
 MODEL=model1
-EXPECTED=19200   # 64 grid cells x 100 replicates
+EXPECTED=9600   # 64 grid cells x 100 replicates
 
 echo "Watching for $EXPECTED completed $MODEL jobs in $MATRIX/results/$SCENARIO..."
 echo ""

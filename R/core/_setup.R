@@ -34,7 +34,7 @@ set.seed(636)
 
 # --- Constants
 N_TIP     <- 50L
-N_REP     <- 100L
+N_REP     <- 50L
 MODEL_IDS <- paste0("model", 1:12)
 
 # Convergence thresholds 
