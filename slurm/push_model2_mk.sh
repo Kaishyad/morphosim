@@ -1,70 +1,23 @@
 #!/bin/bash
+# Push inference results for a given model to GitHub.
+# Edit MODEL below to switch between models.
+# Run from /nobackup/djfb16/the-matrix or anywhere.
+
+MODEL=model2
+SCENARIO=mk
+
 cd /nobackup/djfb16/the-matrix
 
-git add results/mk/tl1.00_gl0.25_c25/ && git commit -m "mk model2 tl1.00 gl0.25 c25"
-git add results/mk/tl1.00_gl0.25_c50/ && git commit -m "mk model2 tl1.00 gl0.25 c50"
-git add results/mk/tl1.00_gl0.25_c100/ && git commit -m "mk model2 tl1.00 gl0.25 c100"
-git add results/mk/tl1.00_gl0.25_c200/ && git commit -m "mk model2 tl1.00 gl0.25 c200"
-git add results/mk/tl1.00_gl0.50_c25/ && git commit -m "mk model2 tl1.00 gl0.50 c25"
-git add results/mk/tl1.00_gl0.50_c50/ && git commit -m "mk model2 tl1.00 gl0.50 c50"
-git add results/mk/tl1.00_gl0.50_c100/ && git commit -m "mk model2 tl1.00 gl0.50 c100"
-git add results/mk/tl1.00_gl0.50_c200/ && git commit -m "mk model2 tl1.00 gl0.50 c200"
-git add results/mk/tl1.00_gl1.00_c25/ && git commit -m "mk model2 tl1.00 gl1.00 c25"
-git add results/mk/tl1.00_gl1.00_c50/ && git commit -m "mk model2 tl1.00 gl1.00 c50"
-git add results/mk/tl1.00_gl1.00_c100/ && git commit -m "mk model2 tl1.00 gl1.00 c100"
-git add results/mk/tl1.00_gl1.00_c200/ && git commit -m "mk model2 tl1.00 gl1.00 c200"
-git push origin main
+for tl in 1.00 1.50 2.50 5.00; do
+  for gl in 0.10 0.25 0.50 1.00; do
+    for c in 25 50 100 200; do
+      grid="tl${tl}_gl${gl}_c${c}"
+      git add results/${SCENARIO}/${grid}/*/${MODEL}/ 2>/dev/null
+      git commit -m "${SCENARIO} ${MODEL} ${grid}" 2>/dev/null || true
+    done
+  done
+  git push origin main
+  echo "Pushed tl${tl}"
+done
 
-git add results/mk/tl1.50_gl0.10_c25/ && git commit -m "mk model2 tl1.50 gl0.10 c25"
-git add results/mk/tl1.50_gl0.10_c50/ && git commit -m "mk model2 tl1.50 gl0.10 c50"
-git add results/mk/tl1.50_gl0.10_c100/ && git commit -m "mk model2 tl1.50 gl0.10 c100"
-git add results/mk/tl1.50_gl0.10_c200/ && git commit -m "mk model2 tl1.50 gl0.10 c200"
-git add results/mk/tl1.50_gl0.25_c25/ && git commit -m "mk model2 tl1.50 gl0.25 c25"
-git add results/mk/tl1.50_gl0.25_c50/ && git commit -m "mk model2 tl1.50 gl0.25 c50"
-git add results/mk/tl1.50_gl0.25_c100/ && git commit -m "mk model2 tl1.50 gl0.25 c100"
-git add results/mk/tl1.50_gl0.25_c200/ && git commit -m "mk model2 tl1.50 gl0.25 c200"
-git add results/mk/tl1.50_gl0.50_c25/ && git commit -m "mk model2 tl1.50 gl0.50 c25"
-git add results/mk/tl1.50_gl0.50_c50/ && git commit -m "mk model2 tl1.50 gl0.50 c50"
-git add results/mk/tl1.50_gl0.50_c100/ && git commit -m "mk model2 tl1.50 gl0.50 c100"
-git add results/mk/tl1.50_gl0.50_c200/ && git commit -m "mk model2 tl1.50 gl0.50 c200"
-git add results/mk/tl1.50_gl1.00_c25/ && git commit -m "mk model2 tl1.50 gl1.00 c25"
-git add results/mk/tl1.50_gl1.00_c50/ && git commit -m "mk model2 tl1.50 gl1.00 c50"
-git add results/mk/tl1.50_gl1.00_c100/ && git commit -m "mk model2 tl1.50 gl1.00 c100"
-git add results/mk/tl1.50_gl1.00_c200/ && git commit -m "mk model2 tl1.50 gl1.00 c200"
-git push origin main
-
-git add results/mk/tl2.50_gl0.10_c25/ && git commit -m "mk model2 tl2.50 gl0.10 c25"
-git add results/mk/tl2.50_gl0.10_c50/ && git commit -m "mk model2 tl2.50 gl0.10 c50"
-git add results/mk/tl2.50_gl0.10_c100/ && git commit -m "mk model2 tl2.50 gl0.10 c100"
-git add results/mk/tl2.50_gl0.10_c200/ && git commit -m "mk model2 tl2.50 gl0.10 c200"
-git add results/mk/tl2.50_gl0.25_c25/ && git commit -m "mk model2 tl2.50 gl0.25 c25"
-git add results/mk/tl2.50_gl0.25_c50/ && git commit -m "mk model2 tl2.50 gl0.25 c50"
-git add results/mk/tl2.50_gl0.25_c100/ && git commit -m "mk model2 tl2.50 gl0.25 c100"
-git add results/mk/tl2.50_gl0.25_c200/ && git commit -m "mk model2 tl2.50 gl0.25 c200"
-git add results/mk/tl2.50_gl0.50_c25/ && git commit -m "mk model2 tl2.50 gl0.50 c25"
-git add results/mk/tl2.50_gl0.50_c50/ && git commit -m "mk model2 tl2.50 gl0.50 c50"
-git add results/mk/tl2.50_gl0.50_c100/ && git commit -m "mk model2 tl2.50 gl0.50 c100"
-git add results/mk/tl2.50_gl0.50_c200/ && git commit -m "mk model2 tl2.50 gl0.50 c200"
-git add results/mk/tl2.50_gl1.00_c25/ && git commit -m "mk model2 tl2.50 gl1.00 c25"
-git add results/mk/tl2.50_gl1.00_c50/ && git commit -m "mk model2 tl2.50 gl1.00 c50"
-git add results/mk/tl2.50_gl1.00_c100/ && git commit -m "mk model2 tl2.50 gl1.00 c100"
-git add results/mk/tl2.50_gl1.00_c200/ && git commit -m "mk model2 tl2.50 gl1.00 c200"
-git push origin main
-
-git add results/mk/tl5.00_gl0.10_c25/ && git commit -m "mk model2 tl5.00 gl0.10 c25"
-git add results/mk/tl5.00_gl0.10_c50/ && git commit -m "mk model2 tl5.00 gl0.10 c50"
-git add results/mk/tl5.00_gl0.10_c100/ && git commit -m "mk model2 tl5.00 gl0.10 c100"
-git add results/mk/tl5.00_gl0.10_c200/ && git commit -m "mk model2 tl5.00 gl0.10 c200"
-git add results/mk/tl5.00_gl0.25_c25/ && git commit -m "mk model2 tl5.00 gl0.25 c25"
-git add results/mk/tl5.00_gl0.25_c50/ && git commit -m "mk model2 tl5.00 gl0.25 c50"
-git add results/mk/tl5.00_gl0.25_c100/ && git commit -m "mk model2 tl5.00 gl0.25 c100"
-git add results/mk/tl5.00_gl0.25_c200/ && git commit -m "mk model2 tl5.00 gl0.25 c200"
-git add results/mk/tl5.00_gl0.50_c25/ && git commit -m "mk model2 tl5.00 gl0.50 c25"
-git add results/mk/tl5.00_gl0.50_c50/ && git commit -m "mk model2 tl5.00 gl0.50 c50"
-git add results/mk/tl5.00_gl0.50_c100/ && git commit -m "mk model2 tl5.00 gl0.50 c100"
-git add results/mk/tl5.00_gl0.50_c200/ && git commit -m "mk model2 tl5.00 gl0.50 c200"
-git add results/mk/tl5.00_gl1.00_c25/ && git commit -m "mk model2 tl5.00 gl1.00 c25"
-git add results/mk/tl5.00_gl1.00_c50/ && git commit -m "mk model2 tl5.00 gl1.00 c50"
-git add results/mk/tl5.00_gl1.00_c100/ && git commit -m "mk model2 tl5.00 gl1.00 c100"
-git add results/mk/tl5.00_gl1.00_c200/ && git commit -m "mk model2 tl5.00 gl1.00 c200"
-git push origin main
+echo "All done."
