@@ -64,7 +64,7 @@ for (si in seq_along(SCENARIOS)) {
   scenario <- SCENARIOS[si]
   cli::cli_h1(paste("Checking convergence:", scenario))
   
-  completed <- .EnumerateCompleted(scenario)
+  completed <- .EnumerateCompleted(scenario, grid = ScenarioGrid(scenario))
   
   if (is.null(completed) || nrow(completed) == 0L) {
     cli::cli_alert_warning("No completed runs found for scenario: {scenario}")
