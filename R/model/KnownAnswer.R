@@ -22,7 +22,7 @@ CredibleInterval <- function(scenario, gridTag, repID, modelID,
   samples <- unlist(lapply(seq_len(nRuns), function(run) {
     f <- ParamLogFile(scenario, gridTag, repID, modelID, run)  # FIX: use .p.log
     if (!file.exists(f)) return(NULL)
-    log <- read.table(f, header = TRUE, comment.char = "#")
+    log <- read.table(f, header = TRUE, comment.char = "#", fill = TRUE)
     if (!parameter %in% colnames(log)) {
       warning(parameter, " not found in log for ", modelID, " ", repID)
       return(NULL)
@@ -107,7 +107,7 @@ KnownAnswerSummary <- function(modelID  = "model1",
         repID <- SimID(rep)
         f <- ParamLogFile(scenario, gridTag, repID, modelID, run = 1)  # FIX: .p.log
         if (!file.exists(f)) return(NA_real_)
-        log <- read.table(f, header = TRUE, comment.char = "#")
+        log <- read.table(f, header = TRUE, comment.char = "#", fill = TRUE)
         if (!parameter %in% colnames(log)) return(NA_real_)
         n       <- nrow(log)
         samples <- log[[parameter]][seq(floor(n * 0.1) + 1L, n)]
@@ -149,7 +149,7 @@ PriorVsPost <- function(scenario, gridTag, repID, modelID,
   samples <- unlist(lapply(1:2, function(run) {
     f <- ParamLogFile(scenario, gridTag, repID, modelID, run)  # FIX: .p.log
     if (!file.exists(f)) return(NULL)
-    log <- read.table(f, header = TRUE, comment.char = "#")
+    log <- read.table(f, header = TRUE, comment.char = "#", fill = TRUE)
     n   <- nrow(log)
     log[[parameter]][seq(floor(n * 0.1) + 1L, n)]
   }))
