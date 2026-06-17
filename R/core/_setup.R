@@ -28,6 +28,7 @@ for (d in c("R/model", "R/simulation", "R/outputs")) {
   }
 }
 source("R/analysis/Convergence.R")
+source("R/analysis/TreeAnalysis.R")
 
 # --- Constants
 set.seed(636)
