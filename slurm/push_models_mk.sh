@@ -1,7 +1,7 @@
 #!/bin/bash
 # Push inference results for a model to GitHub
 
-MODEL=model1
+MODEL=model2
 SCENARIO=mk
 
 cd /nobackup/djfb16/the-matrix
