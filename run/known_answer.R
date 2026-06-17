@@ -10,9 +10,17 @@
 
 source("R/core/_setup.R")
 
-# --- Configuration ---
-EVAL_MODELS <- MODEL_IDS  
-SCENARIOS   <- c("nt", "mk")
+# --- Argument parsing ---
+args_cli      <- commandArgs(trailingOnly = TRUE)
+scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
+model_flag    <- args_cli[which(args_cli == "--model")    + 1]
+
+SCENARIOS   <- if (!is.na(scenario_flag[1])) scenario_flag else c("nt", "mk")
+EVAL_MODELS <- if (!is.na(model_flag[1]))    model_flag    else MODEL_IDS
+
+message(sprintf("Scenarios: %s | Models: %s",
+                paste(SCENARIOS,    collapse = ", "),
+                paste(EVAL_MODELS,  collapse = ", ")))
 
 # Output paths
 ka_rds <- file.path(OutputDir(), "results", "known_answer_summary.rds")
@@ -28,7 +36,7 @@ if (!file.exists(conv_rds)) {
        "\nRun analysis/check_convergence.R first.")
 }
 
-conv_df    <- readRDS(conv_rds)
+conv_df   <- readRDS(conv_rds)
 converged <- conv_df[conv_df$pass & conv_df$scenario %in% SCENARIOS, ]
 
 cli::cli_alert_info(
@@ -41,30 +49,31 @@ all_results <- list()
 for (scenario in SCENARIOS) {
   cli::cli_h1(paste("Scenario:", scenario))
   conv_scenario <- converged[converged$scenario == scenario, ]
-  
+  grid          <- ScenarioGrid(scenario)  # FIX: use scenario-specific grid
+
   for (mi in seq_along(EVAL_MODELS)) {
     modelID    <- EVAL_MODELS[mi]
     conv_model <- conv_scenario[conv_scenario$modelID == modelID, ]
     n_conv     <- nrow(conv_model)
-    
+
     cli::cli_alert_info("{n_conv} converged replicates for {modelID} ({scenario})")
-    
+
     if (n_conv == 0L) {
       cli::cli_alert_warning("No converged replicates for {modelID} / {scenario}; skipping.")
       next
     }
-    
+
     result <- tryCatch(
       KnownAnswerSummary(modelID  = modelID,
                          scenario = scenario,
-                         grid     = PARAM_GRID,
+                         grid     = grid,   # FIX: pass scenario grid
                          nRep     = N_REP),
       error = function(e) {
         cli::cli_alert_danger("KnownAnswerSummary failed for {modelID}/{scenario}: {conditionMessage(e)}")
         NULL
       }
     )
-    
+
     if (!is.null(result)) {
       result$modelID  <- modelID
       result$scenario <- scenario
@@ -103,7 +112,6 @@ for (mid in EVAL_MODELS) {
     "rate_loss    — mean coverage: {round(mean(sub$cov_rate_loss, na.rm=TRUE), 3)}"
   )
 
-  #Flag grid cells with coverage below 0.90
   low_tl <- sub[!is.na(sub$cov_tree_len)  & sub$cov_tree_len  < 0.90, ]
   low_rl <- sub[!is.na(sub$cov_rate_loss) & sub$cov_rate_loss < 0.90, ]
 

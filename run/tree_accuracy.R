@@ -3,8 +3,17 @@
 
 source("R/core/_setup.R")
 
-# --- Configuration ---
-SCENARIOS <- c("nt", "mk")
+# --- Argument parsing ---
+args_cli      <- commandArgs(trailingOnly = TRUE)
+scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
+model_flag    <- args_cli[which(args_cli == "--model")    + 1]
+
+SCENARIOS  <- if (!is.na(scenario_flag[1])) scenario_flag else c("nt", "mk")
+MODEL_IDS  <- if (!is.na(model_flag[1]))    model_flag    else MODEL_IDS
+
+message(sprintf("Scenarios: %s | Models: %s",
+                paste(SCENARIOS,  collapse = ", "),
+                paste(MODEL_IDS,  collapse = ", ")))
 
 # Output paths
 cid_rds     <- file.path(OutputDir(), "results", "tree_accuracy_summary.rds")
@@ -21,10 +30,11 @@ if (!file.exists(conv_rds)) {
 }
 
 conv_df   <- readRDS(conv_rds)
-converged <- conv_df[conv_df$pass, ]
+converged <- conv_df[conv_df$pass & conv_df$scenario %in% SCENARIOS &
+                       conv_df$modelID %in% MODEL_IDS, ]
 
 cli::cli_alert_info(
-  "{nrow(converged)} converged run(s) across all scenarios and models."
+  "{nrow(converged)} converged run(s) across selected scenarios and models."
 )
 
 # --- Per-replicate CID ---
@@ -73,6 +83,9 @@ cli::cli_h1("Summarising by grid cell")
 summary_rows <- vector("list", 0L)
 
 for (scenario in SCENARIOS) {
+  grid        <- ScenarioGrid(scenario)  # FIX: use scenario-specific grid
+  grid$gridTag <- apply(grid, 1, GridTag)
+
   for (mid in MODEL_IDS) {
     sub <- per_rep_df[per_rep_df$scenario == scenario &
                         per_rep_df$modelID == mid, ]
@@ -95,35 +108,21 @@ for (scenario in SCENARIOS) {
 
 summary_df <- do.call(rbind, summary_rows)
 
-# Join grid parameters for downstream plotting.
-# FIX: GridTag() takes a single row, not a full data frame. Was calling
-# GridTag(PARAM_GRID) which would silently return only the first row's tag
-# recycled across all rows. Now uses apply() to call GridTag() row by row.
-grid_lookup         <- PARAM_GRID
-grid_lookup$gridTag <- apply(PARAM_GRID, 1, GridTag)
-summary_df <- merge(summary_df, grid_lookup, by = "gridTag", all.x = TRUE)
+# Join grid parameters for downstream plotting
+summary_df <- merge(summary_df, grid, by = "gridTag", all.x = TRUE)
 
 saveRDS(summary_df, cid_rds)
 cli::cli_alert_success("Tree accuracy summary saved to: {cid_rds}")
 
 # --- Console report ---
 
-cli::cli_h2("CID summary (NT scenario, model1 vs others)")
+cli::cli_h2("CID summary (mk scenario, model1)")
 
-nt_m1 <- summary_df[summary_df$scenario == "nt" &
+mk_m1 <- summary_df[summary_df$scenario == "mk" &
                       summary_df$modelID == "model1", ]
-if (nrow(nt_m1) > 0L) {
+if (nrow(mk_m1) > 0L) {
   cli::cli_alert_info(
-    "model1 median CID range: [{round(min(nt_m1$median_cid, na.rm=TRUE), 3)}, ",
-    "{round(max(nt_m1$median_cid, na.rm=TRUE), 3)}]"
-  )
-}
-
-for (mid in MODEL_IDS[-1]) {
-  sub <- summary_df[summary_df$scenario == "nt" & summary_df$modelID == mid, ]
-  if (nrow(sub) == 0L) next
-  cli::cli_alert_info(
-    "{mid} median CID range: [{round(min(sub$median_cid, na.rm=TRUE), 3)}, ",
-    "{round(max(sub$median_cid, na.rm=TRUE), 3)}]"
+    "model1 median CID range: [{round(min(mk_m1$median_cid, na.rm=TRUE), 3)}, ",
+    "{round(max(mk_m1$median_cid, na.rm=TRUE), 3)}]"
   )
 }
