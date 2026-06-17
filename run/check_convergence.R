@@ -1,14 +1,9 @@
-#Checks MCMC convergence for every completed inference run across all simulations x 12 models, flags failures, and writes a re-queue list.
+#Checks MCMC convergence for every completed inference 
 
-#Things to do:
-# -all completed RevBayes .log and .trees file pairs.
-# -Call Convergence.R::CheckConvergence() for each run (ESS >= 200, rank-normalised R-hat < 1.01, ASDSF < 0.01).
-# -Save a convergence summary .rds (pass/fail per run with diagnostics).
-# -Print a list of non-converged runs for re-submission with submit_inference.R.
 
 source("R/core/_setup.R")
 
-# --- Argument parsing ---
+
 args_cli      <- commandArgs(trailingOnly = TRUE)
 scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
 model_flag    <- args_cli[which(args_cli == "--model")    + 1]
@@ -26,7 +21,7 @@ requeue_f <- file.path(OutputDir(), "results", "requeue_list.txt")
 
 dir.create(dirname(conv_rds), showWarnings = FALSE, recursive = TRUE)
 
-#--- Helper ---
+#--- Helper
 #run is complete when both log files exist for a given (scenario, gridTag, repID, modelID) 
 .EnumerateCompleted <- function(scenario, grid = PARAM_GRID, nRep = N_REP,
                                 model_ids = MODEL_IDS, nRuns = 2) {
@@ -57,7 +52,7 @@ dir.create(dirname(conv_rds), showWarnings = FALSE, recursive = TRUE)
   do.call(rbind, rows[seq_len(k - 1L)])
 }
 
-# --- Main loop ---
+# --- Main loop
 all_conv <- vector("list", length(SCENARIOS))
 
 for (si in seq_along(SCENARIOS)) {
@@ -119,11 +114,11 @@ for (si in seq_along(SCENARIOS)) {
 
 conv_df <- do.call(rbind, all_conv[!vapply(all_conv, is.null, logical(1))])
 
-# --- Save summary ---
+# --- Save summary
 saveRDS(conv_df, conv_rds)
 cli::cli_alert_success("Convergence summary saved to: {conv_rds}")
 
-# --- Report ---
+# --- Report
 n_pass <- sum(conv_df$pass, na.rm = TRUE)
 n_fail <- sum(!conv_df$pass, na.rm = TRUE)
 n_tot  <- nrow(conv_df)
@@ -142,7 +137,7 @@ if (nrow(fail_df) > 0L) {
   cli::cli_alert_info("ASDSF failures  : {sum(!fail_df$asdsf_pass, na.rm = TRUE)}")
 }
 
-# --- Write re-queue list --
+# --- Write re-queue list
 failed_runs <- conv_df[!conv_df$pass, ]
 
 if (nrow(failed_runs) == 0L) {

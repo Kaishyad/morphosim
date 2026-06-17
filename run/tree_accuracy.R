@@ -3,7 +3,6 @@
 
 source("R/core/_setup.R")
 
-# --- Argument parsing ---
 args_cli      <- commandArgs(trailingOnly = TRUE)
 scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
 model_flag    <- args_cli[which(args_cli == "--model")    + 1]

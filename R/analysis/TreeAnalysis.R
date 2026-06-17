@@ -1,16 +1,13 @@
-# R/TreeAnalysis.R
-# Tree accuracy functions
-# Computes Clustering Information Distance (CID) between posterior tree
-# samples and the known true simulated tree for each replicate and model.
-#
+#Computes Clustering Information Distance (CID) between posterior tree
+#samples and the known true simulated tree for each replicate and model.
+
 # CID is preferred over Robinson-Foulds because it is sensitive to partial
 # topological similarity, does not treat all errors as equally severe, and
 # avoids saturation and imprecision problems (Smith 2019, 2020, 2022).
-#
-# Adapted from TreeAnalysis.R (supervisor / neotrans).
-# Kept and adapted: Dispersion() for within-run convergence diagnostics.
 
-# Used in: analysis/tree_accuracy.R
+# Adapted from TreeAnalysis.R (neotrans).
+
+
 
 # --- Tree accuracy
 

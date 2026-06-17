@@ -1,13 +1,10 @@
 # MCMC convergence diagnostics for inference runs
 
-# Called by run/check_convergence.R after Hamilton jobs complete.
-# Three criteria must all pass before a run's results are used:
-#   1. Rank-normalised R-hat < RHAT_MAX
-#   2. ESS > ESS_MIN for all continuous parameters
-#   3. ASDSF < ASDSF_MAX across paired tree files
+#Rank-normalised R-hat < RHAT_MAX
+# ESS > ESS_MIN for all continuous parameters
+#ASDSF < ASDSF_MAX across paired tree files
 
 
-# --- R-hat ---
 
 #' Rank-normalised split R-hat (Vehtari et al. 2021)
 #'
@@ -39,17 +36,17 @@ ComputeRhat <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
     return(NULL)
   }
 
-  # Drop iteration column; keep only numeric parameters
+  #Drop iteration column; keep only numeric parameters
   params <- intersect(colnames(logs[[1]]), colnames(logs[[2]]))
   params <- params[params != "Iteration"]
 
-  # Rank-normalise: convert each chain's samples to normal scores
+  #Rank-normalise: convert each chain's samples to normal scores
   .RankNorm <- function(x) {
     r <- rank(x, ties.method = "average")
     qnorm((r - 0.375) / (length(r) + 0.25))
   }
 
-  # Split each run in half to create 2*nRuns chains
+  #Split each run in half to create 2*nRuns chains
   chains <- unlist(lapply(logs, function(log) {
     n   <- nrow(log)
     mid <- floor(n / 2)
@@ -68,15 +65,12 @@ ComputeRhat <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
 }
 
 
-# --- ESS ---
 
 #' Effective Sample Size per parameter
 #'
 #' Uses the autocorrelation-based ESS estimate. Flags parameters below
 #' ESS_MIN (defined in _setup.R).
 #'
-#' FIX: was calling LogFile() — now calls ParamLogFile() for the same reason
-#' as ComputeRhat above.
 #'
 #' @inheritParams ComputeRhat
 #' @return Named numeric vector of ESS values.
@@ -98,7 +92,7 @@ ComputeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   .ESS1 <- function(x) {
     n  <- length(x)
     ac <- acf(x, lag.max = n - 1, plot = FALSE)$acf[-1]
-    # Geyer's initial positive sequence estimator
+    #Geyer's initial positive sequence estimator
     pairs   <- ac[seq(1, length(ac) - 1, 2)] + ac[seq(2, length(ac), 2)]
     cutoff  <- which(pairs < 0)[1]
     if (is.na(cutoff)) cutoff <- length(pairs)
@@ -106,7 +100,7 @@ ComputeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
     max(1, n / rho_sum)
   }
 
-  # Pool ESS across runs (sum of independent ESS values)
+  #Pool ESS across runs (sum of independent ESS values)
   vapply(params, function(p) {
     ess_per_run <- vapply(logs, function(log) .ESS1(log[[p]]), numeric(1))
     sum(ess_per_run)
@@ -114,7 +108,6 @@ ComputeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
 }
 
 
-# --- ASDSF ---
 
 #' Average Standard Deviation of Split Frequencies
 #'
@@ -169,7 +162,7 @@ ComputeASDSF <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
 }
 
 
-# --- Combined check ---
+# --- Combined check
 
 #' Check convergence for one inference run
 #'

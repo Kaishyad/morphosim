@@ -1,5 +1,5 @@
 #Simulation-based calibration (Cook, Gelman & Rubin 2006).
-# Verifies that the 95% posterior credible interval contains the known true
+# checks that the 95% posterior credible interval contains the known true
 # parameter value in approximately 95% of replicates across the parameter grid.
 
 #' Extract posterior credible interval for a named parameter
