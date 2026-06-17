@@ -32,7 +32,7 @@ CredibleInterval <- function(scenario, gridTag, repID, modelID,
   }))
 
   if (is.null(samples) || length(samples) == 0) return(NULL)
-  quantile(samples, c(0.025, 0.975))
+  quantile(samples, c(0.025, 0.975), na.rm = TRUE)
 }
 
 #' Test whether a credible interval contains the true value
