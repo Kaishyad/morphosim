@@ -33,7 +33,7 @@ source("R/analysis/TreeAnalysis.R")
 # --- Constants
 set.seed(636)
 N_TIP     <- 50L
-N_REP     <- 50L
+N_REP     <- 25L
 MODEL_IDS <- paste0("model", 1:12)
 
 # Convergence thresholds 
