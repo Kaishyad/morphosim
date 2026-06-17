@@ -84,7 +84,8 @@ summary_rows <- vector("list", 0L)
 
 for (scenario in SCENARIOS) {
   grid        <- ScenarioGrid(scenario)  # FIX: use scenario-specific grid
-  grid$gridTag <- apply(grid, 1, GridTag)
+  grid$gridTag <- apply(grid, 1, function(i) GridTag(as.list(i)))
+  
 
   for (mid in MODEL_IDS) {
     sub <- per_rep_df[per_rep_df$scenario == scenario &
