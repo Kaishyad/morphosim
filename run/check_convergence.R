@@ -82,6 +82,7 @@ for (si in seq_along(SCENARIOS)) {
         list(pass       = FALSE,
              rhat       = NULL,
              ess        = NULL,
+             tree_ess   = NA_real_,
              asdsf      = NA_real_,
              rhat_pass  = FALSE,
              ess_pass   = FALSE,
@@ -95,8 +96,9 @@ for (si in seq_along(SCENARIOS)) {
       repID      = row$repID,
       modelID    = row$modelID,
       pass       = result$pass,
-      rhat_max   = if (!is.null(result$rhat)) max(result$rhat,  na.rm = TRUE) else NA_real_,
-      ess_min    = if (!is.null(result$ess))  min(result$ess,   na.rm = TRUE) else NA_real_,
+      rhat_max   = if (!is.null(result$rhat))          max(result$rhat, na.rm = TRUE) else NA_real_,
+      ess_min    = if (!is.null(result$ess))            min(result$ess,  na.rm = TRUE) else NA_real_,
+      tree_ess   = if (!is.null(result$tree_ess))       result$tree_ess                else NA_real_,
       asdsf      = result$asdsf,
       rhat_pass  = result$rhat_pass,
       ess_pass   = result$ess_pass,
@@ -128,13 +130,23 @@ cli::cli_alert_info("Total runs checked : {n_tot}")
 cli::cli_alert_info("Passed             : {n_pass} ({round(100 * n_pass / n_tot, 1)}%)")
 cli::cli_alert_info("Failed             : {n_fail} ({round(100 * n_fail / n_tot, 1)}%)")
 
-#breakdown by failure criterion
+# Breakdown by failure criterion
 fail_df <- conv_df[!conv_df$pass, ]
 if (nrow(fail_df) > 0L) {
   cli::cli_h2("Failure breakdown")
   cli::cli_alert_info("R-hat failures  : {sum(!fail_df$rhat_pass,  na.rm = TRUE)}")
   cli::cli_alert_info("ESS failures    : {sum(!fail_df$ess_pass,   na.rm = TRUE)}")
   cli::cli_alert_info("ASDSF failures  : {sum(!fail_df$asdsf_pass, na.rm = TRUE)}")
+}
+
+# Tree ESS vs scalar ESS comparison (Martin's diagnostic)
+has_tree_ess <- !is.na(conv_df$tree_ess) & !is.na(conv_df$ess_min)
+if (any(has_tree_ess)) {
+  ratio <- conv_df$tree_ess[has_tree_ess] / conv_df$ess_min[has_tree_ess]
+  cli::cli_h2("Tree ESS vs scalar ESS (move schedule check)")
+  cli::cli_alert_info("Median tree_ess / ess_min ratio : {round(median(ratio), 2)}")
+  cli::cli_alert_info("Runs with tree_ess << ess_min (ratio < 0.5): {sum(ratio < 0.5)}")
+  cli::cli_alert_info("Runs with tree_ess >> ess_min (ratio > 2.0): {sum(ratio > 2.0)}")
 }
 
 # --- Write re-queue list

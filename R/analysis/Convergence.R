@@ -162,27 +162,86 @@ ComputeASDSF <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
 }
 
 
+
+#' Distance-based tree topology ESS
+#'
+#' Estimates ESS for tree topology by computing pairwise CID distances across
+#' the posterior sample, then applying Geyer's autocorrelation ESS estimator
+#' to the mean distance series. Pools across runs by summing independent ESS
+#' values, consistent with ComputeESS().
+#'
+#' A low tree_ess relative to scalar parameter ESS suggests the move schedule
+#' is not proposing topology changes frequently enough. A high tree_ess with
+#' low scalar ESS suggests the converse.
+#'
+#' @inheritParams ComputeRhat
+#' @return Scalar tree topology ESS (pooled across runs), or NA if tree files
+#'   are missing.
+#' @export
+ComputeTreeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
+  .ESS1 <- function(x) {
+    n  <- length(x)
+    if (n < 4) return(NA_real_)
+    ac <- acf(x, lag.max = n - 1, plot = FALSE)$acf[-1]
+    pairs  <- ac[seq(1, length(ac) - 1, 2)] + ac[seq(2, length(ac), 2)]
+    cutoff <- which(pairs < 0)[1]
+    if (is.na(cutoff)) cutoff <- length(pairs)
+    rho_sum <- 1 + 2 * sum(ac[seq_len(2 * cutoff - 1)])
+    max(1, n / rho_sum)
+  }
+
+  ess_per_run <- vapply(seq_len(nRuns), function(run) {
+    gz  <- TreeGzFile(scenario, gridTag, repID, modelID, run)
+    tr  <- sub("\\.tar\\.gz$", ".trees", gz)
+
+    if (file.exists(gz)) {
+      tmp <- tempfile(fileext = ".trees", tmpdir = "/nobackup/djfb16/tmp")
+      system(paste("tar -xzf", shQuote(gz), "-O >", shQuote(tmp)))
+      trees <- tryCatch(ape::read.tree(tmp), error = function(e) NULL)
+    } else if (file.exists(tr)) {
+      trees <- tryCatch(ape::read.tree(tr), error = function(e) NULL)
+    } else {
+      return(NA_real_)
+    }
+
+    if (is.null(trees) || length(trees) < 4) return(NA_real_)
+
+    # Mean CID distance from each tree to all others — scalar series over time
+    dmat    <- TreeDist::ClusteringInfoDistance(trees)
+    mn_dist <- rowMeans(as.matrix(dmat))
+    .ESS1(mn_dist)
+  }, numeric(1))
+
+  if (all(is.na(ess_per_run))) return(NA_real_)
+  sum(ess_per_run, na.rm = TRUE)
+}
+
+
+
 # --- Combined check
 
 #' Check convergence for one inference run
 #'
-#' Combines R-hat, ESS, and ASDSF into a single pass/fail with a summary list.
-#' Writes a plain-text diagnostic file to the-matrix/diagnostics/.
+#' Combines R-hat, ESS, ASDSF, and tree topology ESS into a single pass/fail
+#' with a summary list. Writes a plain-text diagnostic file to
+#' the-matrix/diagnostics/.
 #'
 #' @inheritParams ComputeRhat
 #' @return Named list with elements:
 #'   \item{pass}{Logical: TRUE if all three criteria met.}
 #'   \item{rhat}{Named vector of R-hat values.}
-#'   \item{ess}{Named vector of ESS values.}
+#'   \item{ess}{Named vector of scalar parameter ESS values.}
+#'   \item{tree_ess}{Scalar tree topology ESS (pooled across runs).}
 #'   \item{asdsf}{Scalar ASDSF.}
 #'   \item{rhat_pass}{Logical: max R-hat < RHAT_MAX.}
 #'   \item{ess_pass}{Logical: min ESS > ESS_MIN.}
 #'   \item{asdsf_pass}{Logical: ASDSF < ASDSF_MAX.}
 #' @export
 CheckConvergence <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
-  rhat  <- ComputeRhat( scenario, gridTag, repID, modelID, nRuns)
-  ess   <- ComputeESS(  scenario, gridTag, repID, modelID, nRuns)
-  asdsf <- ComputeASDSF(scenario, gridTag, repID, modelID, nRuns)
+  rhat     <- ComputeRhat(    scenario, gridTag, repID, modelID, nRuns)
+  ess      <- ComputeESS(     scenario, gridTag, repID, modelID, nRuns)
+  asdsf    <- ComputeASDSF(   scenario, gridTag, repID, modelID, nRuns)
+  tree_ess <- ComputeTreeESS( scenario, gridTag, repID, modelID, nRuns)
 
   rhat_pass  <- !is.null(rhat)  && max(rhat,  na.rm = TRUE) < RHAT_MAX
   ess_pass   <- !is.null(ess)   && min(ess,   na.rm = TRUE) > ESS_MIN
@@ -193,6 +252,7 @@ CheckConvergence <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
     pass       = pass,
     rhat       = rhat,
     ess        = ess,
+    tree_ess   = tree_ess,
     asdsf      = asdsf,
     rhat_pass  = rhat_pass,
     ess_pass   = ess_pass,
@@ -206,8 +266,9 @@ CheckConvergence <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
     paste("grid:    ", gridTag),
     paste("rep:     ", repID),
     paste("pass:    ", pass),
-    paste("rhat_max:", if (!is.null(rhat)) round(max(rhat, na.rm = TRUE), 4) else "NA"),
-    paste("ess_min: ", if (!is.null(ess))  round(min(ess,  na.rm = TRUE), 1) else "NA"),
+    paste("rhat_max:", if (!is.null(rhat))   round(max(rhat, na.rm = TRUE), 4) else "NA"),
+    paste("ess_min: ", if (!is.null(ess))    round(min(ess,  na.rm = TRUE), 1) else "NA"),
+    paste("tree_ess:", if (!is.na(tree_ess)) round(tree_ess, 1)                else "NA"),
     paste("asdsf:   ", round(asdsf, 5))
   ), diagPath)
 
@@ -239,8 +300,9 @@ ConvergenceSummary <- function(scenario, modelID,
         repID      = repID,
         modelID    = modelID,
         pass       = result$pass,
-        rhat_max   = if (!is.null(result$rhat)) max(result$rhat, na.rm = TRUE) else NA_real_,
-        ess_min    = if (!is.null(result$ess))  min(result$ess,  na.rm = TRUE) else NA_real_,
+        rhat_max   = if (!is.null(result$rhat))   max(result$rhat, na.rm = TRUE) else NA_real_,
+        ess_min    = if (!is.null(result$ess))     min(result$ess,  na.rm = TRUE) else NA_real_,
+        tree_ess   = if (!is.na(result$tree_ess))  result$tree_ess                else NA_real_,
         asdsf      = result$asdsf,
         stringsAsFactors = FALSE
       )
