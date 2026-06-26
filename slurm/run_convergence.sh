@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --ntasks=1
 #SBATCH --mem=8G
-#SBATCH --time=6:00:00
+#SBATCH --time=12:00:00
 #SBATCH -p shared
 #SBATCH --job-name=convergence
 #SBATCH --output=/nobackup/djfb16/morphosim/logs/convergence.out
