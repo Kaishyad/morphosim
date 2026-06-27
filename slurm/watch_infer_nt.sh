@@ -2,7 +2,7 @@
 
 MATRIX=/nobackup/djfb16/the-matrix
 SCENARIO=nt
-MODEL=model3
+MODEL=model11
 EXPECTED=1920  
 
 echo "Watching for $EXPECTED completed $MODEL jobs in $MATRIX/results/$SCENARIO..."
