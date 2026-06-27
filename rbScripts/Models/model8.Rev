@@ -1,119 +1,86 @@
-# Model 8: Two-partition, lognormal among-character rate variation,
-#           asymmetric neomorphic Q (fnFreeK), separate partition rates,
-#           k-partitioned transformational characters, informative coding.
-#(Adapted from ns_nt_ki.Rev)
+#Model 8(target model)
 
-# This is the direct analogue of Model 4 (NT baseline) with lognormal rate
-# heterogeneity added. 
-#   - Asymmetric gain/loss rates for neomorphic characters (rate_loss)
-#   - Among-character rate variation via lognormal (rate_log_sd)
-#   - Separate overall rates per partition (rate_neo)
-#   - k-partitioned transformational characters
+# Partitioning : Two (neo | trans)
+# Neo Q : Asymmetric fnFreeBinary
+# Trans Q  : Asymmetric fnFreeBinary
+# APRV : Present (partition rate scalar)
+# ACRV  : Present (shared lognormal, 4 categories)
+# Root freq : Stationary
 
-# Comparing against Model 7 isolates the contribution of Q-matrix asymmetry.
-# Comparing against Model 9 isolates the contribution of partition rates.
-# Comparing against Model 10 isolates the contribution of k-partitioning.
+#It matches the simulation model in both partition structure and ACRV distribution. It is the primary comparator against which all other models are evaluated.
+#M7 and M9 differ only in ACRV distribution, enabling a direct three-way comparison of Gamma vs Lognormal vs Free rates.
 
-#Separate neomorphic and transformational partitions
-partitioned[1] <- neo
-partitioned[2] <- trans
-nChar <- v(neo.nchar(), trans.nchar())
-
-#--- Dataset properties
-taxa <- neo.names()
+taxa  <- neo.names()
 nTaxa <- neo.size()
 nEdge <- 2 * nTaxa - 3
 
 moves = VectorMoves()
 
-#--- Tree topology- Uniform prior 
+#--- Tree topology
 topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-# --- Branch lengths: compound Dirichlet parameterisation 
+#--- Branch lengths (compound Dirichlet)
 gamma_shape <- 2
-exp_steps <- 1 
+exp_steps   <- 1
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
 moves.append( mvScale(tree_length, weight = 1.0) )
 
 rel_br_lengths ~ dnDirichlet( rep(1.0, nEdge) )
-moves.append( mvBetaSimplex(rel_br_lengths, weight = nEdge / 3.0) )
+moves.append( mvBetaSimplex(rel_br_lengths,      weight = nEdge / 3.0) )
 moves.append( mvDirichletSimplex(rel_br_lengths, weight = nEdge / 20.0) )
 br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
+#--- APRV: partition rate scalar
+part_rate_neo   <- 1.0
+part_rate_trans ~ dnExponential(1.0)
+moves.append( mvScale(part_rate_trans, weight = 1.0) )
 
-#--- Partition rates
+#--- Asymmetric Q matrices
+gain_loss_neo ~ dnLognormal(0, 1)
+moves.append( mvScale(gain_loss_neo, weight = 1.0) )
+Q_neo := fnFreeBinary( simplex(1, gain_loss_neo), rescaled = TRUE )
 
-#Lognormal among-character rate variation
-rate_log_sd ~ dnGamma(1, 1)
-moves.append( mvScale(rate_log_sd, weight = 1.5) )
-rate_categories := fnDiscretizeDistribution( dnLognormal(0, rate_log_sd), 6 )
+gain_loss_trans ~ dnLognormal(0, 1)
+moves.append( mvScale(gain_loss_trans, weight = 1.0) )
+Q_trans := fnFreeBinary( simplex(1, gain_loss_trans), rescaled = TRUE )
 
-#Neomorphic partition 
-rate_neo ~ dnLognormal(mean = 0, sd = 2)
-moves.append( mvScale(rate_neo, weight = 0.5) )
-partition_rate := [ rate_neo / (1 + rate_neo), (1 / (1 + rate_neo)) ] / nChar * sum(nChar)
-
-#Asymmetric gain/loss rates 
-rate_loss ~ dnLognormal(mean = 0, sd = 2)
-moves.append( mvScale(rate_loss, lambda = 1, weight = 0.5) )
-
-rate01 := 2 / (1 + rate_loss)
-rate10 := 2 * rate_loss / (1 + rate_loss)
-rates := [ [0.0, rate01],
-           [rate10, 0.0] ]
-neoQ := fnFreeK(rates)
-
-#Stationary distribution of the asymmetric Q matrix used as root frequencies.
-root_freqs ~ dnDirichlet([1, 1])
-moves.append( mvBetaSimplex(root_freqs, weight = 1.0) )
-rtfq1 := root_freqs[1]
-
-#--- Neomorphic partition
-#asymmetric binary Q matrix, partition-scaled branch rates,
-#lognormal site-rate variation, informative ascertainment bias correction.
-m_morph[1] ~ dnPhyloCTMC(
-  tree = phylogeny,
-  branchRates = partition_rate[1],
-  siteRates = rate_categories,
-  Q = neoQ,
-  rootFrequencies = root_freqs,
-  type = "Standard",
-  coding = "informative"
+#--- ACRV: shared lognormal discretised into 4 rate categories
+#Mean-one parameterisation: mu = -sd^2/2 so E[rate] = 1.
+#One acrv_sd shared across both partitions — the assumption is that
+#among-character rate variance is a global property of the data.
+NUM_RATE_CATS <- 4
+acrv_sd ~ dnExponential(1.0)
+moves.append( mvScale(acrv_sd, weight = 1.0) )
+site_rates := fnDiscretizeDistribution(
+  dnLognormal(-acrv_sd^2 / 2, acrv_sd), NUM_RATE_CATS
 )
-m_morph[1].clamp(neo)
 
-#--- Transformational partition
-#k-partitioned by number of states, symmetric JC Q
-#per sub-partition, shared partition-scaled branch rates and site-rate variation.
-maxK = 10
-idx = 1
-for (k in 2:maxK) {
-  transByState[k - 1] <- partitioned[2]
-  transByState[k - 1].setNumStatesPartition(k)
-  transByState[k - 1].removeExcludedCharacters()
-  nc = transByState[k - 1].nchar()
-  
-  if (nc > 0) {
-    print(nc, "characters in partition with", k, "states")
-    q[idx] <- fnJC(k)
-    m_morph[idx + 1] ~ dnPhyloCTMC(
-      tree = phylogeny,
-      branchRates = partition_rate[2],
-      siteRates = rate_categories,
-      Q = q[idx],
-      type = "Standard",
-      coding = "informative"
-    )
-    m_morph[idx + 1].clamp(transByState[k - 1])
-    idx = idx + 1
-  }
-}
+#--- Model: two partitions, asymmetric Q, lognormal ACRV
+m_neo ~ dnPhyloCTMC(
+  tree        = phylogeny,
+  Q           = Q_neo,
+  branchRates = part_rate_neo,
+  siteRates   = site_rates,
+  type        = "Standard",
+  coding      = "variable"
+)
+m_neo.clamp(neo)
 
-#--- Conduct MCMC analysis
+m_trans ~ dnPhyloCTMC(
+  tree        = phylogeny,
+  Q           = Q_trans,
+  branchRates = part_rate_trans,
+  siteRates   = site_rates,
+  type        = "Standard",
+  coding      = "variable"
+)
+m_trans.clamp(trans)
+
+#--- Monitors
 mymodel = model(phylogeny)
 monitors = VectorMonitors()
-monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE, rate_neo, rate_loss, rate_log_sd, rtfq1) )
+monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )

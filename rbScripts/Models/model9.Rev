@@ -1,110 +1,97 @@
-# Model 9: Two-partition, lognormal among-character rate variation,
-#           asymmetric neomorphic Q (fnFreeK), NO separate partition rates,
-#           k-partitioned transformational characters, informative coding.
+#Model 9
 
-# (Adapted from ns_n_ki.Rev), the 'n' means no partition rates.
+# Partitioning : Two (neo | trans)
+# Neo Q  : Asymmetric fnFreeBinary
+# Trans Q : Asymmetric fnFreeBinary
+# APRV : Present (partition rate scalar)
+# ACRV  : Present (free rates, 4 categories)
+# Root freq : Stationary
 
-# Identical to Model 8 except that rate_neo and partition_rate are removed;
-# both partitions share the same branch rates directly from br_lengths.
-# This isolates the contribution of partition-level rate scaling: comparing
-# Model 9 vs Model 8 shows whether allowing neo and trans to evolve at
-# different overall tempos improves inference beyond shared-rate partitioning.
+#Free rates makes noparametric assumption about the shape of the rate distribution both the rate values and their weights are estimated from the data
+#It is the most flexible ACRV option and serves as the non-parametric upper bound. If M9 does not outperform
+#M8, the lognormal assumption in the NT generative model is adequate.
+#Free rates costs more parameters (2*NUM_RATE_CATS - 1 vs 1) so it is also an implicit over-parameterisation test at low character counts.
 
-#Separate neomorphic and transformational partitions
-partitioned[1] <- neo
-partitioned[2] <- trans
-nChar <- v(neo.nchar(), trans.nchar())
-
-#--- Dataset properties
-taxa <- neo.names()
+taxa  <- neo.names()
 nTaxa <- neo.size()
 nEdge <- 2 * nTaxa - 3
 
 moves = VectorMoves()
 
-#--- Tree topology- Uniform prior 
+#--- Tree topology
 topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-# --- Branch lengths: compound Dirichlet parameterisation 
+#--- Branch lengths (compound Dirichlet)
 gamma_shape <- 2
-exp_steps <- 1 
+exp_steps   <- 1
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
 moves.append( mvScale(tree_length, weight = 1.0) )
 
 rel_br_lengths ~ dnDirichlet( rep(1.0, nEdge) )
-moves.append( mvBetaSimplex(rel_br_lengths, weight = nEdge / 3.0) )
+moves.append( mvBetaSimplex(rel_br_lengths,      weight = nEdge / 3.0) )
 moves.append( mvDirichletSimplex(rel_br_lengths, weight = nEdge / 20.0) )
 br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-#Lognormal among-character rate variation
-rate_log_sd ~ dnGamma(1, 1)
-moves.append( mvScale(rate_log_sd, weight = 1.5) )
-rate_categories := fnDiscretizeDistribution( dnLognormal(0, rate_log_sd), 6 )
+#--- APRV: partition rate scalar
+part_rate_neo   <- 1.0
+part_rate_trans ~ dnExponential(1.0)
+moves.append( mvScale(part_rate_trans, weight = 1.0) )
 
-# Root frequency prior for neomorphic characters.
-# Weight restored to 1.0 (consistent with all other models): the original 26.0
-# was a tuning hack to compensate for the absence of rate_neo, but inflated
-# weights can cause over-mixing and unreliable marginal likelihoods.
-# If convergence is slow, prefer running longer chains over inflating move weights.
-root_freqs ~ dnDirichlet([1, 1])
-moves.append( mvBetaSimplex(root_freqs, weight = 1.0) )
-rtfq1 := root_freqs[1]
+#--- Asymmetric Q matrices
+gain_loss_neo ~ dnLognormal(0, 1)
+moves.append( mvScale(gain_loss_neo, weight = 1.0) )
+Q_neo := fnFreeBinary( simplex(1, gain_loss_neo), rescaled = TRUE )
 
-# Asymmetric gain/loss rates for neomorphic characters (Muller & Wagner 1991;
-# Sereno 2007). rate_loss > 1 means losses more probable than gains.
-rate_loss ~ dnLognormal(mean = 0, sd = 2)
-moves.append( mvScale(rate_loss, lambda = 1, weight = 1.0) )
+gain_loss_trans ~ dnLognormal(0, 1)
+moves.append( mvScale(gain_loss_trans, weight = 1.0) )
+Q_trans := fnFreeBinary( simplex(1, gain_loss_trans), rescaled = TRUE )
 
-rate01 := 2 / (1 + rate_loss)
-rate10 := 2 * rate_loss / (1 + rate_loss)
-rates := [ [0.0, rate01],
-           [rate10, 0.0] ]
-neoQ := fnFreeK(rates)
+#--- ACRV: free rates (non-parametric)
+#Rate values (site_rates_raw) and weights (site_rate_weights) are both
+#estimated. Weights are drawn from a Dirichlet so they sum to 1.
+#Rates are drawn iid from an Exponential; they are not constrained to
+#sum to 1 internally but the PhyloCTMC likelihood marginalises correctly.
+#Mean-one normalisation is implicit via the weight-averaged expectation.
+NUM_RATE_CATS <- 4
 
-#--- Neomorphic partition
-#asymmetric Q, shared branch rates (no partition scaling),
-#lognormal site-rate variation, informative ascertainment bias correction.
-m_morph[1] ~ dnPhyloCTMC(
-  tree = phylogeny,
-  siteRates = rate_categories,
-  Q = neoQ,
-  rootFrequencies = root_freqs,
-  type = "Standard",
-  coding = "informative"
+site_rates_raw ~ dnDirichlet( rep(1.0, NUM_RATE_CATS) )
+moves.append( mvBetaSimplex(site_rates_raw,      weight = NUM_RATE_CATS / 3.0) )
+moves.append( mvDirichletSimplex(site_rates_raw, weight = 1.0) )
+
+# Scale so the mean rate = 1 (identifiability with tree_length)
+site_rate_weights ~ dnDirichlet( rep(1.0, NUM_RATE_CATS) )
+moves.append( mvBetaSimplex(site_rate_weights,      weight = NUM_RATE_CATS / 3.0) )
+moves.append( mvDirichletSimplex(site_rate_weights, weight = 1.0) )
+
+# Weighted mean-normalised rates
+site_rates := site_rates_raw / sum(site_rates_raw * site_rate_weights)
+
+#--- Model: two partitions, asymmetric Q, free rates ACRV
+m_neo ~ dnPhyloCTMC(
+  tree        = phylogeny,
+  Q           = Q_neo,
+  branchRates = part_rate_neo,
+  siteRates   = site_rates,
+  type        = "Standard",
+  coding      = "variable"
 )
-m_morph[1].clamp(neo)
+m_neo.clamp(neo)
 
-#--- Transformational partition
-#k-partitioned by number of states, symmetric JC Q,
-#shared branch rates (no partition scaling), lognormal site-rate variation.
-maxK = 10
-idx = 1
-for (k in 2:maxK) {
-  transByState[k - 1] <- partitioned[2]
-  transByState[k - 1].setNumStatesPartition(k)
-  transByState[k - 1].removeExcludedCharacters()
-  nc = transByState[k - 1].nchar()
+m_trans ~ dnPhyloCTMC(
+  tree        = phylogeny,
+  Q           = Q_trans,
+  branchRates = part_rate_trans,
+  siteRates   = site_rates,
+  type        = "Standard",
+  coding      = "variable"
+)
+m_trans.clamp(trans)
 
-  if (nc > 0) {
-    print(nc, "characters in partition with", k, "states")
-    q[idx] <- fnJC(k)
-    m_morph[idx + 1] ~ dnPhyloCTMC(
-      tree = phylogeny,
-      siteRates = rate_categories,
-      Q = q[idx],
-      type = "Standard",
-      coding = "informative"
-    )
-    m_morph[idx + 1].clamp(transByState[k - 1])
-    idx = idx + 1
-  }
-}
-
-#--- Conduct MCMC analysis
+#--- Monitors
 mymodel = model(phylogeny)
 monitors = VectorMonitors()
-monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE, rate_loss, rate_log_sd, rtfq1) )
+monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )

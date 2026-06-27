@@ -1,110 +1,85 @@
-# Model 7:  (based on ns_t_ki.Rev) Two-partition, lognormal among-character rate variation,
-#           symmetric neomorphic Q, separate partition rates, k-partitioned
-#           transformational characters, informative (ascertainment-corrected) coding.
+#Model 7
 
+# Partitioning : Two (neo | trans)
+# Neo Q : Asymmetric fnFreeBinary
+# Trans Q : Asymmetric fnFreeBinary
+# APRV : Present (partition rate scalar)
+# ACRV: Present (Gamma, 4 categories)
+# Root freq : Stationary
 
-# Separate neomorphic and transformational partitions
-partitioned[1] <- neo
-partitioned[2] <- trans
-nChar <- v(neo.nchar(), trans.nchar())
+#full NT model using Gamma-distributed ACRV. Comparing M7 vs M8 (lognormal) vs M9 (free rates) directly tests whether the ACRV distributional
+#assumption affects inference accuracy. M7 is the Gamma baseline in comparison.
 
-# Dataset properties
-taxa <- neo.names()
+taxa  <- neo.names()
 nTaxa <- neo.size()
 nEdge <- 2 * nTaxa - 3
 
 moves = VectorMoves()
 
-#--- Tree topology- Uniform prior 
+#--- Tree topology
 topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-# --- Branch lengths: compound Dirichlet parameterisation 
+#--- Branch lengths (compound Dirichlet)
 gamma_shape <- 2
-exp_steps <- 1 # Expected changes per site across the tree.
+exp_steps   <- 1
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
 moves.append( mvScale(tree_length, weight = 1.0) )
 
 rel_br_lengths ~ dnDirichlet( rep(1.0, nEdge) )
-moves.append( mvBetaSimplex(rel_br_lengths, weight = nEdge / 3.0) )
+moves.append( mvBetaSimplex(rel_br_lengths,      weight = nEdge / 3.0) )
 moves.append( mvDirichletSimplex(rel_br_lengths, weight = nEdge / 20.0) )
 br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-#--- Partition rates
+#--- APRV: partition rate scalar
+part_rate_neo   <- 1.0
+part_rate_trans ~ dnExponential(1.0)
+moves.append( mvScale(part_rate_trans, weight = 1.0) )
 
-#--- Lognormal among-character rate variation (Wagner 2012, doi: 10.1098/rsbl.2011.0523).
-# rate_log_sd controls the spread of the lognormal; a Gamma(1,1) prior allows
-# values near zero (effectively rate-homogeneous) and heavier heterogeneity.
-# Mean = 1, so tree length is interpretable as character changes per site.
-# 6 categories following Wright & Wynd (2024).
-rate_log_sd ~ dnGamma(1, 1)
-moves.append( mvScale(rate_log_sd, weight = 1.0) )
-rate_categories := fnDiscretizeDistribution( dnLognormal(0, rate_log_sd), 6 )
+#--- Asymmetric Q matrices
+gain_loss_neo ~ dnLognormal(0, 1)
+moves.append( mvScale(gain_loss_neo, weight = 1.0) )
+Q_neo := fnFreeBinary( simplex(1, gain_loss_neo), rescaled = TRUE )
 
-#--- Neomorphic partition may evolve at a different overall rate than transformational.
-# partition_rate normalises so the character-weighted mean rate equals tree_length.
-# From https://revbayes.github.io/tutorials/partition/
-rate_neo ~ dnLognormal(mean = 0, sd = 2)
-moves.append( mvScale(rate_neo, weight = 1.0) )
-partition_rate := [ rate_neo / (1 + rate_neo), (1 / (1 + rate_neo)) ] / nChar * sum(nChar)
+gain_loss_trans ~ dnLognormal(0, 1)
+moves.append( mvScale(gain_loss_trans, weight = 1.0) )
+Q_trans := fnFreeBinary( simplex(1, gain_loss_trans), rescaled = TRUE )
 
-# Root frequency prior for neomorphic characters.
-root_freqs ~ dnDirichlet([1, 1])
-moves.append( mvBetaSimplex(root_freqs, weight = 1.0) )
-rtfq1 := root_freqs[1]
-
-#--- Neomorphic partition: symmetric Mk (JC) Q matrix.
-# Gain and loss rates are constrained equal; the asymmetric rate_loss parameter
-# is absent here (contrast with Model 8).
-neoQ := fnJC(2)
-
-m_morph[1] ~ dnPhyloCTMC(
-  tree = phylogeny,
-  branchRates = partition_rate[1],
-  siteRates = rate_categories,
-  Q = neoQ,
-  rootFrequencies = root_freqs,
-  type = "Standard",
-  coding = "informative"
+#--- ACRV: Gamma discretised into 4 rate categories
+#Shape parameter alpha controls variance: small alpha = high variance.
+#Mean is fixed to 1 by setting rate = alpha (i.e. mean = alpha/alpha = 1).
+NUM_RATE_CATS  <- 4
+alpha ~ dnExponential(1.0)
+moves.append( mvScale(alpha, weight = 1.0) )
+site_rates := fnDiscretizeDistribution(
+  dnGamma(alpha, alpha), NUM_RATE_CATS
 )
-m_morph[1].clamp(neo)
 
-#--- Transformational partition: k-partitioned by number of states.
-# Each sub-partition uses a symmetric JC Q matrix for its k states.
-# Partitioning by k avoids conflating characters with different numbers of
-# states under a single Q matrix (Wright et al. 2016).
-# coding = "informative" applies the ascertainment bias correction within
-# each sub-partition (Lewis 2001).
-maxK = 10
-idx = 1
-for (k in 2:maxK) {
-  transByState[k - 1] <- partitioned[2]
-  transByState[k - 1].setNumStatesPartition(k)
-  # Reduce memory footprint, per https://github.com/revbayes/revbayes/issues/552
-  transByState[k - 1].removeExcludedCharacters()
-  nc = transByState[k - 1].nchar()
+#--- Model: two partitions, asymmetric Q, Gamma ACRV
+m_neo ~ dnPhyloCTMC(
+  tree        = phylogeny,
+  Q           = Q_neo,
+  branchRates = part_rate_neo,
+  siteRates   = site_rates,
+  type        = "Standard",
+  coding      = "variable"
+)
+m_neo.clamp(neo)
 
-  if (nc > 0) {
-    print(nc, "characters in partition with", k, "states")
-    q[idx] <- fnJC(k)
-    m_morph[idx + 1] ~ dnPhyloCTMC(
-      tree = phylogeny,
-      branchRates = partition_rate[2],
-      siteRates = rate_categories,
-      Q = q[idx],
-      type = "Standard",
-      coding = "informative"
-    )
-    m_morph[idx + 1].clamp(transByState[k - 1])
-    idx = idx + 1
-  }
-}
+m_trans ~ dnPhyloCTMC(
+  tree        = phylogeny,
+  Q           = Q_trans,
+  branchRates = part_rate_trans,
+  siteRates   = site_rates,
+  type        = "Standard",
+  coding      = "variable"
+)
+m_trans.clamp(trans)
 
-#--- Conduct MCMC analysis
+#--- Monitors
 mymodel = model(phylogeny)
-
 monitors = VectorMonitors()
-monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE, rate_neo, rate_log_sd, rtfq1) )
+monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )
