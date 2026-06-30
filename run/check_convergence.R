@@ -4,16 +4,25 @@
 source("R/core/_setup.R")
 
 
-args_cli      <- commandArgs(trailingOnly = TRUE)
-scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
-model_flag    <- args_cli[which(args_cli == "--model")    + 1]
+args_cli       <- commandArgs(trailingOnly = TRUE)
+scenario_flag  <- args_cli[which(args_cli == "--scenario")  + 1]
+model_flag     <- args_cli[which(args_cli == "--model")     + 1]
+max_trees_flag <- args_cli[which(args_cli == "--max-trees") + 1]
 
 SCENARIOS  <- if (!is.na(scenario_flag[1])) scenario_flag else c("nt", "mk")
 MODEL_IDS  <- if (!is.na(model_flag[1]))    model_flag    else paste0("model", 1:12)
 
-message(sprintf("Scenarios: %s | Models: %s",
+# Allow overriding the O(n^2) tree-distance cap from the command line, e.g.
+# --max-trees 300, without editing _setup.R. ComputeTreeESS() picks this up
+# via TREE_ESS_MAX_TREES if set.
+if (!is.na(max_trees_flag[1])) {
+  TREE_ESS_MAX_TREES <- as.integer(max_trees_flag[1])
+}
+
+message(sprintf("Scenarios: %s | Models: %s%s",
                 paste(SCENARIOS,  collapse = ", "),
-                paste(MODEL_IDS,  collapse = ", ")))
+                paste(MODEL_IDS,  collapse = ", "),
+                if (exists("TREE_ESS_MAX_TREES")) sprintf(" | max-trees: %d", TREE_ESS_MAX_TREES) else ""))
 
 #Output paths
 conv_rds  <- file.path(OutputDir(), "results", "convergence_summary.rds")
@@ -81,9 +90,11 @@ for (si in seq_along(SCENARIOS)) {
   cli::cli_alert_info("{nrow(completed)} run(s) to check for scenario '{scenario}'")
   
   conv_rows <- vector("list", nrow(completed))
+  rep_times <- numeric(nrow(completed))
   
   for (ri in seq_len(nrow(completed))) {
     row     <- completed[ri, ]
+    t0      <- Sys.time()
     result  <- tryCatch(
       CheckConvergence(row$scenario, row$gridTag, row$repID, row$modelID),
       error = function(e) {
@@ -101,6 +112,7 @@ for (si in seq_along(SCENARIOS)) {
              asdsf_pass = FALSE)
       }
     )
+    rep_times[ri] <- as.numeric(Sys.time() - t0, units = "secs")
     
     conv_rows[[ri]] <- data.frame(
       scenario   = row$scenario,
@@ -119,25 +131,29 @@ for (si in seq_along(SCENARIOS)) {
     )
     
     if (ri %% 50L == 0L) {
-      cli::cli_alert_info("  {ri}/{nrow(completed)} checked...")
+      cli::cli_alert_info("  {ri}/{nrow(completed)} checked... (avg {round(mean(rep_times[seq_len(ri)]), 2)}s/run, last 50 avg {round(mean(rep_times[max(1, ri-49):ri]), 2)}s/run)")
+
+      # Checkpoint progress so far so a SLURM walltime kill or node failure
+      # doesn't lose everything checked in this session. Safe to do
+      # repeatedly: combines with existing_df exactly as the final save does.
+      partial_new <- do.call(rbind, conv_rows[seq_len(ri)])
+      partial_df  <- if (!is.null(existing_df)) rbind(existing_df, partial_new) else partial_new
+      saveRDS(partial_df, conv_rds)
     }
   }
   
   all_conv[[si]] <- do.call(rbind, conv_rows)
+
+  # Refresh existing_df with this scenario's full results before moving to
+  # the next scenario, so subsequent checkpoints/final save build on a
+  # complete, de-duplicated base rather than stale pre-scenario state.
+  existing_df <- if (!is.null(existing_df)) rbind(existing_df, all_conv[[si]]) else all_conv[[si]]
+  saveRDS(existing_df, conv_rds)
 }
 
-# --- Combine new results with existing
-new_df  <- do.call(rbind, all_conv[!vapply(all_conv, is.null, logical(1))])
-conv_df <- if (!is.null(existing_df) && !is.null(new_df)) {
-  rbind(existing_df, new_df)
-} else if (!is.null(existing_df)) {
-  existing_df
-} else {
-  new_df
-}
-
-# --- Save combined summary
-saveRDS(conv_df, conv_rds)
+# --- Final summary (existing_df already holds all combined results,
+# checkpointed incrementally during the loop above)
+conv_df <- existing_df
 cli::cli_alert_success("Convergence summary saved to: {conv_rds} ({nrow(conv_df)} total rows)")
 
 # --- Report on full combined dataset
