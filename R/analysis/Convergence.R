@@ -163,6 +163,42 @@ ComputeASDSF <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
 
 
 
+# --- Distance-based tree topology ESS (with safety timeout) -----------------
+
+#' Run an expression with a wall-clock timeout
+#'
+#' Uses R's built-in setTimeLimit() via a tryCatch on the "reached elapsed
+#' time limit" condition. If the expression does not complete within
+#' `seconds`, returns NA via the supplied `on_timeout` value instead of
+#' hanging the whole batch.
+#'
+#' @param expr        Expression to evaluate.
+#' @param seconds     Wall-clock timeout in seconds.
+#' @param on_timeout  Value to return if the timeout is hit.
+#' @keywords internal
+.WithTimeout <- function(expr, seconds, on_timeout = NA_real_) {
+  result <- on_timeout
+  withCallingHandlers(
+    tryCatch({
+      setTimeLimit(elapsed = seconds, transient = TRUE)
+      result <- expr
+      setTimeLimit() # reset
+      result
+    }, error = function(e) {
+      setTimeLimit() # always reset, even on error
+      if (grepl("reached elapsed time limit|reached CPU time limit",
+                conditionMessage(e))) {
+        warning("ComputeTreeESS: timed out after ", seconds,
+                "s — skipping this run (tree_ess = NA)")
+      } else {
+        warning("ComputeTreeESS: error — ", conditionMessage(e))
+      }
+      on_timeout
+    }),
+    warning = function(w) invokeRestart("muffleWarning")
+  )
+}
+
 #' Distance-based tree topology ESS
 #'
 #' Estimates ESS for tree topology by computing pairwise CID distances across
@@ -174,11 +210,19 @@ ComputeASDSF <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
 #' is not proposing topology changes frequently enough. A high tree_ess with
 #' low scalar ESS suggests the converse.
 #'
+#' SAFETY: the pairwise distance computation is O(n^2) in the number of
+#' sampled trees and can stall on runs with very large posterior samples or
+#' malformed tree files. Each run's computation is wrapped in a wall-clock
+#' timeout (default 60s, set via TREE_ESS_TIMEOUT_SEC in _setup.R if defined,
+#' else 60) so a single pathological run cannot block the whole batch.
+#'
 #' @inheritParams ComputeRhat
+#' @param timeoutSec Per-run wall-clock timeout in seconds (default 60).
 #' @return Scalar tree topology ESS (pooled across runs), or NA if tree files
-#'   are missing.
+#'   are missing or the computation timed out on all runs.
 #' @export
-ComputeTreeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
+ComputeTreeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2,
+                            timeoutSec = if (exists("TREE_ESS_TIMEOUT_SEC")) TREE_ESS_TIMEOUT_SEC else 60) {
   .ESS1 <- function(x) {
     n  <- length(x)
     if (n < 4) return(NA_real_)
@@ -190,7 +234,7 @@ ComputeTreeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
     max(1, n / rho_sum)
   }
 
-  ess_per_run <- vapply(seq_len(nRuns), function(run) {
+  .OneRun <- function(run) {
     gz  <- TreeGzFile(scenario, gridTag, repID, modelID, run)
     tr  <- sub("\\.tar\\.gz$", ".trees", gz)
 
@@ -206,10 +250,24 @@ ComputeTreeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
 
     if (is.null(trees) || length(trees) < 4) return(NA_real_)
 
+    # Cap the number of trees used for the O(n^2) distance matrix —
+    # thin to at most MAX_TREES_FOR_DIST trees evenly spaced through the
+    # posterior sample. This keeps runtime bounded on very long chains
+    # while still capturing the autocorrelation structure.
+    MAX_TREES_FOR_DIST <- if (exists("TREE_ESS_MAX_TREES")) TREE_ESS_MAX_TREES else 1000L
+    if (length(trees) > MAX_TREES_FOR_DIST) {
+      idx   <- round(seq(1, length(trees), length.out = MAX_TREES_FOR_DIST))
+      trees <- trees[idx]
+    }
+
     # Mean CID distance from each tree to all others — scalar series over time
     dmat    <- TreeDist::ClusteringInfoDistance(trees)
     mn_dist <- rowMeans(as.matrix(dmat))
     .ESS1(mn_dist)
+  }
+
+  ess_per_run <- vapply(seq_len(nRuns), function(run) {
+    .WithTimeout(.OneRun(run), seconds = timeoutSec, on_timeout = NA_real_)
   }, numeric(1))
 
   if (all(is.na(ess_per_run))) return(NA_real_)
