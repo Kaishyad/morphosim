@@ -15,10 +15,13 @@ source("R/core/_setup.R")
 
 # --- Configuration ---
 
-SCENARIOS       <- c("nt", "mk")
+args_cli      <- commandArgs(trailingOnly = TRUE)
+scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
+
+SCENARIOS       <- if (!is.na(scenario_flag[1])) scenario_flag else c("nt", "mk")
 BASELINE_ID     <- "model1"
-GAM_K           <- 10L    # basis dimension for all smooths
-RUN_SENSITIVITY <- TRUE   # re-fit with k*2 and check threshold stability
+GAM_K           <- 10L
+RUN_SENSITIVITY <- TRUE
 
 predictors <- c("tree_length", "rate_ratio", "chars_per_taxon")
 
@@ -41,7 +44,10 @@ dir.create(file.path(OutputDir(), "results"), showWarnings = FALSE,
 for (scenario in SCENARIOS) {
   cli::cli_h1("Scenario: {scenario}")
 
-  # Per-scenario output paths
+  # FIX: use scenario-specific grid for joining parameters
+  grid         <- ScenarioGrid(scenario)
+  grid$gridTag <- apply(grid, 1, function(r) GridTag(as.list(r)))
+
   thresh_rds <- file.path(OutputDir(), "results",
                           paste0("threshold_summary_", scenario, ".rds"))
   thresh_csv <- file.path(OutputDir(), "results",
@@ -58,7 +64,6 @@ for (scenario in SCENARIOS) {
     mid <- eval_models[mi]
     cli::cli_h2("Model: {mid}")
 
-    # Compute per-replicate CID improvement over baseline
     impr_df <- tryCatch(
       ComputeImprovement(cid_data, mid, BASELINE_ID, scenario),
       error = function(e) {
@@ -74,7 +79,6 @@ for (scenario in SCENARIOS) {
       next
     }
 
-    # Fit GAM
     fit <- tryCatch(
       FitThresholdGAM(impr_df, k = GAM_K, verbose = FALSE),
       error = function(e) {
@@ -88,7 +92,6 @@ for (scenario in SCENARIOS) {
     if (is.null(fit)) next
     gam_objects[[mid]] <- fit
 
-    # Extract threshold on each predictor axis
     thresholds <- setNames(
       lapply(predictors, function(pred) {
         tryCatch(
@@ -106,7 +109,6 @@ for (scenario in SCENARIOS) {
       predictors
     )
 
-    # Sensitivity check: re-fit with k*2 and compare threshold estimates
     stable_map <- if (RUN_SENSITIVITY) {
       sens <- tryCatch(
         SensitivityCheck(impr_df, thresholds, k_orig = GAM_K),
@@ -126,7 +128,6 @@ for (scenario in SCENARIOS) {
       setNames(rep(NA, length(predictors)), predictors)
     }
 
-    # Collect one row per predictor
     threshold_rows[[mi]] <- do.call(rbind, lapply(predictors, function(pred) {
       thr <- thresholds[[pred]]
       data.frame(
@@ -160,6 +161,11 @@ for (scenario in SCENARIOS) {
                                               logical(1))])
 
   if (!is.null(thresh_df) && nrow(thresh_df) > 0L) {
+
+    # FIX: merge using the scenario-specific grid built above — not the last
+    # `grid` variable from whichever scenario ran last in the loop
+    thresh_df <- merge(thresh_df, grid, by = "gridTag", all.x = TRUE)
+
     saveRDS(thresh_df, thresh_rds)
     utils::write.csv(thresh_df, thresh_csv, row.names = FALSE)
     cli::cli_alert_success("Threshold summary saved to:")
@@ -172,8 +178,6 @@ for (scenario in SCENARIOS) {
   gam_objects <- gam_objects[!vapply(gam_objects, is.null, logical(1))]
   saveRDS(gam_objects, gam_rds)
   cli::cli_alert_success("GAM objects saved to: {gam_rds}")
-
-  # --- Unstable threshold report ---------------------------------------------
 
   if (!is.null(thresh_df) && "stable" %in% colnames(thresh_df)) {
     unstable <- thresh_df[!is.na(thresh_df$stable) & !thresh_df$stable, ]
