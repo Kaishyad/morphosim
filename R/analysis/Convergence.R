@@ -109,39 +109,73 @@ ComputeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
 
 
 
+#' Load and parse posterior tree samples for one run, with cleanup
+#'
+#' Centralises tree-file extraction so it happens exactly once per
+#' (scenario, gridTag, repID, modelID, run) regardless of how many
+#' downstream diagnostics need the trees. If the source is a .tar.gz,
+#' it is extracted to a tempfile under /nobackup/djfb16/tmp which is
+#' always removed on exit (success, error, or timeout) via on.exit() —
+#' previously these tempfiles were never cleaned up, and were found to
+#' have accumulated to 45GB / ~24k files, degrading filesystem
+#' performance for the whole convergence run.
+#'
+#' @inheritParams ComputeRhat
+#' @param run Integer run index (1 or 2).
+#' @return A `multiPhylo` object, or NULL if no tree file exists or
+#'   parsing failed.
+#' @keywords internal
+.LoadTrees <- function(scenario, gridTag, repID, modelID, run) {
+  gz <- TreeGzFile(scenario, gridTag, repID, modelID, run)
+  tr <- sub("\\.tar\\.gz$", ".trees", gz)
+
+  if (file.exists(gz)) {
+    tmp <- tempfile(fileext = ".trees", tmpdir = "/nobackup/djfb16/tmp")
+    on.exit(unlink(tmp), add = TRUE)
+    system(paste("tar -xzf", shQuote(gz), "-O >", shQuote(tmp)))
+    tryCatch(ape::read.tree(tmp), error = function(e) NULL)
+  } else if (file.exists(tr)) {
+    tryCatch(ape::read.tree(tr), error = function(e) NULL)
+  } else {
+    NULL
+  }
+}
+
 #' Average Standard Deviation of Split Frequencies
 #'
 #' Computes the mean absolute difference in clade posterior probabilities
 #' between two independent runs (Lakner et al. 2008). Values < ASDSF_MAX
 #' indicate topological convergence.
 #'
+#' FIX: now takes pre-loaded tree lists (via `treesList`) instead of
+#' re-extracting tree files itself — extraction is shared with
+#' ComputeTreeESS() via .LoadTrees(), called once per run from
+#' CheckConvergence(). Falls back to loading trees itself if
+#' `treesList` is not supplied, so this remains independently callable.
+#'
 #' @inheritParams ComputeRhat
+#' @param treesList Optional list of length nRuns of pre-loaded
+#'   `multiPhylo` objects (see .LoadTrees()). If NULL, trees are loaded
+#'   internally.
 #' @return Scalar ASDSF value.
 #' @export
-ComputeASDSF <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
+ComputeASDSF <- function(scenario, gridTag, repID, modelID, nRuns = 2,
+                          treesList = NULL) {
   if (nRuns != 2) stop("ASDSF requires exactly 2 runs")
 
-  treeFiles <- lapply(1:2, function(run) {
-    gz <- TreeGzFile(scenario, gridTag, repID, modelID, run)
-    tr <- sub("\\.tar\\.gz$", ".trees", gz)
-    if (file.exists(gz)) {
-      tmp <- tempfile(fileext = ".trees", tmpdir = "/nobackup/djfb16/tmp")
-      system(paste("tar -xzf", shQuote(gz), "-O >", shQuote(tmp)))
-      tmp
-    } else if (file.exists(tr)) {
-      tr
-    } else {
-      NULL
-    }
-  })
+  if (is.null(treesList)) {
+    treesList <- lapply(1:2, function(run) {
+      .LoadTrees(scenario, gridTag, repID, modelID, run)
+    })
+  }
 
-  if (any(vapply(treeFiles, is.null, logical(1)))) {
+  if (any(vapply(treesList, is.null, logical(1)))) {
     warning("Missing tree file for ", modelID, " ", gridTag, " ", repID)
     return(NA_real_)
   }
 
-  trees1 <- ape::read.tree(treeFiles[[1]])
-  trees2 <- ape::read.tree(treeFiles[[2]])
+  trees1 <- treesList[[1]]
+  trees2 <- treesList[[2]]
 
   .CladFreq <- function(trees) {
     splits <- lapply(trees, function(tr) ape::prop.part(tr))
@@ -216,13 +250,23 @@ ComputeASDSF <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
 #' timeout (default 60s, set via TREE_ESS_TIMEOUT_SEC in _setup.R if defined,
 #' else 60) so a single pathological run cannot block the whole batch.
 #'
+#' FIX: now takes pre-loaded tree lists (via `treesList`) instead of
+#' re-extracting tree files itself — extraction is shared with
+#' ComputeASDSF() via .LoadTrees(), called once per run from
+#' CheckConvergence(). Falls back to loading trees itself if
+#' `treesList` is not supplied, so this remains independently callable.
+#'
 #' @inheritParams ComputeRhat
 #' @param timeoutSec Per-run wall-clock timeout in seconds (default 60).
+#' @param treesList Optional list of length nRuns of pre-loaded
+#'   `multiPhylo` objects (see .LoadTrees()). If NULL, trees are loaded
+#'   internally.
 #' @return Scalar tree topology ESS (pooled across runs), or NA if tree files
 #'   are missing or the computation timed out on all runs.
 #' @export
 ComputeTreeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2,
-                            timeoutSec = if (exists("TREE_ESS_TIMEOUT_SEC")) TREE_ESS_TIMEOUT_SEC else 60) {
+                            timeoutSec = if (exists("TREE_ESS_TIMEOUT_SEC")) TREE_ESS_TIMEOUT_SEC else 60,
+                            treesList = NULL) {
   .ESS1 <- function(x) {
     n  <- length(x)
     if (n < 4) return(NA_real_)
@@ -235,18 +279,7 @@ ComputeTreeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2,
   }
 
   .OneRun <- function(run) {
-    gz  <- TreeGzFile(scenario, gridTag, repID, modelID, run)
-    tr  <- sub("\\.tar\\.gz$", ".trees", gz)
-
-    if (file.exists(gz)) {
-      tmp <- tempfile(fileext = ".trees", tmpdir = "/nobackup/djfb16/tmp")
-      system(paste("tar -xzf", shQuote(gz), "-O >", shQuote(tmp)))
-      trees <- tryCatch(ape::read.tree(tmp), error = function(e) NULL)
-    } else if (file.exists(tr)) {
-      trees <- tryCatch(ape::read.tree(tr), error = function(e) NULL)
-    } else {
-      return(NA_real_)
-    }
+    trees <- if (!is.null(treesList)) treesList[[run]] else .LoadTrees(scenario, gridTag, repID, modelID, run)
 
     if (is.null(trees) || length(trees) < 4) return(NA_real_)
 
@@ -296,10 +329,20 @@ ComputeTreeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2,
 #'   \item{asdsf_pass}{Logical: ASDSF < ASDSF_MAX.}
 #' @export
 CheckConvergence <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
-  rhat     <- ComputeRhat(    scenario, gridTag, repID, modelID, nRuns)
-  ess      <- ComputeESS(     scenario, gridTag, repID, modelID, nRuns)
-  asdsf    <- ComputeASDSF(   scenario, gridTag, repID, modelID, nRuns)
-  tree_ess <- ComputeTreeESS( scenario, gridTag, repID, modelID, nRuns)
+  rhat <- ComputeRhat(scenario, gridTag, repID, modelID, nRuns)
+  ess  <- ComputeESS( scenario, gridTag, repID, modelID, nRuns)
+
+  # Load tree files once and share across ASDSF and TreeESS — previously
+  # each function extracted the .tar.gz independently (2x the tar/IO cost
+  # per replicate), and neither cleaned up its tempfile, which had
+  # accumulated to 45GB / ~24k orphaned files under /nobackup/djfb16/tmp
+  # and was degrading filesystem performance for the whole batch.
+  treesList <- lapply(seq_len(nRuns), function(run) {
+    .LoadTrees(scenario, gridTag, repID, modelID, run)
+  })
+
+  asdsf    <- ComputeASDSF(  scenario, gridTag, repID, modelID, nRuns, treesList = treesList)
+  tree_ess <- ComputeTreeESS(scenario, gridTag, repID, modelID, nRuns, treesList = treesList)
 
   rhat_pass  <- !is.null(rhat)  && max(rhat,  na.rm = TRUE) < RHAT_MAX
   ess_pass   <- !is.null(ess)   && min(ess,   na.rm = TRUE) > ESS_MIN
