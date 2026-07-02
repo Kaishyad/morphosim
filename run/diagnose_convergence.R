@@ -2,20 +2,15 @@
 # Run from morphosim/ root: Rscript R/analysis/diagnose_convergence.R
 
 source("R/core/_setup.R")
+scenario <- "nt"
+gridTag  <- "tl1.00_gl0.10_c100_pr0.25"   # real nt gridTag
+models   <- paste0("model", 1:12)
 
-scenario <- "mk"
-gridTag  <- "tl1.00_gl0.10_c100"
-repID    <- "sim001"
-models   <- c("model1", "model2", "model3", "model4")
-
-cat("=== Tree counts per model (run 1) ===\n")
 for (m in models) {
-  trees <- tryCatch(.LoadTrees(scenario, gridTag, repID, m, 1),
-                     error = function(e) NULL)
-  n <- if (is.null(trees)) NA_integer_ else length(trees)
-  ntaxa <- if (is.null(trees)) NA_integer_ else length(trees[[1]]$tip.label)
-  cat(sprintf("%-8s trees=%-6s taxa=%-4s\n", m, n, ntaxa))
+  trees <- tryCatch(.LoadTrees(scenario, gridTag, "sim001", m, 1), error = function(e) NULL)
+  cat(sprintf("%-8s trees=%s\n", m, if(is.null(trees)) "NA" else length(trees)))
 }
+
 
 cat("\n=== Per-stage timing per model ===\n")
 for (m in models) {
