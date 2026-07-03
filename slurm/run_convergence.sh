@@ -11,6 +11,11 @@ module load r
 
 cd /nobackup/djfb16/morphosim
 
+# Usage: sbatch run_convergence.sh [max_trees] [scenario] [model]
+# Examples:
+#   sbatch run_convergence.sh 300 nt model1
+#   sbatch run_convergence.sh 300 mk model4
+
 MAX_TREES_ARG=""
 if [ -n "$1" ]; then
   MAX_TREES_ARG="--max-trees $1"
@@ -32,6 +37,10 @@ cd /nobackup/djfb16/the-matrix
 git add results/convergence_summary.rds results/requeue_list.txt
 
 if ! git diff --cached --quiet; then
+  # Retry loop: pull --rebase before pushing to handle race conditions
+  # when multiple per-model jobs finish around the same time and all
+  # try to push simultaneously. Retries up to 5 times with a random
+  # sleep (10-40s) between attempts to stagger concurrent jobs.
   MAX_RETRIES=5
   ATTEMPT=0
   PUSHED=false
@@ -39,15 +48,7 @@ if ! git diff --cached --quiet; then
   while [ $ATTEMPT -lt $MAX_RETRIES ]; do
     ATTEMPT=$((ATTEMPT + 1))
 
-    # Stash any unstaged changes before rebasing to avoid conflicts
-    # when multiple jobs touch the working tree simultaneously
-    git stash --include-untracked 2>/dev/null || true
     git pull --rebase origin main
-    git stash pop 2>/dev/null || true
-
-    # Re-stage in case stash pop changed anything
-    git add results/convergence_summary.rds results/requeue_list.txt
-
     if git push origin main; then
       PUSHED=true
       break
@@ -60,7 +61,8 @@ if ! git diff --cached --quiet; then
 
   if [ "$PUSHED" = false ]; then
     echo "WARNING: push failed after $MAX_RETRIES attempts."
-    echo "Push manually: cd /nobackup/djfb16/the-matrix && git push origin main"
+    echo "convergence_summary.rds is saved locally — push manually with:"
+    echo "  cd /nobackup/djfb16/the-matrix && git push origin main"
   fi
 else
   echo "No changes to commit."
