@@ -24,14 +24,28 @@ message(sprintf("Scenarios: %s | Models: %s%s",
                 paste(MODEL_IDS,  collapse = ", "),
                 if (exists("TREE_ESS_MAX_TREES")) sprintf(" | max-trees: %d", TREE_ESS_MAX_TREES) else ""))
 
-#Output paths
-conv_rds  <- file.path(OutputDir(), "results", "convergence_summary.rds")
-requeue_f <- file.path(OutputDir(), "results", "requeue_list.txt")
+# --- Per-model-job output paths
+# When --model is given (one model per SLURM job, run concurrently), write to
+# a per-scenario-per-model file instead of the shared convergence_summary.rds.
+# This avoids concurrent jobs doing a read-modify-write race on one shared
+# file (lost updates when jobs finish around the same time). Combine the
+# per-model files afterwards with run/merge_convergence.R.
+SINGLE_MODEL_MODE <- !is.na(model_flag[1])
 
-dir.create(dirname(conv_rds), showWarnings = FALSE, recursive = TRUE)
+results_dir <- file.path(OutputDir(), "results")
+dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
 
-# --- Load existing results and skip already-checked rows
-existing_df <- if (file.exists(conv_rds)) readRDS(conv_rds) else NULL
+.ConvFile <- function(scenario) {
+  if (SINGLE_MODEL_MODE) {
+    file.path(results_dir, sprintf("convergence_summary_%s_%s.rds", scenario, MODEL_IDS[1]))
+  } else {
+    file.path(results_dir, "convergence_summary.rds")
+  }
+}
+requeue_f <- file.path(results_dir, "requeue_list.txt")
+
+# --- Load existing results and skip already-checked rows (per scenario file)
+existing_df <- NULL
 
 .AlreadyChecked <- function(scenario, gridTag, repID, modelID) {
   if (is.null(existing_df)) return(FALSE)
@@ -79,7 +93,10 @@ all_conv <- vector("list", length(SCENARIOS))
 for (si in seq_along(SCENARIOS)) {
   scenario <- SCENARIOS[si]
   cli::cli_h1(paste("Checking convergence:", scenario))
-  
+
+  conv_rds    <- .ConvFile(scenario)
+  existing_df <- if (file.exists(conv_rds)) readRDS(conv_rds) else NULL
+
   completed <- .EnumerateCompleted(scenario, grid = ScenarioGrid(scenario))
   
   if (is.null(completed) || nrow(completed) == 0L) {
@@ -144,17 +161,26 @@ for (si in seq_along(SCENARIOS)) {
   
   all_conv[[si]] <- do.call(rbind, conv_rows)
 
-  # Refresh existing_df with this scenario's full results before moving to
-  # the next scenario, so subsequent checkpoints/final save build on a
-  # complete, de-duplicated base rather than stale pre-scenario state.
+  # Save this scenario's file (per-model file if SINGLE_MODEL_MODE, else the
+  # shared combined file) with its own results merged in.
   existing_df <- if (!is.null(existing_df)) rbind(existing_df, all_conv[[si]]) else all_conv[[si]]
   saveRDS(existing_df, conv_rds)
+  cli::cli_alert_success("Saved: {conv_rds} ({nrow(existing_df)} total rows)")
 }
 
-# --- Final summary (existing_df already holds all combined results,
-# checkpointed incrementally during the loop above)
-conv_df <- existing_df
-cli::cli_alert_success("Convergence summary saved to: {conv_rds} ({nrow(conv_df)} total rows)")
+# --- Final summary
+# Reload each scenario's file fresh (rather than reusing the loop's
+# `existing_df`, which only ever holds the last scenario processed) so the
+# report below reflects everything on disk, combined across scenarios.
+conv_df <- do.call(rbind, lapply(SCENARIOS, function(s) {
+  f <- .ConvFile(s)
+  if (file.exists(f)) readRDS(f) else NULL
+}))
+
+if (is.null(conv_df) || nrow(conv_df) == 0L) {
+  cli::cli_alert_info("No results to report.")
+  quit(save = "no", status = 0)
+}
 
 # --- Report on full combined dataset
 n_pass <- sum(conv_df$pass, na.rm = TRUE)
@@ -192,6 +218,15 @@ if (any(has_tree_ess)) {
 }
 
 # --- Write re-queue list (all failures across combined dataset)
+# Skipped in per-model mode: with several model jobs running concurrently,
+# each one would overwrite this shared file with only its own subset of
+# failures. run/merge_convergence.R rebuilds it once, correctly, after all
+# per-model jobs finish.
+if (SINGLE_MODEL_MODE) {
+  cli::cli_alert_info("Per-model mode: skipping shared requeue_list.txt (run merge_convergence.R after all model jobs finish).")
+  quit(save = "no", status = 0)
+}
+
 failed_runs <- conv_df[!conv_df$pass, ]
 
 if (nrow(failed_runs) == 0L) {
