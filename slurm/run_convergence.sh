@@ -37,8 +37,33 @@ cd /nobackup/djfb16/the-matrix
 git add results/convergence_summary.rds results/requeue_list.txt
 
 if ! git diff --cached --quiet; then
-  git commit -m "Convergence check: ${SCENARIO} ${MODEL:-all models}"
-  git push origin main
+  # Retry loop: pull --rebase before pushing to handle race conditions
+  # when multiple per-model jobs finish around the same time and all
+  # try to push simultaneously. Retries up to 5 times with a random
+  # sleep (10-40s) between attempts to stagger concurrent jobs.
+  MAX_RETRIES=5
+  ATTEMPT=0
+  PUSHED=false
+
+  while [ $ATTEMPT -lt $MAX_RETRIES ]; do
+    ATTEMPT=$((ATTEMPT + 1))
+
+    git pull --rebase origin main
+    if git push origin main; then
+      PUSHED=true
+      break
+    fi
+
+    WAIT=$((RANDOM % 30 + 10))
+    echo "Push failed (attempt $ATTEMPT/$MAX_RETRIES), retrying in ${WAIT}s..."
+    sleep $WAIT
+  done
+
+  if [ "$PUSHED" = false ]; then
+    echo "WARNING: push failed after $MAX_RETRIES attempts."
+    echo "convergence_summary.rds is saved locally — push manually with:"
+    echo "  cd /nobackup/djfb16/the-matrix && git push origin main"
+  fi
 else
   echo "No changes to commit."
 fi
