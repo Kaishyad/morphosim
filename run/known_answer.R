@@ -22,11 +22,27 @@ message(sprintf("Scenarios: %s | Models: %s",
                 paste(SCENARIOS,    collapse = ", "),
                 paste(EVAL_MODELS,  collapse = ", ")))
 
-# Output paths
-ka_rds <- file.path(OutputDir(), "results", "known_answer_summary.rds")
-ka_csv <- file.path(OutputDir(), "results", "known_answer_summary.csv")
+# --- Per-model-job output paths
+# When --model is given (one model per SLURM job, run concurrently), write to a
+# per-scenario-per-model file rather than the shared known_answer_summary.rds.
+# This mirrors the convergence pattern: avoids concurrent read-modify-write races
+# on one shared file. Combine afterwards with run/merge_known_answer.R.
+SINGLE_MODEL_MODE <- !is.na(model_flag[1])
 
-dir.create(dirname(ka_rds), showWarnings = FALSE, recursive = TRUE)
+results_dir <- file.path(OutputDir(), "results")
+dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
+
+.KaFile <- function(scenario) {
+  if (SINGLE_MODEL_MODE) {
+    file.path(results_dir,
+              sprintf("known_answer_summary_%s_%s.rds", scenario, EVAL_MODELS[1]))
+  } else {
+    file.path(results_dir, "known_answer_summary.rds")
+  }
+}
+
+ka_rds <- file.path(results_dir, "known_answer_summary.rds")
+ka_csv <- file.path(results_dir, "known_answer_summary.csv")
 
 # --- Load convergence filter ---
 conv_rds <- file.path(OutputDir(), "results", "convergence_summary.rds")
@@ -90,12 +106,29 @@ if (is.null(summary_df) || nrow(summary_df) == 0L) {
   stop("No known-answer results produced. Check that converged log files exist.")
 }
 
-saveRDS(summary_df, ka_rds)
-utils::write.csv(summary_df, ka_csv, row.names = FALSE)
-
-cli::cli_alert_success("Known-answer summary saved to:")
-cli::cli_alert_success("  RDS : {ka_rds}")
-cli::cli_alert_success("  CSV : {ka_csv}")
+if (SINGLE_MODEL_MODE) {
+  # Write to per-model file — merge_known_answer.R combines these after all
+  # per-model jobs finish. No git push here; the merge job handles that.
+  per_model_rds <- .KaFile(SCENARIOS[1])   # one scenario per job when --model set
+  saveRDS(summary_df, per_model_rds)
+  cli::cli_alert_success("Per-model known-answer saved to: {per_model_rds}")
+  cli::cli_alert_info("Run merge_known_answer.R after all model jobs finish.")
+} else {
+  # Full run (no --model flag): load existing, merge, de-duplicate, save combined
+  existing_df <- if (file.exists(ka_rds)) readRDS(ka_rds) else NULL
+  combined_df <- if (!is.null(existing_df)) {
+    key <- with(rbind(existing_df, summary_df),
+                paste(scenario, gridTag, modelID, sep = "|"))
+    rbind(existing_df, summary_df)[!duplicated(key, fromLast = TRUE), ]
+  } else {
+    summary_df
+  }
+  saveRDS(combined_df, ka_rds)
+  utils::write.csv(combined_df, ka_csv, row.names = FALSE)
+  cli::cli_alert_success("Known-answer summary saved to:")
+  cli::cli_alert_success("  RDS : {ka_rds}")
+  cli::cli_alert_success("  CSV : {ka_csv}")
+}
 
 # --- Console report ---
 cli::cli_h2("Coverage rates (target ~0.95)")
