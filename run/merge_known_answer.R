@@ -54,10 +54,15 @@ cli::cli_alert_success(
 )
 
 # --- Summary printout
-by_model <- aggregate(
-  cbind(cov_tree_len, cov_rate_loss) ~ scenario + modelID,
-  data    = combined_df,
-  FUN     = function(x) round(mean(x, na.rm = TRUE), 3)
-)
 cli::cli_h2("Mean coverage rates by scenario/model (target ~0.95)")
-print(by_model)
+
+by_model <- do.call(rbind, lapply(split(combined_df, list(combined_df$scenario, combined_df$modelID)), function(x) {
+  data.frame(
+    scenario      = x$scenario[1],
+    modelID       = x$modelID[1],
+    cov_tree_len  = round(mean(x$cov_tree_len,  na.rm = TRUE), 3),
+    cov_rate_loss = round(mean(x$cov_rate_loss, na.rm = TRUE), 3)
+  )
+}))
+by_model <- by_model[order(by_model$scenario, by_model$modelID), ]
+print(by_model, row.names = FALSE)
