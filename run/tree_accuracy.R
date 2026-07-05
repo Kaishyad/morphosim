@@ -14,11 +14,26 @@ message(sprintf("Scenarios: %s | Models: %s",
                 paste(SCENARIOS,  collapse = ", "),
                 paste(MODEL_IDS,  collapse = ", ")))
 
-# Output paths
-cid_rds     <- file.path(OutputDir(), "results", "tree_accuracy_summary.rds")
-cid_rep_rds <- file.path(OutputDir(), "results", "tree_accuracy_per_rep.rds")
+# --- Per-model-job output paths
+# When --model is given (one model per SLURM job, run concurrently), write to
+# per-scenario-per-model files to avoid read-modify-write races on the shared
+# tree_accuracy_per_rep.rds. Combine afterwards with run/merge_tree_accuracy.R.
+SINGLE_MODEL_MODE <- !is.na(model_flag[1])
 
-dir.create(dirname(cid_rds), showWarnings = FALSE, recursive = TRUE)
+results_dir <- file.path(OutputDir(), "results")
+dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
+
+.RepFile <- function(scenario) {
+  if (SINGLE_MODEL_MODE) {
+    file.path(results_dir,
+              sprintf("tree_accuracy_per_rep_%s_%s.rds", scenario, MODEL_IDS[1]))
+  } else {
+    file.path(results_dir, "tree_accuracy_per_rep.rds")
+  }
+}
+
+cid_rds     <- file.path(results_dir, "tree_accuracy_summary.rds")
+cid_rep_rds <- file.path(results_dir, "tree_accuracy_per_rep.rds")
 
 # --- Load convergence filter ---
 conv_rds <- file.path(OutputDir(), "results", "convergence_summary.rds")
@@ -68,12 +83,23 @@ for (ri in seq_len(nrow(converged))) {
 
   if (ri %% 100L == 0L) {
     cli::cli_alert_info("  {ri}/{nrow(converged)} replicates processed...")
+    # Checkpoint: save progress so a walltime kill doesn't lose everything
+    partial <- do.call(rbind, per_rep_rows[seq_len(ri)])
+    saveRDS(partial, .RepFile(SCENARIOS[1]))
   }
 }
 
 per_rep_df <- do.call(rbind, per_rep_rows)
-saveRDS(per_rep_df, cid_rep_rds)
-cli::cli_alert_success("Per-replicate CID saved to: {cid_rep_rds}")
+
+if (SINGLE_MODEL_MODE) {
+  saveRDS(per_rep_df, .RepFile(SCENARIOS[1]))
+  cli::cli_alert_success("Per-model per-rep CID saved to: {.RepFile(SCENARIOS[1])}")
+  cli::cli_alert_info("Run merge_tree_accuracy.R after all model jobs finish.")
+  quit(save = "no", status = 0)
+} else {
+  saveRDS(per_rep_df, cid_rep_rds)
+  cli::cli_alert_success("Per-replicate CID saved to: {cid_rep_rds}")
+}
 
 # --- Grid-cell summary (median of medians) ---
 
@@ -82,9 +108,10 @@ cli::cli_h1("Summarising by grid cell")
 summary_rows <- vector("list", 0L)
 
 for (scenario in SCENARIOS) {
-  grid        <- ScenarioGrid(scenario)  # FIX: use scenario-specific grid
-  grid$gridTag <- apply(grid, 1, function(i) GridTag(as.list(i)))
-  
+  scenario_grid         <- ScenarioGrid(scenario)
+  scenario_grid$gridTag <- vapply(seq_len(nrow(scenario_grid)),
+                                   function(i) GridTag(as.list(scenario_grid[i, ])),
+                                   character(1))
 
   for (mid in MODEL_IDS) {
     sub <- per_rep_df[per_rep_df$scenario == scenario &
@@ -108,8 +135,16 @@ for (scenario in SCENARIOS) {
 
 summary_df <- do.call(rbind, summary_rows)
 
-# Join grid parameters for downstream plotting
-summary_df <- merge(summary_df, grid, by = "gridTag", all.x = TRUE)
+# Join grid parameters per-scenario to avoid cross-contamination when both
+# scenarios are processed in the same run. Merge separately then combine.
+summary_df <- do.call(rbind, lapply(SCENARIOS, function(sc) {
+  sc_grid         <- ScenarioGrid(sc)
+  sc_grid$gridTag <- vapply(seq_len(nrow(sc_grid)),
+                             function(i) GridTag(as.list(sc_grid[i, ])),
+                             character(1))
+  sub <- summary_df[summary_df$scenario == sc, ]
+  merge(sub, sc_grid, by = "gridTag", all.x = TRUE)
+}))
 
 saveRDS(summary_df, cid_rds)
 cli::cli_alert_success("Tree accuracy summary saved to: {cid_rds}")

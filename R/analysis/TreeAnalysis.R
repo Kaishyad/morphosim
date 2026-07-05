@@ -45,20 +45,20 @@ TreeAccuracy <- function(scenario, gridTag, repID, modelID,
     gz <- TreeGzFile(scenario, gridTag, repID, modelID, run)
     tr <- sub("\\.tar\\.gz$", ".trees", gz)
 
-    treeFile <- if (file.exists(gz)) {
+    if (file.exists(gz)) {
       tmp <- tempfile(fileext = ".trees",
-                      tmpdir  = "/nobackup/djfb16/tmp")  # FIX: avoid /tmp on node
+                      tmpdir  = "/nobackup/djfb16/tmp")
+      on.exit(unlink(tmp), add = TRUE)
       system(paste("tar -xzf", shQuote(gz), "-O >", shQuote(tmp)))
-      tmp
+      trees <- tryCatch(ape::read.tree(tmp), error = function(e) NULL)
     } else if (file.exists(tr)) {
-      tr
+      trees <- tryCatch(ape::read.tree(tr), error = function(e) NULL)
     } else {
-      NULL
+      return(NULL)
     }
 
-    if (is.null(treeFile)) return(NULL)
-    trees <- ape::read.tree(treeFile)
-    n     <- length(trees)
+    if (is.null(trees)) return(NULL)
+    n <- length(trees)
     trees[seq(floor(n * burnFrac) + 1L, n)]
   }), recursive = FALSE)
 
