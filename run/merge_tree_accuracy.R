@@ -52,7 +52,7 @@ cli::cli_alert_success(
 cli::cli_h1("Rebuilding grid-cell summary")
 
 all_scenarios <- unique(combined_rep$scenario)
-summary_df <- do.call(rbind, lapply(all_scenarios, function(sc) {
+scenario_summaries <- lapply(all_scenarios, function(sc) {
   sc_grid         <- ScenarioGrid(sc)
   sc_grid$gridTag <- vapply(seq_len(nrow(sc_grid)),
                              function(i) GridTag(as.list(sc_grid[i, ])),
@@ -79,7 +79,20 @@ summary_df <- do.call(rbind, lapply(all_scenarios, function(sc) {
 
   sc_summary <- do.call(rbind, rows)
   merge(sc_summary, sc_grid, by = "gridTag", all.x = TRUE)
-}))
+})
+
+# Fill missing columns with NA before combining so mk (3 grid cols) and
+# nt (4 grid cols, includes part_rate) can rbind cleanly
+all_cols <- unique(unlist(lapply(scenario_summaries, names)))
+scenario_summaries <- lapply(scenario_summaries, function(df) {
+  missing <- setdiff(all_cols, names(df))
+  if (length(missing) > 0L) {
+    df[missing] <- NA
+  }
+  df[all_cols]
+})
+
+summary_df <- do.call(rbind, scenario_summaries)
 
 saveRDS(summary_df, sum_rds)
 cli::cli_alert_success(
