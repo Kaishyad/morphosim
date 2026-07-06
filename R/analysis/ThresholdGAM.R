@@ -91,10 +91,32 @@ FitThresholdGAM <- function(improvement_df, k = 10L, verbose = FALSE) {
   # would request more basis functions than the data can support and
   # gam() would error out ("fewer unique covariate combinations than
   # specified maximum degrees of freedom").
+  #
+  # GUARD: a smooth term with very few unique x-values (k capped down to
+  # 3) can still be rank-deficient once combined with the intercept and
+  # other terms, producing a gam object whose underlying lm has no valid
+  # 'qr' component (summary()/predict.gam() then error with "rank zero").
+  # To avoid this:
+  #   - n_unique < 2 (constant predictor): drop the term entirely.
+  #   - n_unique in [2, 3]: use a linear term instead of a smooth (a
+  #     smooth needs more distinct knots than that to be identifiable).
+  #   - n_unique >= 4: smooth term as before, k capped at n_unique - 1.
   predictors <- c("tree_length", "rate_ratio", "chars_per_taxon")
-  k_eff <- setNames(
-    vapply(predictors, function(p) {
-      n_unique <- length(unique(improvement_df[[p]]))
+
+  term_info <- lapply(predictors, function(p) {
+    n_unique <- length(unique(improvement_df[[p]]))
+    if (n_unique < 2L) {
+      warning(sprintf(
+        "%s is constant (1 unique value); dropping this term.", p
+      ))
+      list(predictor = p, n_unique = n_unique, type = "dropped", k = NA_integer_)
+    } else if (n_unique < 4L) {
+      warning(sprintf(
+        "%s has only %d unique value(s); using a linear term instead of a smooth.",
+        p, n_unique
+      ))
+      list(predictor = p, n_unique = n_unique, type = "linear", k = NA_integer_)
+    } else {
       k_p <- min(k, max(3L, n_unique - 1L))
       if (k_p < k) {
         warning(sprintf(
@@ -102,17 +124,28 @@ FitThresholdGAM <- function(improvement_df, k = 10L, verbose = FALSE) {
           p, n_unique, k, k_p
         ))
       }
-      k_p
-    }, integer(1)),
-    predictors
-  )
+      list(predictor = p, n_unique = n_unique, type = "smooth", k = k_p)
+    }
+  })
+  names(term_info) <- predictors
 
-  fml <- stats::as.formula(
-    sprintf("improvement ~ s(tree_length, k=%d) + s(rate_ratio, k=%d) + s(chars_per_taxon, k=%d)",
-            k_eff[["tree_length"]], k_eff[["rate_ratio"]], k_eff[["chars_per_taxon"]])
-  )
+  term_strs <- vapply(term_info, function(ti) {
+    switch(ti$type,
+      dropped = NA_character_,
+      linear  = ti$predictor,
+      smooth  = sprintf("s(%s, k=%d)", ti$predictor, ti$k)
+    )
+  }, character(1))
+  term_strs <- term_strs[!is.na(term_strs)]
+
+  if (length(term_strs) == 0L) {
+    stop("All predictors are constant for this model/scenario; cannot fit a GAM.")
+  }
+
+  fml <- stats::as.formula(paste("improvement ~", paste(term_strs, collapse = " + ")))
 
   fit <- mgcv::gam(fml, data = improvement_df, method = "REML")
+  attr(fit, "term_info") <- term_info
 
   if (verbose) {
     mgcv::gam.check(fit)
