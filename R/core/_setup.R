@@ -30,6 +30,7 @@ for (d in c("R/model", "R/simulation", "R/outputs")) {
 source("R/analysis/Convergence.R")
 source("R/analysis/TreeAnalysis.R")
 source("R/analysis/ThresholdGAM.R")   
+source("run/check_improvement_range.R")
 
 # --- Constants
 set.seed(636)
