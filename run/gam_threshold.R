@@ -44,10 +44,6 @@ dir.create(file.path(OutputDir(), "results"), showWarnings = FALSE,
 for (scenario in SCENARIOS) {
   cli::cli_h1("Scenario: {scenario}")
 
-  # FIX: use scenario-specific grid for joining parameters
-  grid         <- ScenarioGrid(scenario)
-  grid$gridTag <- apply(grid, 1, function(r) GridTag(as.list(r)))
-
   thresh_rds <- file.path(OutputDir(), "results",
                           paste0("threshold_summary_", scenario, ".rds"))
   thresh_csv <- file.path(OutputDir(), "results",
@@ -161,11 +157,6 @@ for (scenario in SCENARIOS) {
                                               logical(1))])
 
   if (!is.null(thresh_df) && nrow(thresh_df) > 0L) {
-
-    # FIX: merge using the scenario-specific grid built above — not the last
-    # `grid` variable from whichever scenario ran last in the loop
-    thresh_df <- merge(thresh_df, grid, by = "gridTag", all.x = TRUE)
-
     saveRDS(thresh_df, thresh_rds)
     utils::write.csv(thresh_df, thresh_csv, row.names = FALSE)
     cli::cli_alert_success("Threshold summary saved to:")
