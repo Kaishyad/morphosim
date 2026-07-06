@@ -67,9 +67,15 @@ ComputeImprovement <- function(cid_data, modelID,
 #' if any smooth is near the boundary (p < 0.05 in k-index test).
 #'
 #' @param improvement_df  Data frame from ComputeImprovement().
-#' @param k               Basis dimension for all smooths (default 10).
+#' @param k               Requested basis dimension for all smooths (default
+#'                        10). Capped per-predictor at the number of unique
+#'                        observed values for that predictor (see Details).
 #' @param verbose         Print gam.check() output (default FALSE).
 #' @return A fitted \code{mgcv::gam} object.
+#' @details If a predictor has fewer unique values than \code{k} (e.g. a
+#'   coarse factorial parameter grid), its basis dimension is silently
+#'   reduced to \code{max(3, n_unique - 1)} and a warning is issued, rather
+#'   than letting \code{mgcv::gam()} error out.
 #' @importFrom mgcv gam gam.check s
 #' @export
 FitThresholdGAM <- function(improvement_df, k = 10L, verbose = FALSE) {
@@ -79,9 +85,31 @@ FitThresholdGAM <- function(improvement_df, k = 10L, verbose = FALSE) {
     k <- max(3L, floor(nrow(improvement_df) / 3L))
   }
 
+  # Cap k per-predictor at the number of unique observed values, since
+  # mgcv's smooth constructors require at least k unique covariate values.
+  # With a coarse factorial grid (e.g. 4 levels per axis), a global k=10
+  # would request more basis functions than the data can support and
+  # gam() would error out ("fewer unique covariate combinations than
+  # specified maximum degrees of freedom").
+  predictors <- c("tree_length", "rate_ratio", "chars_per_taxon")
+  k_eff <- setNames(
+    vapply(predictors, function(p) {
+      n_unique <- length(unique(improvement_df[[p]]))
+      k_p <- min(k, max(3L, n_unique - 1L))
+      if (k_p < k) {
+        warning(sprintf(
+          "%s has only %d unique value(s); reducing k from %d to %d for this term.",
+          p, n_unique, k, k_p
+        ))
+      }
+      k_p
+    }, integer(1)),
+    predictors
+  )
+
   fml <- stats::as.formula(
     sprintf("improvement ~ s(tree_length, k=%d) + s(rate_ratio, k=%d) + s(chars_per_taxon, k=%d)",
-            k, k, k)
+            k_eff[["tree_length"]], k_eff[["rate_ratio"]], k_eff[["chars_per_taxon"]])
   )
 
   fit <- mgcv::gam(fml, data = improvement_df, method = "REML")
