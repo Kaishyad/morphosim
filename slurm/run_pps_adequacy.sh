@@ -55,6 +55,7 @@ if [ -z "$SCENARIO" ] && [ -z "$MODEL" ]; then
   git add results/pps_adequacy.rds results/pps_adequacy.csv
 
   if ! git diff --cached --quiet; then
+    git commit -m "pps_adequacy: results $(date '+%Y-%m-%d %H:%M')"
     git pull --rebase origin main
     if git push origin main; then
       echo "Pushed PPS adequacy results."

@@ -39,6 +39,7 @@ git add results/model_comparison_ranking.csv \
         results/model_comparison_scenario_contrast.csv
 
 if ! git diff --cached --quiet; then
+  git commit -m "model_comparison: mk/nt tables $(date '+%Y-%m-%d %H:%M')"
   git pull --rebase origin main
   if git push origin main; then
     echo "Pushed model comparison results."

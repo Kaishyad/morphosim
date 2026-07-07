@@ -1,33 +1,47 @@
-# Model 12: Random partition assignment — partition misspecification
-#
-# Partitioning : Two (randomly assigned, not neo|trans)
-# Neo Q        : Symmetric fnJC(2)
-# Trans Q      : Symmetric fnJC(2)
-# APRV         : Present (partition rate scalar)
-# ACRV         : Absent
-# Root freq    : Stationary
-#
-# Purpose: tests whether the NT-informed partition assignment (neo vs
-# trans) is doing useful biological work, or whether any arbitrary
-# two-partition split would perform similarly. Characters are assigned
-# to partitions at random (50/50 split, done in R prior to inference
-# via Infer.R shuffling the character indices), breaking the neo/trans
-# biological grouping while preserving the 2-partition model structure.
-#
-# The model is otherwise identical to M4 (2-partition symmetric Mk
-# with APRV). Comparing M12 vs M4 directly isolates the contribution
-# of informed partition assignment. If M12 ≈ M4, the biological
-# partitioning adds no value. If M4 > M12, the NT partition structure
-# is doing real inferential work.
-#
-# Implementation note: the random partition split is applied in
-# Infer.R before this file is called. The character matrices passed
-# in as `neo` and `trans` here are the randomly reassigned partitions,
-# not the biologically meaningful ones. No change to this Rev file
-# is needed across replicates — the randomisation is upstream.
+# Model 12 (v4): optimized state-space inflation, building on Model 11
 
-taxa  <- neo.names()
-nTaxa <- neo.size()
+# Partitioning : Single (neo + trans combined) -- same as M11
+# Q            : 9-state Mk, but with ESTIMATED symmetric exchange rates
+#                (fnGTR-style) instead of M11's fixed fnJC(9)
+# APRV         : Absent -- same as M11
+# ACRV         : Absent -- same as M11
+# Root freq    : Stationary, fixed equal (1/9 each) -- same as M11
+
+# Purpose: M11 applies a fixed, symmetric 9-state Mk matrix to binary data
+# as a deliberate state-space misspecification probe, and unexpectedly
+# topped the accuracy ranking in both scenarios. One hypothesis is that the
+# 7 unobserved "virtual" states act as an accidental, implicit form of
+# among-character rate variation -- characters that occasionally leak into
+# unused states behave as if they have elevated effective rates, without
+# needing an estimated ACRV shape parameter.
+#
+# This model tests whether that effect can be deliberately IMPROVED rather
+# than left accidental: instead of fixing all transitions among the 9
+# states to be equal (fnJC), the exchange rates among them are freely
+# estimated (fnGTR generalised to K=9), while everything else -- single
+# partition, no APRV, no ACRV, equal frequencies -- is held identical to
+# M11. This isolates exactly one change: fixed vs. estimated virtual-state
+# dynamics.
+#
+# Reading the M11 vs M12 comparison:
+# - M12 clearly beats M11: the virtual states are doing real, learnable
+#   work, and a naive fixed matrix was leaving accuracy on the table --
+#   strong support for treating this as a genuine (if unusual) modelling
+#   feature worth explaining properly in the write-up, not just a curiosity.
+# - M12 ~ M11: the fixed symmetric structure was already capturing
+#   whatever the extra states contribute; the added flexibility doesn't
+#   help, weak evidence the mechanism is simple / saturates quickly.
+# - M12 clearly worse than M11: the 36 additional free exchange-rate
+#   parameters are hurting more than the flexibility helps -- check this
+#   model's rhat_max / ess_min against M11's directly (see
+#   plot_convergence_diagnostics.R). If M12 converges markedly worse,
+#   that's evidence M11's original advantage was at least partly an
+#   easy-mixing artifact of having zero free Q parameters, since M12
+#   removes exactly that property while keeping everything else the same.
+
+allChars <- concatenate(neo, trans)
+taxa  <- allChars.names()
+nTaxa <- allChars.size()
 nEdge <- 2 * nTaxa - 3
 
 moves = VectorMoves()
@@ -50,33 +64,30 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-#--- APRV: partition rate scalar
-# Same parameterisation as M4 — neo partition rate fixed to 1,
-# trans partition rate estimated. For the random partition case the
-# labels "neo" and "trans" refer only to the randomly assigned
-# character sets, not to biological categories.
-part_rate_neo   <- 1.0
-part_rate_trans ~ dnExponential(1.0)
-moves.append( mvScale(part_rate_trans, weight = 1.0) )
+#--- Q matrix: 9-state, ESTIMATED symmetric exchange rates, equal frequencies
+# n_states*(n_states-1)/2 = 36 symmetric exchangeabilities. Frequencies are
+# held fixed and equal (not estimated) so this model differs from M11 in
+# exactly one respect -- the exchange rates -- and doesn't also confound
+# the root-frequency axis.
+n_states <- 9
+n_rates  <- (n_states * (n_states - 1)) / 2
 
-#--- Model: two random partitions, both symmetric Mk
-m_neo ~ dnPhyloCTMC(
-  tree        = phylogeny,
-  Q           = fnJC(2),
-  branchRates = part_rate_neo,
-  type        = "Standard",
-  coding      = "variable"
-)
-m_neo.clamp(neo)
+er_morph ~ dnDirichlet( rep(1.0, n_rates) )
+moves.append( mvBetaSimplex(er_morph,      weight = 2.0) )
+moves.append( mvDirichletSimplex(er_morph, weight = 1.0) )
 
-m_trans ~ dnPhyloCTMC(
-  tree        = phylogeny,
-  Q           = fnJC(2),
-  branchRates = part_rate_trans,
-  type        = "Standard",
-  coding      = "variable"
+bf_morph <- simplex( rep(1.0, n_states) )
+
+Q_morph := fnGTR(er_morph, bf_morph)
+
+#--- Model: single partition, 9-state, estimated exchange rates
+m_morph ~ dnPhyloCTMC(
+  tree   = phylogeny,
+  Q      = Q_morph,
+  type   = "Standard",
+  coding = "variable"
 )
-m_trans.clamp(trans)
+m_morph.clamp(allChars)
 
 #--- Monitors
 mymodel = model(phylogeny)

@@ -33,6 +33,7 @@ cd /nobackup/djfb16/the-matrix
 git add results/cgr_coverage.rds results/cgr_coverage.csv
 
 if ! git diff --cached --quiet; then
+  git commit -m "validate_cgr: coverage results $(date '+%Y-%m-%d %H:%M')"
   git pull --rebase origin main
   if git push origin main; then
     echo "Pushed CGR coverage results."
