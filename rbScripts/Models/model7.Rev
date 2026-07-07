@@ -1,14 +1,30 @@
-#Model 7
-
+#Model 7 (replacement): Shared Q misspecification
+#
 # Partitioning : Two (neo | trans)
-# Neo Q : Asymmetric fnFreeBinary
-# Trans Q : Asymmetric fnFreeBinary
-# APRV : Present (partition rate scalar)
-# ACRV: Present (Gamma, 4 categories)
+# Neo Q  : Asymmetric fnFreeBinary
+# Trans Q : Asymmetric fnFreeBinary, but forced to SHARE neo's gain/loss ratio
+# APRV : Present (partition rate scalar, estimated separately per partition — unchanged from M8)
+# ACRV  : Present (shared lognormal, 4 categories)
 # Root freq : Stationary
-
-#full NT model using Gamma-distributed ACRV. Comparing M7 vs M8 (lognormal) vs M9 (free rates) directly tests whether the ACRV distributional
-#assumption affects inference accuracy. M7 is the Gamma baseline in comparison.
+#
+# Purpose: In the true NT generative model, trans characters are ALWAYS
+# simulated under a symmetric process (fnJC(2) — gain = loss), while only
+# neo characters carry the asymmetric gain/loss dynamics (rate_loss, sim
+# arg 5). This model forces both partitions to share a single estimated
+# gain/loss ratio, driven mostly by the neo signal, and imposes it on
+# trans data that in truth has no asymmetry at all.
+#
+# As the simulated gain_loss parameter departs from 1.0 (i.e. neo becomes
+# more asymmetric), this misspecification should worsen — giving a
+# gradient result directly against an existing 4-level grid axis
+# (gain_loss = 0.1, 0.25, 0.5, 1.0), rather than a flat yes/no answer.
+#
+# Partition rate scalars (APRV) remain separately estimated, exactly as
+# in M8 — only the Q asymmetry parameter is tied across partitions. This
+# keeps the model structurally distinct from both the single-partition
+# models (M1–M3, which merge neo+trans into one dnPhyloCTMC call and lose
+# per-partition ascertainment correction) and from the shared-APRV
+# replacement (M9), which instead ties the rate scalar and leaves Q free.
 
 taxa  <- neo.names()
 nTaxa <- neo.size()
@@ -34,31 +50,26 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-#--- APRV: partition rate scalar
+#--- APRV: partition rate scalar (unchanged from M8 — separately estimated)
 part_rate_neo   <- 1.0
 part_rate_trans ~ dnExponential(1.0)
 moves.append( mvScale(part_rate_trans, weight = 1.0) )
 
-#--- Asymmetric Q matrices
-gain_loss_neo ~ dnLognormal(0, 1)
-moves.append( mvScale(gain_loss_neo, weight = 1.0) )
-Q_neo := fnFreeBinary( simplex(1, gain_loss_neo), rescaled = TRUE )
+#--- Shared asymmetric Q: ONE gain/loss ratio applied to both partitions
+gain_loss_shared ~ dnLognormal(0, 1)
+moves.append( mvScale(gain_loss_shared, weight = 1.0) )
+Q_neo   := fnFreeBinary( simplex(1, gain_loss_shared), rescaled = TRUE )
+Q_trans := fnFreeBinary( simplex(1, gain_loss_shared), rescaled = TRUE )
 
-gain_loss_trans ~ dnLognormal(0, 1)
-moves.append( mvScale(gain_loss_trans, weight = 1.0) )
-Q_trans := fnFreeBinary( simplex(1, gain_loss_trans), rescaled = TRUE )
-
-#--- ACRV: Gamma discretised into 4 rate categories
-#Shape parameter alpha controls variance: small alpha = high variance.
-#Mean is fixed to 1 by setting rate = alpha (i.e. mean = alpha/alpha = 1).
-NUM_RATE_CATS  <- 4
-alpha ~ dnExponential(1.0)
-moves.append( mvScale(alpha, weight = 1.0) )
+#--- ACRV: shared lognormal discretised into 4 rate categories (unchanged from M8)
+NUM_RATE_CATS <- 4
+acrv_sd ~ dnExponential(1.0)
+moves.append( mvScale(acrv_sd, weight = 1.0) )
 site_rates := fnDiscretizeDistribution(
-  dnGamma(alpha, alpha), NUM_RATE_CATS
+  dnLognormal(-acrv_sd^2 / 2, acrv_sd), NUM_RATE_CATS
 )
 
-#--- Model: two partitions, asymmetric Q, Gamma ACRV
+#--- Model: two partitions, SHARED asymmetric Q, lognormal ACRV
 m_neo ~ dnPhyloCTMC(
   tree        = phylogeny,
   Q           = Q_neo,
