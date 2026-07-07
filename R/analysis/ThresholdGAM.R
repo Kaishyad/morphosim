@@ -1,5 +1,16 @@
 #Fits Generalised Additive Models (GAMs) to identify parameter thresholds at
 #which NT models outperform the Mk baseline in topological accuracy.
+#
+#NOTE: this script only ever compares each model against model1 (the Mk
+#baseline), within one scenario at a time -- that's its intended job per
+#the dissertation's "Advanced Outcomes" threshold-detection goal (Section
+#5.3), not a limitation to fix here. For (a) how all 12 models rank against
+#EACH OTHER within a scenario, and (b) how a given model performs on
+#nt-generated vs mk-generated data (the "Simulation contrast" robustness
+#check, Section 6.2), see R/analysis/ModelComparison.R + run/model_comparison.R.
+#Use all three together: this file answers "when does NT beat the Mk null",
+#ModelComparison.R answers "which model is best overall" and "is a model's
+#advantage specific to when its assumptions are true".
 
 #functions:
 #ComputeImprovement() - Calculates per-replicate NT improvement over Mk

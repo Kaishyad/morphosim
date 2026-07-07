@@ -2,6 +2,32 @@
 # checks that the 95% posterior credible interval contains the known true
 # parameter value in approximately 95% of replicates across the parameter grid.
 
+#' Map a model ID to its logged gain/loss rate parameter column(s)
+#'
+#' No model logs a column literally called "rate_loss" — the true column
+#' name(s) depend on the model's Q-matrix structure:
+#'   - model1 has a fixed fnJC(2) Q (gain = loss by construction): no free
+#'     rate parameter exists, so coverage cannot be tested. Returns character(0).
+#'   - model2/model3 use a single asymmetric Q (fnFreeBinary): the free
+#'     parameter is "gain_loss_ratio".
+#'   - two-partition models (model4 and up) estimate the neo and trans
+#'     gain/loss ratios separately: "gain_loss_neo" and "gain_loss_trans".
+#'     (model7/model9 force these to be shared/tied at the .Rev level, but
+#'     RevBayes still logs them under both column names since they're the
+#'     same node; either name will work for those two models.)
+#'
+#' @param modelID Model script name, e.g. "model4"
+#' @return Character vector of column name(s) to test, possibly empty.
+#' @export
+RateLossParams <- function(modelID) {
+  switch(modelID,
+    model1  = character(0),
+    model2  = "gain_loss_ratio",
+    model3  = "gain_loss_ratio",
+    c("gain_loss_neo", "gain_loss_trans")  # default: all two-partition models
+  )
+}
+
 #' Extract posterior credible interval for a named parameter
 #'
 #' Reads the stochastic-only .p.log file for a replicate, pools both runs,
@@ -88,6 +114,26 @@ KnownAnswerSummary <- function(modelID  = "model1",
                                nRep     = N_REP) {
   rows <- vector("list", nrow(grid))
 
+  # FIX: "rate_loss" is never an actual logged column name for any model;
+  # look up the real column name(s) for this modelID instead (see
+  # RateLossParams() above). model1 has no free rate parameter at all.
+  rateLossCols <- RateLossParams(modelID)
+
+  # Mean squared error of posterior mean vs true value
+  .MSE <- function(scenario, gridTag, modelID, parameter, trueVal, nRep) {
+    postMeans <- vapply(seq_len(nRep), function(rep) {
+      repID <- SimID(rep)
+      f <- ParamLogFile(scenario, gridTag, repID, modelID, run = 1)  # FIX: .p.log
+      if (!file.exists(f)) return(NA_real_)
+      log <- read.table(f, header = TRUE, comment.char = "#", fill = TRUE)
+      if (!parameter %in% colnames(log)) return(NA_real_)
+      n       <- nrow(log)
+      samples <- log[[parameter]][seq(floor(n * 0.1) + 1L, n)]
+      mean(samples, na.rm = TRUE)
+    }, numeric(1))
+    mean((postMeans - trueVal)^2, na.rm = TRUE)
+  }
+
   for (gi in seq_len(nrow(grid))) {
     row     <- grid[gi, ]
     gridTag <- GridTag(row)
@@ -96,37 +142,41 @@ KnownAnswerSummary <- function(modelID  = "model1",
     trueTreeLen  <- row$tree_length
     trueRateLoss <- 1 / row$gain_loss  # rate_loss = 1 / gain_loss in sim scripts
 
-    covTreeLen  <- CoverageRate(scenario, gridTag, modelID,
-                                "tree_length", trueTreeLen,  nRep)
-    covRateLoss <- CoverageRate(scenario, gridTag, modelID,
-                                "rate_loss",   trueRateLoss, nRep)
+    covTreeLen <- CoverageRate(scenario, gridTag, modelID,
+                               "tree_length", trueTreeLen, nRep)
+    mseTreeLen <- .MSE(scenario, gridTag, modelID,
+                       "tree_length", trueTreeLen, nRep)
 
-    # Mean squared error of posterior mean vs true value
-    .MSE <- function(parameter, trueVal) {
-      postMeans <- vapply(seq_len(nRep), function(rep) {
-        repID <- SimID(rep)
-        f <- ParamLogFile(scenario, gridTag, repID, modelID, run = 1)  # FIX: .p.log
-        if (!file.exists(f)) return(NA_real_)
-        log <- read.table(f, header = TRUE, comment.char = "#", fill = TRUE)
-        if (!parameter %in% colnames(log)) return(NA_real_)
-        n       <- nrow(log)
-        samples <- log[[parameter]][seq(floor(n * 0.1) + 1L, n)]
-        mean(samples, na.rm = TRUE)
-      }, numeric(1))
-      mean((postMeans - trueVal)^2, na.rm = TRUE)
-    }
-
-    rows[[gi]] <- data.frame(
+    baseRow <- data.frame(
       gridTag       = gridTag,
       tree_length   = trueTreeLen,
       gain_loss     = row$gain_loss,
       n_char        = row$n_char,
       cov_tree_len  = covTreeLen,
-      cov_rate_loss = covRateLoss,
-      mse_tree_len  = .MSE("tree_length", trueTreeLen),
-      mse_rate_loss = .MSE("rate_loss",   trueRateLoss),
+      mse_tree_len  = mseTreeLen,
       stringsAsFactors = FALSE
     )
+
+    if (length(rateLossCols) == 0L) {
+      # model1: no free rate parameter to test (fixed fnJC symmetric Q)
+      baseRow$rate_param    <- NA_character_
+      baseRow$cov_rate_loss <- NA_real_
+      baseRow$mse_rate_loss <- NA_real_
+      rows[[gi]] <- baseRow
+    } else {
+      # One row per logged rate-parameter column (1 for single-partition
+      # asymmetric models, 2 -- neo/trans -- for two-partition models)
+      perParam <- lapply(rateLossCols, function(col) {
+        r <- baseRow
+        r$rate_param    <- col
+        r$cov_rate_loss <- CoverageRate(scenario, gridTag, modelID,
+                                        col, trueRateLoss, nRep)
+        r$mse_rate_loss <- .MSE(scenario, gridTag, modelID,
+                                col, trueRateLoss, nRep)
+        r
+      })
+      rows[[gi]] <- do.call(rbind, perParam)
+    }
   }
 
   do.call(rbind, rows)

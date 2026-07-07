@@ -1,160 +1,134 @@
-# Standalone Cook-Gelman-Rubin (CGR) coverage validation script.
-# Loops over all converged replicates, extracts 95% posterior credible
-# intervals for the two focal parameters (tree_length and gain-to-loss ratio),
-# and checks whether each interval contains the known true simulated value.
-
-#TO DO:
-# -Load all converged .log files identified by analysis/check_convergence.R.
-# -For each replicate: extract CI via KnownAnswer.R::CredibleInterval().
-# -Compute coverage rate per grid cell via KnownAnswer.R::CoverageRate().
-#   -Summarise across the full grid and export results for dissertation Section 6.1.
-
-
+# Cook-Gelman-Rubin (CGR) / simulation-based calibration validation.
+#
+# For every (model x scenario x grid cell), checks whether each parameter's
+# 95% posterior credible interval contains its known true simulated value at
+# ~95% of replicates. This is the dissertation Section 6.1 "Correctness"
+# proof: it answers "are estimated parameters showing correct frequentist
+# coverage of their known true values" for every model x dataset combination,
+# not just model4/model8 under nt.
+#
+# FIX vs previous version:
+#   - PARAMETERS included "rate_loss", which is not a real logged column for
+#     ANY model (see RateLossParams() in KnownAnswer.R) -- CredibleInterval()
+#     silently returned NULL for every single call. Now uses the same
+#     RateLossParams(modelID) lookup KnownAnswer.R uses, so model1 is
+#     correctly skipped (fixed fnJC, nothing to test), model2/model3 test
+#     gain_loss_ratio, and two-partition models test gain_loss_neo AND
+#     gain_loss_trans as separate rows.
+#   - EVAL_MODELS was hardcoded to c("model4","model8") under "nt" only.
+#     Generalised to all MODEL_IDS across BOTH scenarios, since coverage can
+#     fail differently under mk-generated vs nt-generated data and you want
+#     that comparison, not just the nt case.
 
 source("R/core/_setup.R")
 
-# --- Configuration -----------------------------------------------------------
+# --- Configuration -------------------------------------------------------
 
-# Models for CGR validation (NT generative scenario; model4 = sp_nt_kv,
-# model8 = full NT+RH, as specified in the dissertation plan).
-EVAL_MODELS <- c("model4", "model8")
-SCENARIO    <- "nt"
-PARAMETERS  <- c("tree_length", "rate_loss")
+EVAL_MODELS <- MODEL_IDS         # all 12, not just model4/model8
+SCENARIOS   <- c("mk", "nt")     # both generative scenarios
 
-# Output paths
 cgr_rds <- file.path(OutputDir(), "results", "cgr_coverage.rds")
 cgr_csv <- file.path(OutputDir(), "results", "cgr_coverage.csv")
-
 dir.create(dirname(cgr_rds), showWarnings = FALSE, recursive = TRUE)
-
-# --- Load convergence filter -------------------------------------------------
 
 conv_rds <- file.path(OutputDir(), "results", "convergence_summary.rds")
 if (!file.exists(conv_rds)) {
   stop("Convergence summary not found: ", conv_rds,
-       "\nRun analysis/check_convergence.R first.")
+       "\nRun run/check_convergence.R first.")
 }
+conv_df <- readRDS(conv_rds)
 
-conv_df   <- readRDS(conv_rds)
-converged <- conv_df[conv_df$pass & conv_df$scenario == SCENARIO, ]
-cli::cli_alert_info("{nrow(converged)} converged NT runs available for CGR validation.")
+# --- Per-model, per-scenario coverage check -------------------------------
 
-# --- Per-replicate coverage check --------------------------------------------
-
-cli::cli_h1("CGR coverage validation")
+cli::cli_h1("CGR / simulation-based calibration")
 
 all_rows <- vector("list", 0L)
 
-for (mid in EVAL_MODELS) {
-  cli::cli_h2("Model: {mid}")
-  conv_model <- converged[converged$modelID == mid, ]
+for (scen in SCENARIOS) {
+  grid <- ScenarioGrid(scen)
+  converged_scen <- conv_df[conv_df$pass & conv_df$scenario == scen, ]
 
-  if (nrow(conv_model) == 0L) {
-    cli::cli_alert_warning("No converged runs for {mid}; skipping.")
-    next
-  }
-
-  for (gi in seq_len(nrow(PARAM_GRID))) {
-    row     <- PARAM_GRID[gi, ]
-    gridTag <- GridTag(row)
-
-    # True values for this grid cell
-    true_vals <- list(
-      tree_length = row$tree_length,
-      rate_loss   = 1 / row$gain_loss   # rate_loss = 1 / gain_loss
-    )
-
-    conv_cell <- conv_model[conv_model$gridTag == gridTag, ]
-    n_cell    <- nrow(conv_cell)
-
-    for (param in PARAMETERS) {
-      # Per-replicate CI coverage
-      covers <- vapply(seq_len(n_cell), function(ri) {
-        repID <- conv_cell$repID[ri]
-        ci    <- tryCatch(
-          CredibleInterval(SCENARIO, gridTag, repID, mid, param),
-          error = function(e) {
-            warning("CredibleInterval failed for ",
-                    paste(mid, gridTag, repID, param, sep="/"),
-                    ": ", conditionMessage(e))
-            NULL
-          }
-        )
-        CoversTrue(ci, true_vals[[param]])
-      }, logical(1))
-
-      coverage_rate <- mean(covers, na.rm = TRUE)
-      n_valid       <- sum(!is.na(covers))
-
-      all_rows[[length(all_rows) + 1L]] <- data.frame(
-        modelID       = mid,
-        gridTag       = gridTag,
-        parameter     = param,
-        true_value    = true_vals[[param]],
-        coverage_rate = coverage_rate,
-        n_covers      = sum(covers %in% TRUE),
-        n_total       = n_valid,
-        tree_length   = row$tree_length,
-        gain_loss     = row$gain_loss,
-        n_char        = row$n_char,
-        stringsAsFactors = FALSE
-      )
+  for (mid in EVAL_MODELS) {
+    cli::cli_h2("{scen} / {mid}")
+    conv_model <- converged_scen[converged_scen$modelID == mid, ]
+    if (nrow(conv_model) == 0L) {
+      cli::cli_alert_warning("No converged runs for {scen}/{mid}; skipping.")
+      next
     }
 
-    if (gi %% 16L == 0L) {
-      cli::cli_alert_info("  {mid}: {gi}/{nrow(PARAM_GRID)} grid cells done...")
+    # tree_length always applies; rate parameter(s) depend on model structure
+    rateCols <- RateLossParams(mid)
+    params   <- c("tree_length", rateCols)
+
+    for (gi in seq_len(nrow(grid))) {
+      row     <- grid[gi, ]
+      gridTag <- GridTag(row)
+
+      true_vals <- list(tree_length = row$tree_length)
+      for (col in rateCols) true_vals[[col]] <- 1 / row$gain_loss
+
+      conv_cell <- conv_model[conv_model$gridTag == gridTag, ]
+      n_cell    <- nrow(conv_cell)
+      if (n_cell == 0L) next
+
+      for (param in params) {
+        covers <- vapply(seq_len(n_cell), function(ri) {
+          repID <- conv_cell$repID[ri]
+          ci <- tryCatch(
+            CredibleInterval(scen, gridTag, repID, mid, param),
+            error = function(e) NULL
+          )
+          CoversTrue(ci, true_vals[[param]])
+        }, logical(1))
+
+        all_rows[[length(all_rows) + 1L]] <- data.frame(
+          scenario      = scen,
+          modelID       = mid,
+          gridTag       = gridTag,
+          parameter     = param,
+          true_value    = true_vals[[param]],
+          coverage_rate = mean(covers, na.rm = TRUE),
+          n_covers      = sum(covers %in% TRUE),
+          n_total       = sum(!is.na(covers)),
+          tree_length   = row$tree_length,
+          gain_loss     = row$gain_loss,
+          n_char        = row$n_char,
+          stringsAsFactors = FALSE
+        )
+      }
     }
   }
 }
 
 cgr_df <- do.call(rbind, all_rows)
-
-# --- Save results ------------------------------------------------------------
-
-if (is.null(cgr_df) || nrow(cgr_df) == 0L) {
-  stop("No CGR coverage results produced.")
-}
+if (is.null(cgr_df) || nrow(cgr_df) == 0L) stop("No CGR coverage results produced.")
 
 saveRDS(cgr_df, cgr_rds)
 utils::write.csv(cgr_df, cgr_csv, row.names = FALSE)
+cli::cli_alert_success("Saved: {cgr_rds}")
+cli::cli_alert_success("Saved: {cgr_csv}")
 
-cli::cli_alert_success("CGR coverage results saved to:")
-cli::cli_alert_success("  RDS : {cgr_rds}")
-cli::cli_alert_success("  CSV : {cgr_csv}")
+# --- Console report (Table 6.1) -------------------------------------------
 
-# --- Console report (Table 6.1 preview) --------------------------------------
+cli::cli_h2("Coverage rates by scenario x model (target: 0.95 +/- 0.05)")
 
-cli::cli_h2("CGR coverage rates (target: 0.95 ± 0.05)")
+target <- 0.95; tol <- 0.05
+report <- do.call(rbind, lapply(split(cgr_df, list(cgr_df$scenario, cgr_df$modelID)), function(sub) {
+  if (nrow(sub) == 0L) return(NULL)
+  data.frame(
+    scenario  = sub$scenario[1],
+    modelID   = sub$modelID[1],
+    mean_cov  = round(mean(sub$coverage_rate, na.rm = TRUE), 3),
+    n_low     = sum(!is.na(sub$coverage_rate) & sub$coverage_rate < target - tol),
+    n_high    = sum(!is.na(sub$coverage_rate) & sub$coverage_rate > target + tol),
+    n_cells   = nrow(sub)
+  )
+}))
+report <- report[order(report$scenario, report$modelID), ]
+print(report, row.names = FALSE)
 
-target <- 0.95
-tol    <- 0.05
-
-for (mid in EVAL_MODELS) {
-  sub <- cgr_df[cgr_df$modelID == mid, ]
-  if (nrow(sub) == 0L) next
-
-  cli::cli_h3(mid)
-  for (param in PARAMETERS) {
-    p_sub     <- sub[sub$parameter == param, ]
-    mean_cov  <- round(mean(p_sub$coverage_rate, na.rm = TRUE), 3)
-    n_low     <- sum(!is.na(p_sub$coverage_rate) &
-                       p_sub$coverage_rate < target - tol)
-    n_high    <- sum(!is.na(p_sub$coverage_rate) &
-                       p_sub$coverage_rate > target + tol)
-
-    cli::cli_alert_info(
-      "{param}: mean coverage = {mean_cov} ",
-      "({n_low} cells below {target - tol}, {n_high} cells above {target + tol})"
-    )
-  }
-}
-
-# Flag severe coverage failures (< 0.80 or > 0.99)
 severe <- cgr_df[!is.na(cgr_df$coverage_rate) &
                    (cgr_df$coverage_rate < 0.80 | cgr_df$coverage_rate > 0.99), ]
 if (nrow(severe) > 0L) {
-  cli::cli_alert_warning(
-    "{nrow(severe)} grid cell(s) with severe coverage issues (< 0.80 or > 0.99)"
-  )
-  print(severe[, c("modelID", "gridTag", "parameter", "coverage_rate")])
+  cli::cli_alert_warning("{nrow(severe)} grid cell(s) with severe coverage issues (<0.80 or >0.99)")
 }
