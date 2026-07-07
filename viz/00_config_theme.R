@@ -67,8 +67,6 @@ MODEL_LABELS <- setNames(
 )
 MODEL_LABELS["model1"] <- "M1 (Mk baseline)"
 MODEL_LABELS["model8"] <- "M8 (NT baseline)"
-MODEL_LABELS["model7"] <- "M7 (shared-Q misspec.)"
-MODEL_LABELS["model9"] <- "M9 (shared-APRV misspec.)"
 
 # ---------------------------------------------------------------
 # BASELINES -- per your framework, model1 is the Mk baseline and is
