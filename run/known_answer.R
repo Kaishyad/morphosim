@@ -1,12 +1,12 @@
 #Checks that 95% posterior credible intervals contain the true simulated value in ~95% of replicates
 
-#Things:
-#- Load the list of converged runs from check_convergence.R output.
-#- For each replicate: load .log file, extract CI for tree_length and
+
+#Load the list of converged runs from check_convergence.R output.
+#For each replicate: load .log file, extract CI for tree_length and
 #     gain-to-loss ratio with KnownAnswer.R::CredibleInterval(), compare to
 #     known true values stored in simulation metadata .rds files.
-#- Compute coverage rates per grid cell with KnownAnswer.R::CoverageRate().
-#- Summarise and export with KnownAnswer.R::KnownAnswerSummary().
+#Compute coverage rates per grid cell with KnownAnswer.R::CoverageRate().
+#Summarise and export with KnownAnswer.R::KnownAnswerSummary().
 
 source("R/core/_setup.R")
 
@@ -25,8 +25,6 @@ message(sprintf("Scenarios: %s | Models: %s",
 # --- Per-model-job output paths
 # When --model is given (one model per SLURM job, run concurrently), write to a
 # per-scenario-per-model file rather than the shared known_answer_summary.rds.
-# This mirrors the convergence pattern: avoids concurrent read-modify-write races
-# on one shared file. Combine afterwards with run/merge_known_answer.R.
 SINGLE_MODEL_MODE <- !is.na(model_flag[1])
 
 results_dir <- file.path(OutputDir(), "results")
@@ -107,8 +105,6 @@ if (is.null(summary_df) || nrow(summary_df) == 0L) {
 }
 
 if (SINGLE_MODEL_MODE) {
-  # Write to per-model file — merge_known_answer.R combines these after all
-  # per-model jobs finish. No git push here; the merge job handles that.
   per_model_rds <- .KaFile(SCENARIOS[1])   # one scenario per job when --model set
   saveRDS(summary_df, per_model_rds)
   cli::cli_alert_success("Per-model known-answer saved to: {per_model_rds}")

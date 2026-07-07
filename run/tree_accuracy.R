@@ -1,5 +1,5 @@
-# Computes Clustering Information Distance (CID) between posterior trees and
-# the known true tree for all converged runs under both generative scenarios.
+#Computes Clustering Information Distance (CID) between posterior trees and
+#the known true tree for all converged runs under both generative scenarios.
 
 source("R/core/_setup.R")
 
@@ -15,9 +15,6 @@ message(sprintf("Scenarios: %s | Models: %s",
                 paste(MODEL_IDS,  collapse = ", ")))
 
 # --- Per-model-job output paths
-# When --model is given (one model per SLURM job, run concurrently), write to
-# per-scenario-per-model files to avoid read-modify-write races on the shared
-# tree_accuracy_per_rep.rds. Combine afterwards with run/merge_tree_accuracy.R.
 SINGLE_MODEL_MODE <- !is.na(model_flag[1])
 
 results_dir <- file.path(OutputDir(), "results")

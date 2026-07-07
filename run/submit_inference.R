@@ -1,14 +1,11 @@
 # Generate and submit SLURM jobs for all model x simulation combinations.
-#
-# Usage:
-#   Rscript run/submit_inference.R              # write SLURM scripts only
-#   Rscript run/submit_inference.R --submit     # also run sbatch
-#   Rscript run/submit_inference.R --requeue    # re-submit only failed runs
+
+#Rscript run/submit_inference.R              # write SLURM scripts only
+#Rscript run/submit_inference.R --submit     # also run sbatch
+#Rscript run/submit_inference.R --requeue    # re-submit only failed runs
 
 source("R/core/_setup.R")
 
-# FIX: .WriteSlurmScript was defined at the bottom of this file but called
-# at the top. Moved definition here so it is available before first use.
 
 #' Fill the mc3sim.sh template and write to slurmPath
 #'

@@ -5,7 +5,6 @@
 #ASDSF < ASDSF_MAX across paired tree files
 
 
-
 #' Rank-normalised split R-hat (Vehtari et al. 2021)
 #'
 #' Reads the .p.log file for each run, splits each chain's samples in half,
@@ -13,9 +12,6 @@
 #' variance ratio. Sensitive to convergence failures in heavy-tailed
 #' posteriors that standard PSRF can miss.
 #'
-#' FIX: was calling LogFile() which returns the full .log (every 36 iter).
-#' Now calls ParamLogFile() which returns the .p.log (every 6 iter, stochastic
-#' only) — the correct file for ESS and R-hat calculation.
 #'
 #' @param scenario  "nt" or "mk"
 #' @param gridTag   Grid tag string from GridTag()

@@ -1,14 +1,10 @@
 # Merges per-model/scenario known_answer_summary_<scenario>_<model>.rds files
-# (written by known_answer.R when run one-model-at-a-time in parallel) into the
-# single combined results/known_answer_summary.rds / .csv that downstream
-# scripts (GAM threshold, correlation analysis, etc.) expect.
-#
-# Usage:
-#   Rscript run/merge_known_answer.R
-#   Rscript run/merge_known_answer.R --scenario nt
-#
-# Run this once after all per-model known_answer jobs for a scenario have
-# finished — submitted as a SLURM job with --dependency=afterany:<job1>:...
+#(written by known_answer.R when run one-model-at-a-time in parallel) into the
+#single combined results/known_answer_summary.rds / .csv 
+
+
+#Rscript run/merge_known_answer.R
+#Rscript run/merge_known_answer.R --scenario nt
 
 source("R/core/_setup.R")
 
@@ -38,8 +34,7 @@ cli::cli_ul(basename(per_model_files))
 per_model_dfs <- lapply(per_model_files, readRDS)
 new_df <- do.call(rbind, per_model_dfs)
 
-# Merge with any existing combined summary (e.g. previously-merged scenarios),
-# de-duplicating on the natural key so re-running the merge is idempotent.
+
 existing_df <- if (file.exists(ka_rds)) readRDS(ka_rds) else NULL
 
 combined_df <- if (!is.null(existing_df)) rbind(existing_df, new_df) else new_df

@@ -10,10 +10,6 @@
 #PPSAdequacyRates()     - Aggregates IsAdequate() across the full grid, returning proportion-adequate per model.
 
 
-# Adapts supervisor's Analyses.R PPS framework, redirecting from empirical
-# to simulated nexus files. Uses ppsample.Rev, ppsim_ns_n_ki.Rev, and
-# ppsim_by_n_ki.Rev unchanged.
-
 
 #' Compute among-character variance in state frequency
 #'

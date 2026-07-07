@@ -25,11 +25,6 @@ message(sprintf("Scenarios: %s | Models: %s%s",
                 if (exists("TREE_ESS_MAX_TREES")) sprintf(" | max-trees: %d", TREE_ESS_MAX_TREES) else ""))
 
 # --- Per-model-job output paths
-# When --model is given (one model per SLURM job, run concurrently), write to
-# a per-scenario-per-model file instead of the shared convergence_summary.rds.
-# This avoids concurrent jobs doing a read-modify-write race on one shared
-# file (lost updates when jobs finish around the same time). Combine the
-# per-model files afterwards with run/merge_convergence.R.
 SINGLE_MODEL_MODE <- !is.na(model_flag[1])
 
 results_dir <- file.path(OutputDir(), "results")
@@ -169,9 +164,6 @@ for (si in seq_along(SCENARIOS)) {
 }
 
 # --- Final summary
-# Reload each scenario's file fresh (rather than reusing the loop's
-# `existing_df`, which only ever holds the last scenario processed) so the
-# report below reflects everything on disk, combined across scenarios.
 conv_df <- do.call(rbind, lapply(SCENARIOS, function(s) {
   f <- .ConvFile(s)
   if (file.exists(f)) readRDS(f) else NULL
@@ -218,10 +210,6 @@ if (any(has_tree_ess)) {
 }
 
 # --- Write re-queue list (all failures across combined dataset)
-# Skipped in per-model mode: with several model jobs running concurrently,
-# each one would overwrite this shared file with only its own subset of
-# failures. run/merge_convergence.R rebuilds it once, correctly, after all
-# per-model jobs finish.
 if (SINGLE_MODEL_MODE) {
   cli::cli_alert_info("Per-model mode: skipping shared requeue_list.txt (run merge_convergence.R after all model jobs finish).")
   quit(save = "no", status = 0)

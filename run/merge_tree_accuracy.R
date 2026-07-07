@@ -1,10 +1,7 @@
 # Merges per-model/scenario tree_accuracy_per_rep_<scenario>_<model>.rds files
-# into the combined tree_accuracy_per_rep.rds and tree_accuracy_summary.rds
-# that gam_threshold.R expects.
-#
-# Usage:
-#   Rscript run/merge_tree_accuracy.R
-#   Rscript run/merge_tree_accuracy.R --scenario nt
+
+#Rscript run/merge_tree_accuracy.R
+#Rscript run/merge_tree_accuracy.R --scenario nt
 #
 # Run once after all per-model tree_accuracy jobs finish.
 
@@ -36,8 +33,7 @@ cli::cli_ul(basename(per_model_files))
 
 new_rep_df <- do.call(rbind, lapply(per_model_files, readRDS))
 
-# Merge with any existing per-rep data (e.g. from a previous scenario run),
-# de-duplicating on natural key.
+
 existing_rep <- if (file.exists(rep_rds)) readRDS(rep_rds) else NULL
 combined_rep <- if (!is.null(existing_rep)) rbind(existing_rep, new_rep_df) else new_rep_df
 key <- with(combined_rep, paste(scenario, gridTag, repID, modelID, sep = "|"))
@@ -81,8 +77,7 @@ scenario_summaries <- lapply(all_scenarios, function(sc) {
   merge(sc_summary, sc_grid, by = "gridTag", all.x = TRUE)
 })
 
-# Fill missing columns with NA before combining so mk (3 grid cols) and
-# nt (4 grid cols, includes part_rate) can rbind cleanly
+
 all_cols <- unique(unlist(lapply(scenario_summaries, names)))
 scenario_summaries <- lapply(scenario_summaries, function(df) {
   missing <- setdiff(all_cols, names(df))

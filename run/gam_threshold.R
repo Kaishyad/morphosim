@@ -1,12 +1,12 @@
-# Fits GAMs and extracts threshold estimates for each model across all
-# parameter axes, for both generative scenarios.
-#
-# For each scenario, CID improvement over the Mk baseline (model1) is computed
-# per replicate, a GAM is fitted with three predictors (tree_length, rate_ratio,
-# chars_per_taxon), and the parameter threshold at which each model outperforms
-# the baseline is extracted. A sensitivity check re-fits with k*2 to flag
-# unstable estimates.
-#
+#Fits GAMs and extracts threshold estimates for each model across all
+#parameter axes, for both generative scenarios.
+
+#For each scenario, CID improvement over the Mk baseline (model1) is computed
+#per replicate, a GAM is fitted with three predictors (tree_length, rate_ratio,
+#chars_per_taxon), and the parameter threshold at which each model outperforms
+#the baseline is extracted. A sensitivity check re-fits with k*2 to flag
+#unstable estimates.
+
 # Output files are written per scenario to the-matrix/results/:
 #   threshold_summary_{scenario}.rds / .csv
 #   gam_objects_{scenario}.rds

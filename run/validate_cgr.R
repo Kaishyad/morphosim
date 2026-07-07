@@ -1,7 +1,7 @@
-# Standalone Cook-Gelman-Rubin (CGR) coverage validation script.
-# Loops over all converged replicates, extracts 95% posterior credible
-# intervals for the two focal parameters (tree_length and gain-to-loss ratio),
-# and checks whether each interval contains the known true simulated value.
+#Standalone Cook-Gelman-Rubin (CGR) coverage validation script.
+#Loops over all converged replicates, extracts 95% posterior credible
+#intervals for the two focal parameters (tree_length and gain-to-loss ratio),
+#and checks whether each interval contains the known true simulated value.
 
 source("R/core/_setup.R")
 
@@ -11,7 +11,6 @@ args_cli      <- commandArgs(trailingOnly = TRUE)
 scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
 model_flag    <- args_cli[which(args_cli == "--model")    + 1]
 
-# FIX: accept --scenario and --model flags instead of hardcoding
 SCENARIO    <- if (!is.na(scenario_flag[1])) scenario_flag else "nt"
 EVAL_MODELS <- if (!is.na(model_flag[1]))    model_flag    else MODEL_IDS
 PARAMETERS  <- c("tree_length", "rate_loss")

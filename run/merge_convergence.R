@@ -1,15 +1,10 @@
-# Merges per-model/scenario convergence_summary_<scenario>_<model>.rds files
-# (written by check_convergence.R when run one-model-at-a-time in parallel)
-# into the single combined results/convergence_summary.rds and
-# results/requeue_list.txt that downstream scripts (tree accuracy, etc.)
-# expect.
-#
-# Usage:
-#   Rscript run/merge_convergence.R
-#   Rscript run/merge_convergence.R --scenario nt
-#
-# Run this once after all per-model convergence jobs for a scenario have
-# finished — e.g. as a SLURM job with --dependency=afterany:<job1>:<job2>:...
+#Merges per-model/scenario convergence_summary_<scenario>_<model>.rds files
+#when run one-model-at-a-time in parallel)
+#into the single combined results/convergence_summary.rds and
+#results/requeue_list.txt that downstream scripts (tree accuracy, etc.) expect.
+
+#Rscript run/merge_convergence.R
+#Rscript run/merge_convergence.R --scenario nt
 
 source("R/core/_setup.R")
 
