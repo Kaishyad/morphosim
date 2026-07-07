@@ -1,30 +1,16 @@
-#Model 9 (replacement): Shared APRV misspecification
-#
+#Model 9
+
 # Partitioning : Two (neo | trans)
-# Neo Q  : Asymmetric fnFreeBinary (estimated separately — unchanged from M8)
-# Trans Q : Asymmetric fnFreeBinary (estimated separately — unchanged from M8)
-# APRV : Present but FORCED SHARED — one rate scalar applied to both partitions
-# ACRV : Present (shared lognormal, 4 categories)
+# Neo Q  : Asymmetric fnFreeBinary
+# Trans Q : Asymmetric fnFreeBinary
+# APRV : Present (partition rate scalar)
+# ACRV  : Present (free rates, 4 categories)
 # Root freq : Stationary
-#
-# Purpose: part_rate is a dedicated, multi-level axis in the simulation
-# grid (1.0, 2.5, 5.0), controlling how differently neo and trans
-# characters evolve in rate. At part_rate = 1.0 the two partitions truly
-# do evolve at the same rate (this model is correctly specified); at
-# part_rate = 2.5 and 5.0 the true rates diverge by a known amount.
-#
-# This model forces a single shared rate scalar across both partitions
-# instead of estimating them separately (as M8 does). It directly tests
-# sensitivity to the APRV assumption as a function of an existing grid
-# axis, giving a graded result (recovery accuracy vs. part_rate level)
-# rather than a flat yes/no — and because every replicate already has
-# ground truth for this axis, no new simulations are needed.
-#
-# Q asymmetry parameters remain separately estimated per partition,
-# exactly as in M8 — only the rate scalar is tied across partitions.
-# This is the mirror-image test to the shared-Q replacement (M7): here
-# partition-specific Q is retained and rate is collapsed; there,
-# partition-specific rate is retained and Q is collapsed.
+
+#Free rates makes noparametric assumption about the shape of the rate distribution both the rate values and their weights are estimated from the data
+#It is the most flexible ACRV option and serves as the non-parametric upper bound. If M9 does not outperform
+#M8, the lognormal assumption in the NT generative model is adequate.
+#Free rates costs more parameters (2*NUM_RATE_CATS - 1 vs 1) so it is also an implicit over-parameterisation test at low character counts.
 
 taxa  <- neo.names()
 nTaxa <- neo.size()
@@ -50,11 +36,12 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-#--- APRV: SHARED partition rate scalar (both fixed to 1 — no differential rate)
+#--- APRV: partition rate scalar
 part_rate_neo   <- 1.0
-part_rate_trans <- 1.0
+part_rate_trans ~ dnExponential(1.0)
+moves.append( mvScale(part_rate_trans, weight = 1.0) )
 
-#--- Asymmetric Q matrices (unchanged from M8 — separately estimated)
+#--- Asymmetric Q matrices
 gain_loss_neo ~ dnLognormal(0, 1)
 moves.append( mvScale(gain_loss_neo, weight = 1.0) )
 Q_neo := fnFreeBinary( simplex(1, gain_loss_neo), rescaled = TRUE )
@@ -63,15 +50,27 @@ gain_loss_trans ~ dnLognormal(0, 1)
 moves.append( mvScale(gain_loss_trans, weight = 1.0) )
 Q_trans := fnFreeBinary( simplex(1, gain_loss_trans), rescaled = TRUE )
 
-#--- ACRV: shared lognormal discretised into 4 rate categories (unchanged from M8)
+#--- ACRV: free rates (non-parametric)
+#Rate values (site_rates_raw) and weights (site_rate_weights) are both
+#estimated. Weights are drawn from a Dirichlet so they sum to 1.
+#Rates are drawn iid from an Exponential; they are not constrained to
+#sum to 1 internally but the PhyloCTMC likelihood marginalises correctly.
+#Mean-one normalisation is implicit via the weight-averaged expectation.
 NUM_RATE_CATS <- 4
-acrv_sd ~ dnExponential(1.0)
-moves.append( mvScale(acrv_sd, weight = 1.0) )
-site_rates := fnDiscretizeDistribution(
-  dnLognormal(-acrv_sd^2 / 2, acrv_sd), NUM_RATE_CATS
-)
 
-#--- Model: two partitions, asymmetric Q, SHARED rate, lognormal ACRV
+site_rates_raw ~ dnDirichlet( rep(1.0, NUM_RATE_CATS) )
+moves.append( mvBetaSimplex(site_rates_raw,      weight = NUM_RATE_CATS / 3.0) )
+moves.append( mvDirichletSimplex(site_rates_raw, weight = 1.0) )
+
+# Scale so the mean rate = 1 (identifiability with tree_length)
+site_rate_weights ~ dnDirichlet( rep(1.0, NUM_RATE_CATS) )
+moves.append( mvBetaSimplex(site_rate_weights,      weight = NUM_RATE_CATS / 3.0) )
+moves.append( mvDirichletSimplex(site_rate_weights, weight = 1.0) )
+
+# Weighted mean-normalised rates
+site_rates := site_rates_raw / sum(site_rates_raw * site_rate_weights)
+
+#--- Model: two partitions, asymmetric Q, free rates ACRV
 m_neo ~ dnPhyloCTMC(
   tree        = phylogeny,
   Q           = Q_neo,
