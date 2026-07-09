@@ -1,17 +1,7 @@
-# Model comparison analyses that ThresholdGAM.R doesn't cover.
-#
-# ThresholdGAM.R only ever compares each NT model against model1 (the Mk
-# baseline) within one scenario at a time. That answers "does this model
-# beat the baseline, and where" but not:
-#   (a) how all 12 models rank against EACH OTHER within a scenario, or
-#   (b) how a given model performs on nt-generated vs mk-generated data --
-#       i.e. whether model complexity helps when it should (nt-generated)
-#       without hurting when it shouldn't (mk-generated), which is exactly
-#       the dissertation's "Simulation contrast" robustness criterion
-#       (Section 6.2).
-#
-# Both functions here take the same cid_data produced by run/tree_accuracy.R
-# (columns: scenario, gridTag, repID, modelID, median_cid).
+#how all 12 models rank against EACH OTHER within a scenario, or
+#how a given model performs on nt-generated vs mk-generated data 
+#whether model complexity helps when it should (nt-generated)
+#without hurting when it shouldn't (mk-generated), 
 
 #' All-models-against-each-other comparison, within one scenario
 #'
@@ -34,11 +24,7 @@ AllModelsComparison <- function(cid_data, scenario, models = NULL) {
   if (is.null(models)) models <- sort(unique(sub$modelID))
   sub <- sub[sub$modelID %in% models, ]
 
-  # Wide matrix: one row per (gridTag, repID), one column per model.
-  # Friedman/pairwise Wilcoxon both need matched blocks (same grid cell +
-  # replicate observed under every model), so cells missing any model are
-  # dropped -- this is why getting model7/model9 fully rerun matters before
-  # trusting this table.
+  
   wide <- reshape(
     sub[, c("gridTag", "repID", "modelID", "median_cid")],
     idvar     = c("gridTag", "repID"),
@@ -91,8 +77,7 @@ AllModelsComparison <- function(cid_data, scenario, models = NULL) {
 #'
 #' Answers whether model complexity helps when it should (data generated
 #' under NT) without hurting when it shouldn't (data generated under
-#' symmetric Mk) -- the dissertation's "Simulation contrast" robustness
-#' check (Section 6.2), which up to now has only been implicit in separate
+#' symmetric Mk),, which up to now has only been implicit in separate
 #' per-scenario tables rather than tested directly against each other.
 #'
 #' Matching is done on the axes shared by both scenario grids
