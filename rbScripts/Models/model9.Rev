@@ -51,24 +51,31 @@ moves.append( mvScale(gain_loss_trans, weight = 1.0) )
 Q_trans := fnFreeBinary( simplex(1, gain_loss_trans), rescaled = TRUE )
 
 #--- ACRV: free rates (non-parametric)
-#Rate values (site_rates_raw) and weights (site_rate_weights) are both
-#estimated. Weights are drawn from a Dirichlet so they sum to 1.
-#Rates are drawn iid from an Exponential; they are not constrained to
-#sum to 1 internally but the PhyloCTMC likelihood marginalises correctly.
-#Mean-one normalisation is implicit via the weight-averaged expectation.
+#Rate values (site_rates_raw) are drawn i.i.d. from an unconstrained
+#Exponential prior (the standard "free rates" formulation), independent
+#of one another. Category weights (site_rate_weights) are drawn from a
+#Dirichlet so they sum to 1. Rates are rescaled so the weighted mean
+#equals 1, preserving identifiability with tree_length.
 NUM_RATE_CATS <- 4
 
-site_rates_raw ~ dnDirichlet( rep(1.0, NUM_RATE_CATS) )
-moves.append( mvBetaSimplex(site_rates_raw,      weight = NUM_RATE_CATS / 3.0) )
-moves.append( mvDirichletSimplex(site_rates_raw, weight = 1.0) )
+for (i in 1:NUM_RATE_CATS) {
+  site_rates_raw[i] ~ dnExponential(1.0)
+  moves.append( mvScale(site_rates_raw[i], weight = 1.0) )
+}
 
-# Scale so the mean rate = 1 (identifiability with tree_length)
 site_rate_weights ~ dnDirichlet( rep(1.0, NUM_RATE_CATS) )
 moves.append( mvBetaSimplex(site_rate_weights,      weight = NUM_RATE_CATS / 3.0) )
 moves.append( mvDirichletSimplex(site_rate_weights, weight = 1.0) )
 
 # Weighted mean-normalised rates
-site_rates := site_rates_raw / sum(site_rates_raw * site_rate_weights)
+# site_rates_raw is a vector of independent RealPos scalars (not a Simplex),
+# so elementwise multiplication with the Simplex weights is unambiguous
+# once built via an explicit loop.
+for (i in 1:NUM_RATE_CATS) {
+  weighted_term[i] := site_rates_raw[i] * site_rate_weights[i]
+}
+mean_rate  := sum(weighted_term)
+site_rates := site_rates_raw / mean_rate
 
 #--- Model: two partitions, asymmetric Q, free rates ACRV
 m_neo ~ dnPhyloCTMC(
