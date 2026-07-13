@@ -15,7 +15,8 @@ scripts <- c(
   "viz/03_parameter_grid_effects.R",
   # "viz/04_imputation_accuracy_plots.R",  # skipped for now -- ignoring imputation
   "viz/05_summary_dashboard.R",
-  "viz/06_parameter_grid_by_model.R"
+  "viz/06_parameter_grid_by_model.R",
+  "viz/07_cross_metric_analysis.R"  # requires run/cross_metric_analysis.R to have been run first
 )
 
 for (s in scripts) {

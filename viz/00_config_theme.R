@@ -51,6 +51,12 @@ PATHS <- list(
   imputation_sum    = file.path(.results_dir, "imputation_accuracy.rds"),       # analysis/imputation_analysis.R
   imputation_rep    = file.path(.results_dir, "imputation_accuracy_per_rep.rds"),
   imputation_wilcox = file.path(.results_dir, "imputation_wilcoxon.rds"),
+  known_answer      = file.path(.results_dir, "known_answer_summary.rds"),      # run/known_answer.R
+  cgr_coverage      = file.path(.results_dir, "cgr_coverage.rds"),              # run/validate_cgr.R
+  cross_metric_cell = file.path(.results_dir, "cross_metric_gridcell.rds"),     # run/cross_metric_analysis.R
+  cross_metric_model = file.path(.results_dir, "cross_metric_model_scorecard.rds"),
+  cross_metric_rank_corr = file.path(.results_dir, "cross_metric_rank_correlations.rds"),
+  cross_metric_cell_corr = file.path(.results_dir, "cross_metric_gridcell_correlations.rds"),
   fig_dir           = file.path(OutputDir(), "figures")
 )
 
@@ -76,8 +82,15 @@ MODEL_LABELS["model8"] <- "M8 (NT baseline)"
 # this up per scenario rather than assuming a single global baseline.
 # Absolute/ranking plots are kept alongside the baseline-relative ones
 # so no model's performance is only ever seen framed against a baseline.
-# ---------------------------------------------------------------
-BASELINE_BY_SCENARIO <- c(mk = "model1", nt = "model8")
+#
+# FIX (2026-07): BASELINE_BY_SCENARIO used to be defined here AND
+# (independently, hardcoded to "model1" for both scenarios) inside
+# run/gam_threshold.R and R/analysis/ThresholdGAM.R -- two copies of the
+# same idea that had drifted out of sync. It's now defined exactly once,
+# in R/core/Grid.R, which R/core/_setup.R (sourced above) already brings
+# in, so nothing further needs defining here. If you ever see
+# "BASELINE_BY_SCENARIO not found" it means R/core/Grid.R didn't load --
+# check R/core/_setup.R's source loop picked it up.
 
 # ---------------------------------------------------------------
 # PALETTE + THEME

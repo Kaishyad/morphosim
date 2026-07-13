@@ -2,6 +2,14 @@
 # topological accuracy (CID) across the model space, with bootstrap CIs.
 
 source("R/core/_setup.R")
+# FIX: this script calls CorrelationSummary()/CorrelationTest() from
+# R/analysis/Correlation.R, but that file is not among the ones
+# R/core/_setup.R auto-sources (only Convergence.R, TreeAnalysis.R, and
+# ThresholdGAM.R are). Every previous run of this script would have failed
+# with "could not find function CorrelationSummary". run/model_comparison.R
+# already follows the correct pattern of explicitly sourcing the analysis
+# file it needs; this script just hadn't been updated to match.
+source("R/analysis/Correlation.R")
 
 # --- Configuration ---
 args_cli      <- commandArgs(trailingOnly = TRUE)

@@ -2,24 +2,28 @@
 ## 03_parameter_grid_effects.R
 ## How does accuracy change as you move through the parameter grid?
 ##
-## Two data sources, kept clearly separate:
+## Two data sources, kept intentionally separate as a cross-check:
 ##
 ##  (A) run/gam_threshold.R's own output (threshold_summary_{mk,nt}.rds).
-##      NOTE: as currently written, run/gam_threshold.R fixes
-##      BASELINE_ID <- "model1" for BOTH scenarios, so these files show
-##      every model's improvement over model1, even in the nt scenario.
-##      That's a legitimate question in its own right ("does this model
-##      beat the plain Mk baseline") so it's plotted as-is, just labelled
-##      honestly. If you want gam_threshold.R itself to switch to model8
-##      for the nt scenario, that change belongs in run/gam_threshold.R
-##      (BASELINE_ID would need to become scenario-dependent there too).
+##      FIX (2026-07): this used to hardcode BASELINE_ID <- "model1" for
+##      BOTH scenarios, so nt-scenario thresholds were silently measuring
+##      improvement over the wrong (Mk) baseline. gam_threshold.R now
+##      resolves the baseline per scenario via BASELINE_BY_SCENARIO
+##      (R/core/Grid.R: model1 for mk, model8 for nt), so this is now the
+##      SAME scenario-correct comparison as (B) below, just computed by
+##      the actual pipeline script with its full GAM-fitting machinery
+##      (sensitivity checks, k-doubling, etc.) rather than the simplified
+##      version below.
 ##
-##  (B) A second, scenario-correct comparison computed directly in this
-##      script from tree_accuracy_per_rep.rds: mk models vs model1,
+##  (B) A second, independently-computed comparison, built directly in
+##      this script from tree_accuracy_per_rep.rds: mk models vs model1,
 ##      nt models vs model8, using the same predictors (tree_length,
 ##      rate_ratio = gain_loss, chars_per_taxon = n_char / n_taxa) and a
-##      GAM smooth per model/predictor. This is the "model8 is the nt
-##      baseline" view.
+##      ggplot geom_smooth() GAM per model/predictor (not mgcv::gam()
+##      directly, so no sensitivity/threshold-stability checks here).
+##      Kept alongside (A) deliberately: if the two ever disagree it's a
+##      fast sanity check that something in the pipeline has drifted,
+##      without needing to re-derive the plot from scratch.
 ##
 ## Run:  Rscript viz/03_parameter_grid_effects.R
 ## ============================================================
@@ -43,11 +47,11 @@ if (!is.null(thresh_df) && nrow(thresh_df) > 0L) {
     facet_wrap(~ predictor, scales = "free_x") +
     scale_color_manual(values = SCENARIO_COLORS, name = "Generative scenario") +
     labs(
-      title = "GAM threshold: predictor value where each model crosses zero improvement over model1",
-      subtitle = "As currently configured, run/gam_threshold.R always compares against model1 (Mk), even for nt runs",
+      title = "GAM threshold: predictor value where each model crosses zero improvement over its scenario baseline",
+      subtitle = "mk models vs model1 (Mk baseline); nt models vs model8 (NT baseline) -- from run/gam_threshold.R",
       x = "Predictor value at zero-crossing", y = NULL
     )
-  save_fig(p1, "12_threshold_crossing_vs_model1", width = 10, height = 6)
+  save_fig(p1, "12_threshold_crossing_vs_scenario_baseline", width = 10, height = 6)
 
   p2 <- ggplot(thresh_df, aes(x = predictor, y = fct_rev(modelID), fill = threshold)) +
     geom_tile(color = "white", linewidth = 0.8) +
@@ -55,11 +59,11 @@ if (!is.null(thresh_df) && nrow(thresh_df) > 0L) {
     scale_fill_viridis_c(option = "cividis", name = "Threshold") +
     facet_wrap(~ scenario) +
     labs(
-      title = "Threshold values across the full predictor grid (vs model1)",
+      title = "Threshold values across the full predictor grid (vs scenario baseline)",
       x = "Predictor", y = NULL
     ) +
     theme(panel.grid = element_blank(), axis.text.x = element_text(angle = 40, hjust = 1))
-  save_fig(p2, "13_threshold_heatmap_vs_model1", width = 9, height = 7)
+  save_fig(p2, "13_threshold_heatmap_vs_scenario_baseline", width = 9, height = 7)
 } else {
   message("threshold_summary_{mk,nt}.rds not found -- skipping plots 12/13 ",
           "(run run/gam_threshold.R first).")

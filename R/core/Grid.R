@@ -17,3 +17,6 @@ PARAM_GRID <- local({
   g$n_trans <- g$n_char - g$n_neo
   g
 })
+
+
+BASELINE_BY_SCENARIO <- c(mk = "model1", nt = "model8")

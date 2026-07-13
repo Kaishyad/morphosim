@@ -1,25 +1,45 @@
 #Fits Generalised Additive Models (GAMs) to identify parameter thresholds at
-#which NT models outperform the Mk baseline in topological accuracy.
-#LATER fix this bc it only does against model 1 rhats not right 
+#which each model outperforms the SCENARIO-APPROPRIATE baseline in
+#topological accuracy.
 #one GAM per inference model per parameter axis.
+#
+#FIX (2026-07): baseline used to be hardcoded to "model1" (the Mk baseline)
+#regardless of scenario, so every threshold computed for the nt scenario was
+#silently measuring "does this model beat plain Mk" rather than "does the
+#extra model complexity buy anything over the correctly-specified NT
+#baseline (model8)". Both ComputeImprovement() and ThresholdSummary() now
+#default baselineID to BASELINE_BY_SCENARIO[[scenario]] (defined once in
+#R/core/Grid.R: model1 for mk, model8 for nt) rather than a literal
+#"model1". Pass baselineID explicitly if you deliberately want a comparison
+#against a non-standard baseline.
 
-#' Compute per-replicate CID improvement of NT model over Mk baseline
+#' Compute per-replicate CID improvement of a model over its scenario baseline
 #'
-#' delta_CID = CID_Mk - CID_NT. Positive values mean the NT model is more
-#' accurate (lower distance to true tree) than the Mk baseline for that
-#' replicate.
+#' delta_CID = CID_baseline - CID_model. Positive values mean the evaluated
+#' model is more accurate (lower distance to true tree) than the baseline
+#' for that replicate.
 #'
 #' @param cid_data   Data frame with columns: scenario, gridTag, repID,
 #'                   modelID, median_cid. Produced by analysis/tree_accuracy.R.
-#' @param modelID    NT inference model to evaluate (e.g. "model4").
-#' @param baselineID Mk baseline model (default "model1").
-#' @param scenario   Generative scenario (default "nt").
+#' @param modelID    Inference model to evaluate (e.g. "model4").
+#' @param baselineID Baseline model to compare against. Default NULL resolves
+#'                   to BASELINE_BY_SCENARIO[[scenario]] -- model1 for mk,
+#'                   model8 for nt. Pass a value explicitly to override.
+#' @param scenario   Generative scenario, "mk" or "nt" (default "nt").
 #' @return Data frame with columns: repID, gridTag, tree_length, gain_loss,
 #'   n_char, chars_per_taxon, rate_ratio, improvement.
 #' @export
 ComputeImprovement <- function(cid_data, modelID,
-                               baselineID = "model1",
+                               baselineID = NULL,
                                scenario   = "nt") {
+  if (is.null(baselineID)) {
+    baselineID <- BASELINE_BY_SCENARIO[[scenario]]
+    if (is.null(baselineID)) {
+      stop("No default baseline known for scenario '", scenario,
+           "'; pass baselineID explicitly.")
+    }
+  }
+
   sub_nt <- cid_data[cid_data$modelID == modelID    & cid_data$scenario == scenario, ]
   sub_mk <- cid_data[cid_data$modelID == baselineID & cid_data$scenario == scenario, ]
 
@@ -297,21 +317,37 @@ SensitivityCheck <- function(improvement_df, thresholds_orig,
 #'   4. Optionally runs SensitivityCheck().
 #'
 #' @param cid_data      Per-replicate CID data frame.
-#' @param model_ids     Model IDs to evaluate (default MODEL_IDS, excluding
-#'                      "model1" as it is the Mk baseline).
-#' @param baselineID    Mk baseline model ID (default "model1").
-#' @param scenario      Generative scenario (default "nt").
+#' @param model_ids     Model IDs to evaluate. Default NULL resolves to
+#'                      "all models except the scenario's own baseline"
+#'                      (setdiff(MODEL_IDS, baselineID), computed after
+#'                      baselineID is resolved) -- so under "nt" this
+#'                      correctly excludes model8, not model1.
+#' @param baselineID    Baseline model ID. Default NULL resolves to
+#'                      BASELINE_BY_SCENARIO[[scenario]] -- model1 for mk,
+#'                      model8 for nt.
+#' @param scenario      Generative scenario, "mk" or "nt" (default "nt").
 #' @param k             GAM basis dimension (default 10).
 #' @param sensitivity   Run SensitivityCheck() for each model (default TRUE).
 #' @return Data frame with columns: modelID, predictor, threshold, direction,
 #'   stable (if sensitivity = TRUE).
 #' @export
 ThresholdSummary <- function(cid_data,
-                             model_ids   = setdiff(MODEL_IDS, "model1"),
-                             baselineID  = "model1",
+                             model_ids   = NULL,
+                             baselineID  = NULL,
                              scenario    = "nt",
                              k           = 10L,
                              sensitivity = TRUE) {
+  if (is.null(baselineID)) {
+    baselineID <- BASELINE_BY_SCENARIO[[scenario]]
+    if (is.null(baselineID)) {
+      stop("No default baseline known for scenario '", scenario,
+           "'; pass baselineID explicitly.")
+    }
+  }
+  if (is.null(model_ids)) {
+    model_ids <- setdiff(MODEL_IDS, baselineID)
+  }
+
   predictors <- c("tree_length", "rate_ratio", "chars_per_taxon")
 
   all_rows <- lapply(model_ids, function(mid) {
