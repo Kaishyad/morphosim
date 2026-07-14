@@ -12,6 +12,16 @@
 # No git pull, no rebase, no retry loop -- just runs and pushes what it made.
 # If the push fails (e.g. someone else pushed in the meantime), it prints
 # the error and stops; push manually from the-matrix if that happens.
+#
+# DEPENDENCY: viz/07_cross_metric_analysis.R (part of the suite below)
+# reads results/cross_metric_*.rds, which only exist once
+# slurm/run_cross_metric_analysis.sh has completed. Don't just `sbatch` this
+# on its own the first time -- chain it:
+#   jid=$(sbatch --parsable slurm/run_cross_metric_analysis.sh)
+#   sbatch --dependency=afterok:$jid slurm/run_viz.sh
+# After that first run, cross_metric_gridcell.rds etc. persist on disk, so
+# plain `sbatch slurm/run_viz.sh` is fine again until you have new upstream
+# results worth re-running cross_metric_analysis for.
 
 module load r
 
