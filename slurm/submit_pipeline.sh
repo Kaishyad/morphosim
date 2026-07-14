@@ -39,9 +39,26 @@ echo ""
 # to run again. If $CONV_JOB WAS a per-model run, this step is what
 # actually combines it with everything else and pushes -- so either way,
 # always run it before anything below.
+#
+# NOTE: --dependency=afterok:<id> only works while slurmctld (the live
+# scheduler) still knows about that job. Completed jobs get purged from
+# the controller a few minutes after finishing (MinJobAge) even though
+# `sacct` keeps their history indefinitely -- so if $CONV_JOB already
+# finished a while ago, attaching a dependency to it fails immediately
+# with "Job dependency problem" even though the job succeeded. We check
+# with `squeue` (which only sees live/controller-known jobs) and only
+# attach the dependency if it's still there; otherwise we just submit
+# straight away, since "the job already finished" and "the dependency is
+# already satisfied" mean the same thing here.
 # ---------------------------------------------------------------
-merge_conv_jid=$(sbatch --parsable --dependency=afterok:$CONV_JOB slurm/merge_and_push.sh)
-echo "[0] merge_convergence (merge_and_push.sh): $merge_conv_jid  (after $CONV_JOB)"
+if squeue -h -j "$CONV_JOB" 2>/dev/null | grep -q .; then
+  echo "Job $CONV_JOB is still live in the scheduler -- will wait for it."
+  merge_conv_jid=$(sbatch --parsable --dependency=afterok:$CONV_JOB slurm/merge_and_push.sh)
+else
+  echo "Job $CONV_JOB is no longer tracked by the scheduler (already finished a while ago) -- submitting step 0 immediately."
+  merge_conv_jid=$(sbatch --parsable slurm/merge_and_push.sh)
+fi
+echo "[0] merge_convergence (merge_and_push.sh): $merge_conv_jid"
 
 # ---------------------------------------------------------------
 # STEP 1: tree accuracy -- the actual "comparing trees" step.
