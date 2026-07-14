@@ -2,16 +2,6 @@
 #which each model outperforms the SCENARIO-APPROPRIATE baseline in
 #topological accuracy.
 #one GAM per inference model per parameter axis.
-#
-#FIX (2026-07): baseline used to be hardcoded to "model1" (the Mk baseline)
-#regardless of scenario, so every threshold computed for the nt scenario was
-#silently measuring "does this model beat plain Mk" rather than "does the
-#extra model complexity buy anything over the correctly-specified NT
-#baseline (model8)". Both ComputeImprovement() and ThresholdSummary() now
-#default baselineID to BASELINE_BY_SCENARIO[[scenario]] (defined once in
-#R/core/Grid.R: model1 for mk, model8 for nt) rather than a literal
-#"model1". Pass baselineID explicitly if you deliberately want a comparison
-#against a non-standard baseline.
 
 #' Compute per-replicate CID improvement of a model over its scenario baseline
 #'

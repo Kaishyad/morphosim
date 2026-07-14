@@ -8,23 +8,7 @@
 #SBATCH --error=/nobackup/djfb16/morphosim/logs/audit_runs_%j.err
 
 # Usage: sbatch slurm/run_audit_incomplete_runs.sh [scenario] [model]
-# Examples:
-#   sbatch slurm/run_audit_incomplete_runs.sh
-#   sbatch slurm/run_audit_incomplete_runs.sh mk
-#   sbatch slurm/run_audit_incomplete_runs.sh mk model12
-#
-# Pure file.exists() sweep over every (scenario, grid cell, replicate,
-# model) combination -- much lighter than run_convergence.sh's equivalent
-# sweep (which also loads and checks trees per replicate), so --time above
-# is generous headroom, not a real estimate.
-#
-# This is diagnostic only -- it does NOT resubmit anything. It reports
-# what's incomplete and writes results/requeue_from_audit.txt for you to
-# act on separately (slurm/Infer.R's own skip logic decides what actually
-# gets resubmitted).
-#
-# Pushes results/incomplete_runs_audit.csv and results/requeue_from_audit.txt
-# to the-matrix on completion, if either changed.
+
 
 SCENARIO_ARG=""
 if [ -n "$1" ]; then

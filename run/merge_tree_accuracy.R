@@ -2,8 +2,6 @@
 
 #Rscript run/merge_tree_accuracy.R
 #Rscript run/merge_tree_accuracy.R --scenario nt
-#
-# Run once after all per-model tree_accuracy jobs finish.
 
 source("R/core/_setup.R")
 

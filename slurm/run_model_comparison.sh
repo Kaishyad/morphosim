@@ -7,22 +7,7 @@
 #SBATCH --output=/nobackup/djfb16/morphosim/logs/model_comparison_%j.out
 #SBATCH --error=/nobackup/djfb16/morphosim/logs/model_comparison_%j.err
 
-# Usage: sbatch slurm/run_model_comparison.sh
-# Runs Table A (all-models-vs-each-other, per scenario) and Table B
-# (per-model scenario contrast, nt vs mk) in one job. Cheap relative to
-# validate_cgr/pps_adequacy -- it only reads the already-merged
-# tree_accuracy_per_rep.rds, no per-replicate file reads -- so --time
-# above is generous headroom, not a real estimate.
-#
-# Requires: results/tree_accuracy_per_rep.rds already merged and current
-# (including model7/model9 once those reruns land -- see
-# run_tree_accuracy.sh and run/merge_tree_accuracy.R). Models missing
-# from that file are dropped from Table A with a warning rather than
-# silently skewing the ranking; check the .out log for
-# "blocks dropped" warnings before trusting the result.
-#
-# Pushes all five model_comparison_*.csv outputs to the-matrix on
-# completion.
+
 
 module load r
 

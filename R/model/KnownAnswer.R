@@ -1,6 +1,4 @@
 #Simulation-based calibration (Cook, Gelman & Rubin 2006).
-# checks that the 95% posterior credible interval contains the known true
-# parameter value in approximately 95% of replicates across the parameter grid.
 
 #' Map a model ID to its logged gain/loss rate parameter column(s)
 #'

@@ -1,36 +1,5 @@
-# Audits every (scenario x grid cell x replicate x model) combination and
-# classifies it as complete / partial (crashed) / not started, using the
-# same JobLogsComplete() definition now shared by slurm/Infer.R and
-# run/check_convergence.R (see R/core/FilePaths.R).
-#
-# This generalises the by-hand investigation that found model12/mk's "640
-# skipped, 0 output" problem to the whole pipeline, so any other
-# model/scenario silently affected by the same historical Infer.R bug (jobs
-# that crashed after producing a partial run_1 log, before run_2 existed)
-# gets found in one pass instead of by manual inspection.
-#
-# Usage:
-#   Rscript run/audit_incomplete_runs.R
-#   Rscript run/audit_incomplete_runs.R --scenario mk
-#   Rscript run/audit_incomplete_runs.R --scenario mk --model model12
-#
-# Output (written to the-matrix/results/):
-#   incomplete_runs_audit.csv   -- one row per (scenario,gridTag,repID,modelID)
-#                                   combination that is NOT complete, with a
-#                                   `status` column (not_started / partial)
-#                                   and, for `partial`, which run(s) are missing.
-#   requeue_from_audit.txt      -- same columns as check_convergence.R's own
-#                                   requeue_list.txt (scenario\tgridTag\trepID\tmodelID),
-#                                   ready to feed into slurm/Infer.R's per-job
-#                                   resubmission path. Only includes rows where
-#                                   simulated data actually exists (nothing to
-#                                   infer on otherwise) -- see console summary
-#                                   for how many rows were excluded for that
-#                                   reason.
-#
-# This does NOT resubmit anything itself -- it only reports. Feed
-# requeue_from_audit.txt into your normal resubmission workflow once you've
-# looked at it.
+#Audits every (scenario x grid cell x replicate x model) combination and
+#classifies it as complete / partial (crashed) / not started
 
 source("R/core/_setup.R")
 

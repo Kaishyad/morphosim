@@ -1,8 +1,5 @@
 # Merges per-model/scenario known_answer_summary_<scenario>_<model>.rds files
-#(written by known_answer.R when run one-model-at-a-time in parallel) into the
-#single combined results/known_answer_summary.rds / .csv 
-
-
+#
 #Rscript run/merge_known_answer.R
 #Rscript run/merge_known_answer.R --scenario nt
 

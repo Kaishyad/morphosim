@@ -1,21 +1,5 @@
-## ============================================================
-## 00_config_theme.R
-## Shared config, palette, and ggplot theme for morphosim/viz.
-##
-## Run everything from the morphosim repo root, e.g.:
-##   Rscript viz/01_tree_accuracy_plots.R
-##
-## Source this at the top of every other script:
-##   source("viz/00_config_theme.R")
-##
-## This sources R/core/_setup.R (the real pipeline setup), so it picks up
-## OutputDir()/MatrixDir()/GridTag()/ScenarioGrid()/PARAM_GRID/MODEL_IDS and
-## the ESS/R-hat/ASDSF thresholds exactly as the analysis pipeline uses them.
-## The-matrix is assumed to be a sibling directory of morphosim
-## (../the-matrix), same convention as R/core/_setup.R. Override with
-## Sys.setenv(MORPHOSIM_MATRIX_DIR = "/path/to/the-matrix") before sourcing
-## this file if your layout differs.
-## ============================================================
+#Shared config, palette, and ggplot theme for morphosim/viz.
+
 
 if (!file.exists("R/core/_setup.R")) {
   stop("Run viz scripts from the morphosim repo root (R/core/_setup.R not found ",
@@ -34,11 +18,7 @@ suppressPackageStartupMessages({
   library(scales)
 })
 
-# ---------------------------------------------------------------
-# PATHS -- real outputs written by run/*.R into the-matrix/results/,
-# figures written back out to the-matrix/figures/ (code stays in
-# morphosim, outputs live in the-matrix, per project convention).
-# ---------------------------------------------------------------
+
 .results_dir <- file.path(OutputDir(), "results")
 
 PATHS <- list(
@@ -63,10 +43,7 @@ PATHS <- list(
 dir.create(PATHS$fig_dir, showWarnings = FALSE, recursive = TRUE)
 
 # ---------------------------------------------------------------
-# MODEL LABELS -- real model IDs are "model1".."model12" (lowercase).
-# Edit the RHS strings if you want fuller descriptions per model; the
-# two baselines are pre-filled since they're referenced throughout.
-# ---------------------------------------------------------------
+# MODEL LABELS 
 MODEL_LABELS <- setNames(
   paste0("M", 1:12),
   MODEL_IDS
@@ -74,27 +51,9 @@ MODEL_LABELS <- setNames(
 MODEL_LABELS["model1"] <- "M1 (Mk baseline)"
 MODEL_LABELS["model8"] <- "M8 (NT baseline)"
 
-# ---------------------------------------------------------------
-# BASELINES -- per your framework, model1 is the Mk baseline and is
-# only meaningful for the "mk" generative scenario; model8 is the NT
-# baseline and is the meaningful reference for the "nt" scenario.
-# Every plot that shows a delta/relative-to-baseline view below looks
-# this up per scenario rather than assuming a single global baseline.
-# Absolute/ranking plots are kept alongside the baseline-relative ones
-# so no model's performance is only ever seen framed against a baseline.
-#
-# FIX (2026-07): BASELINE_BY_SCENARIO used to be defined here AND
-# (independently, hardcoded to "model1" for both scenarios) inside
-# run/gam_threshold.R and R/analysis/ThresholdGAM.R -- two copies of the
-# same idea that had drifted out of sync. It's now defined exactly once,
-# in R/core/Grid.R, which R/core/_setup.R (sourced above) already brings
-# in, so nothing further needs defining here. If you ever see
-# "BASELINE_BY_SCENARIO not found" it means R/core/Grid.R didn't load --
-# check R/core/_setup.R's source loop picked it up.
 
-# ---------------------------------------------------------------
-# PALETTE + THEME
-# ---------------------------------------------------------------
+
+
 SCENARIO_COLORS <- c(mk = "#2C7FB8", nt = "#D95F02")
 
 model_palette <- function(n = 12) {
@@ -118,9 +77,7 @@ theme_matrix <- function(base_size = 12) {
 }
 theme_set(theme_matrix())
 
-# ---------------------------------------------------------------
-# SAVE HELPER -- consistent sizing / dpi / dual format output
-# ---------------------------------------------------------------
+
 save_fig <- function(plot, name, width = 8, height = 5.5, dpi = 300, formats = c("png", "pdf")) {
   for (fmt in formats) {
     ggsave(
@@ -131,12 +88,7 @@ save_fig <- function(plot, name, width = 8, height = 5.5, dpi = 300, formats = c
   message("Saved: ", name, " (", paste(formats, collapse = ", "), ") -> ", PATHS$fig_dir)
 }
 
-# ---------------------------------------------------------------
-# SAFE READERS -- warn instead of hard-failing if a file is missing,
-# so one not-yet-run pipeline step doesn't stop the whole viz suite.
-# Primary outputs are .rds (saveRDS/readRDS); threshold_summary_*
-# also exists as .csv, kept as a fallback reader.
-# ---------------------------------------------------------------
+
 safe_read_rds <- function(path) {
   if (!file.exists(path)) {
     warning("Missing file: ", path, " -- skipping plots that depend on it.")
@@ -153,11 +105,7 @@ safe_read_csv <- function(path) {
   readr::read_csv(path, show_col_types = FALSE)
 }
 
-# ---------------------------------------------------------------
-# LABEL HELPER -- factor a modelID column using MODEL_LABELS, keeping
-# only levels actually present so facets/legends don't pad out to all
-# 12 when a data set only covers a subset.
-# ---------------------------------------------------------------
+
 label_models <- function(df, col = "modelID") {
   present <- intersect(MODEL_IDS, unique(df[[col]]))
   df[[col]] <- factor(df[[col]], levels = present, labels = MODEL_LABELS[present])

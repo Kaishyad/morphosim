@@ -7,11 +7,6 @@
 #SBATCH --output=/nobackup/djfb16/morphosim/logs/known_answer_%j.out
 #SBATCH --error=/nobackup/djfb16/morphosim/logs/known_answer_%j.err
 
-# Usage: sbatch slurm/run_known_answer.sh [scenario] [model]
-# Examples:
-#   sbatch slurm/run_known_answer.sh mk model4
-#   sbatch slurm/run_known_answer.sh nt model8
-# No git push here — run slurm/merge_known_answer.sh after all model jobs finish.
 
 SCENARIO="${1:-mk}"
 MODEL="${2:-model1}"

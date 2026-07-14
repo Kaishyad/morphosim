@@ -51,13 +51,7 @@ existing_df <- NULL
 }
 
 #--- Helper
-#run is complete when both log files exist for a given (scenario, gridTag, repID, modelID)
-#FIX: this now calls the shared JobLogsComplete() helper (R/core/FilePaths.R)
-#instead of re-implementing the same "both runs' logs exist" check inline.
-#That inline copy was the strict, correct version of the check; slurm/Infer.R
-#had its own, looser copy (run_1 log OR tar only) that had silently drifted
-#out of sync with this one -- see the comment on JobLogsComplete() for the
-#full story. Both scripts now share one definition so they can't diverge again.
+
 .EnumerateCompleted <- function(scenario, grid = PARAM_GRID, nRep = N_REP,
                                 model_ids = MODEL_IDS, nRuns = 2) {
   rows <- vector("list", nrow(grid) * nRep * length(model_ids))

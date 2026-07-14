@@ -2,10 +2,10 @@
 #Loops over PARAM_GRID, builds RevBayes argument vectors, creates output
 #directories in the-matrix, and submits simulation jobs to Hamilton
 
-#   Rscript slurm/Simulate.R              # dry-run: prints args only
-#   Rscript slurm/Simulate.R --run        # submits all grid cells (both scenarios)
-#   Rscript slurm/Simulate.R --run --scenario nt   # NT only
-#   Rscript slurm/Simulate.R --run --scenario mk   # Mk only
+#Rscript slurm/Simulate.R    # dry-run: prints args only
+#Rscript slurm/Simulate.R --run   # submits all grid cells (both scenarios)
+#Rscript slurm/Simulate.R --run --scenario nt   # NT only
+#Rscript slurm/Simulate.R --run --scenario mk   # Mk only
 
 source("R/core/_setup.R")
 
@@ -124,13 +124,7 @@ for (scenario in scenarios) {
       # Wait until there is a free slot in the queue
       .wait_for_slot()
 
-      # Build sbatch command.
-      # Hamilton8 defaults already give us: 1 core, 1 GB RAM, 1 hour, shared
-      # partition — exactly what a serial sim needs.  We only override:
-      #   --time=00:30:00   tighter than the 1-hour default so jobs backfill
-      #                     faster and free up the queue sooner.
-      #   --job-name / --output / --error   for traceability.
-      # No --mem, --ntasks, --cpus-per-task, or --partition flags needed.
+
       slurmCmd <- paste(
         "sbatch",
         "--job-name", shQuote(job_name),

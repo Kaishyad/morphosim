@@ -1,14 +1,7 @@
-# Driver for R/analysis/ModelComparison.R -- the "how do all models compare
-# to each other" and "how does each model compare to itself across
-# scenarios" analyses that ThresholdGAM.R doesn't answer on its own.
-#
-# Usage:
+#"how do all models compare to each other" and "how does each model compare to itself across scenarios" analyses that ThresholdGAM.R doesn't answer on its own.
+
 #   Rscript run/model_comparison.R
-#
-# Requires: results/tree_accuracy_per_rep.rds (from run/tree_accuracy.R)
-# already populated for the models/scenarios you want included. Models
-# with incomplete data are automatically dropped from AllModelsComparison
-# with a warning (see ModelComparison.R) rather than silently skewing it.
+
 
 source("R/core/_setup.R")
 source("R/analysis/ModelComparison.R")
@@ -24,11 +17,6 @@ out_dir <- file.path(OutputDir(), "results")
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
 # --- Safety: work only with models that actually have data ----------------
-# model7/model9 (or any other model) may currently have zero rows -- e.g.
-# while awaiting reruns. Rather than looping the full MODEL_IDS and letting
-# empty-data errors propagate, derive the working model list from what's
-# actually present in cid_data, and report what got excluded so it's
-# obvious in the log rather than a silent gap in the output tables.
 PRESENT_MODELS <- sort(unique(cid_data$modelID))
 MISSING_MODELS <- setdiff(MODEL_IDS, PRESENT_MODELS)
 

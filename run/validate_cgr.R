@@ -1,25 +1,7 @@
-# Cook-Gelman-Rubin (CGR) / simulation-based calibration validation.
-#
+
 # For every (model x scenario x grid cell), checks whether each parameter's
 # 95% posterior credible interval contains its known true simulated value at
-# ~95% of replicates. This is the dissertation Section 6.1 "Correctness"
-# proof: it answers "are estimated parameters showing correct frequentist
-# coverage of their known true values" for every model x dataset combination,
-# not just model4/model8 under nt.
-#
-# FIX vs previous version:
-#   - PARAMETERS included "rate_loss", which is not a real logged column for
-#     ANY model (see RateLossParams() in KnownAnswer.R) -- CredibleInterval()
-#     silently returned NULL for every single call. Now uses the same
-#     RateLossParams(modelID) lookup KnownAnswer.R uses, so model1 is
-#     correctly skipped (fixed fnJC, nothing to test), model2/model3 test
-#     gain_loss_ratio, and two-partition models test gain_loss_neo AND
-#     gain_loss_trans as separate rows.
-#   - EVAL_MODELS was hardcoded to c("model4","model8") under "nt" only.
-#     Generalised to all MODEL_IDS across BOTH scenarios, since coverage can
-#     fail differently under mk-generated vs nt-generated data and you want
-#     that comparison, not just the nt case.
-
+# ~95% of replicates. 
 source("R/core/_setup.R")
 
 # --- Configuration -------------------------------------------------------

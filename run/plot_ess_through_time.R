@@ -1,6 +1,6 @@
-# Plot ESS through time for a single run
-# Distinguishes slow-climb vs trapped-in-local-optimum failure modes
-# Usage: Rscript run/plot_ess_through_time.R --scenario mk --gridtag tl1.0_gl0.1_pr1.0_nc25 --rep sim001 --model model1
+#Plot ESS through time for a single run
+#Distinguishes slow-climb vs trapped-in-local-optimum failure modes
+#Usage: Rscript run/plot_ess_through_time.R --scenario mk --gridtag tl1.0_gl0.1_pr1.0_nc25 --rep sim001 --model model1
 
 source("R/core/_setup.R")
 

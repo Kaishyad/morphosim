@@ -1,12 +1,6 @@
 #Computes Spearman's rank correlation between imputation accuracy and
 #topological accuracy (CID) across the model space, with bootstrap CIs.
 
-#TO DO:
-# -Load per-replicate CID summaries (from tree_accuracy.R output).
-# - Load per-replicate imputation accuracy (from imputation_analysis.R output).
-# - Call Correlation.R::CorrelationSummary() for each model.
-# -Export tidy data frame as .rds and CSV for dissertation Table 6.3.
-
 source("R/core/_setup.R")
 
 # --- Configuration ---

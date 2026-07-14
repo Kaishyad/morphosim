@@ -7,20 +7,10 @@
 #SBATCH --output=/nobackup/djfb16/morphosim/logs/cross_metric_%j.out
 #SBATCH --error=/nobackup/djfb16/morphosim/logs/cross_metric_%j.err
 
-# Usage: sbatch slurm/run_cross_metric_analysis.sh
-# Merges tree accuracy with convergence/known-answer/CGR and tests whether
-# models with better trees also have better results, at model and
-# grid-cell level. Cheap -- only reads already-merged summary rds files
-# and runs bootstrap Spearman correlations, no per-replicate file reads --
-# so --time above is generous headroom, not a real estimate.
-#
-# Requires: results/tree_accuracy_summary.rds, results/convergence_summary.rds,
-# and results/known_answer_summary.rds already merged and current (see
-# run_tree_accuracy.sh + merge_tree_accuracy.R, run_convergence.sh,
-# run_known_answer.sh + merge_known_answer.R). results/cgr_coverage.rds
-# (run_validate_cgr.sh) is used if present, skipped with a warning if not.
-#
-# Pushes all cross_metric_*.rds/.csv outputs to the-matrix on completion.
+#Merges tree accuracy with convergence/known-answer/CGR and tests whether
+#models with better trees also have better results, at model and
+#grid-cell level.
+
 
 module load r
 

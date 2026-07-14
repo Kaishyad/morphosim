@@ -94,19 +94,7 @@ for (scenario in scenarios) {
         err_log  <- file.path(log_dir, paste0(job_name, ".err"))
 
         #Skip only if inference is actually complete for BOTH runs.
-        #
-        #FIX: previously this checked only run_1's .log OR its .tar.gz,
-        #which meant a job that crashed early (writing a partial run_1.log
-        #but never producing a run_2) looked "done" and was silently
-        #skipped forever on every resubmission -- while check_convergence.R
-        #(which requires both runs' logs before it will even look at a
-        #replicate) never saw it either. Net effect: the job vanished from
-        #both the submission queue and the analysis pipeline with no error
-        #anywhere. This was the root cause of model12/mk showing "640
-        #skipped" with zero downstream .rds output. JobLogsComplete() (in
-        #R/core/FilePaths.R) is now the single shared definition of "done"
-        #used here and in check_convergence.R, so the two scripts can't
-        #drift apart again.
+        
         inferDirAbs <- InferDirAbs(scenario, gridTag, repID, scriptID)
         if (JobLogsComplete(scenario, gridTag, repID, scriptID)) {
           skipped <- skipped + 1L

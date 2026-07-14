@@ -8,7 +8,6 @@
 #   %SEED%         integer random seed
 #   %GRID_TAG%     parameter combination tag (e.g. "tl1.0_n0.5_c50")
 
-# --- Resource requests ---
 #SBATCH -n 16
 #SBATCH --mem=4G
 #SBATCH --time=23:45:00

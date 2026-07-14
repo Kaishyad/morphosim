@@ -107,11 +107,7 @@ AsHMS <- function(secs) {
   )
 }
 
-# NOTE: HasConverged() below is retained from legacy neotrans code.
-# It uses a different signature (pID, scriptID) from the current project's
-# CheckConvergence() in Convergence.R, which is what should be used for
-# this simulation study. HasConverged() is not called by any current script
-# and is kept here only for reference.
+
 #
 #' Has an analysis converged? (legacy neotrans interface)
 #' @param pt Gelman-Rubin statistic threshold

@@ -1,28 +1,5 @@
-# Answers: "do models that produce better trees also have better results?"
-#
-# Merges tree accuracy (CID) with MCMC convergence, known-answer parameter
-# recovery, and CGR/SBC calibration, then correlates tree accuracy against
-# each of them -- both at the model-comparison level (do the models that top
-# the tree-accuracy ranking also top the other rankings?) and at the
-# grid-cell level within each model (higher-powered, complementary
-# question). See R/analysis/CrossMetric.R for the methodology notes.
-#
-# Usage:
-#   Rscript run/cross_metric_analysis.R
-#
-# Requires (run these first if missing -- this script will tell you which):
-#   run/tree_accuracy.R      + merge_tree_accuracy.R  -> tree_accuracy_summary.rds
-#   run/check_convergence.R                            -> convergence_summary.rds
-#   run/known_answer.R       + merge_known_answer.R    -> known_answer_summary.rds
-#   run/validate_cgr.R                                  -> cgr_coverage.rds  (optional)
-#   run/pps_adequacy.R                                  -> pps_adequacy.rds (optional;
-#                                                           skipped with a warning if absent)
-#
-# Output (written to the-matrix/results/):
-#   cross_metric_gridcell.rds / .csv        -- BuildCrossMetricTable() output
-#   cross_metric_model_scorecard.rds / .csv -- ModelLevelScorecard() output
-#   cross_metric_rank_correlations.rds/.csv -- ModelRankCorrelations() output
-#   cross_metric_gridcell_correlations.rds/.csv -- GridCellCorrelations() output
+#Answers: "do models that produce better trees also have better results?"
+
 
 source("R/core/_setup.R")
 source("R/analysis/Correlation.R")   # for SpearmanCorrelation(), reused by CrossMetric.R

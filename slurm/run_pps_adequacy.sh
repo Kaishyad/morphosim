@@ -7,26 +7,6 @@
 #SBATCH --output=/nobackup/djfb16/morphosim/logs/pps_adequacy_%j.out
 #SBATCH --error=/nobackup/djfb16/morphosim/logs/pps_adequacy_%j.err
 
-# Usage: sbatch slurm/run_pps_adequacy.sh [scenario] [model]
-# Examples:
-#   sbatch slurm/run_pps_adequacy.sh                # all scenarios/models
-#   sbatch slurm/run_pps_adequacy.sh nt model8       # single model, single scenario
-#
-# PPS is computationally heavy (per your dissertation plan it's only meant
-# to run on a REPRESENTATIVE SUBSET of the grid, not the full grid) -- so
-# unlike validate_cgr.R, this is scoped per scenario/model like
-# run_known_answer.sh so you can submit it as a smaller parallel batch
-# rather than one long job. --time above is a starting guess; check the
-# .out log on your first run and adjust.
-#
-# BLOCKED until the actual pps_*.nex files exist under
-# <simDir>/<modelID>/pps/ -- that generation step (adapted from your
-# supervisor's ppsim_ns_n_ki.Rev / ppsim_by_n_ki.Rev) needs to run BEFORE
-# this script has anything to read. Running this now will just produce
-# empty/NA results, not an error -- check results/pps_adequacy.csv for
-# all-NA prop_adequate columns as the tell.
-#
-# Requires: results/convergence_summary.rds current (see run_convergence.sh).
 
 SCENARIO="${1:-}"
 MODEL="${2:-}"

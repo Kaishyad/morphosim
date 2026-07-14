@@ -1,13 +1,3 @@
-# MakeSlurm.R
-# Generates and submits SLURM inference jobs for the morphosim parameter grid.
-# For each combination of (scenario, grid point, replicate, model), fills in
-# the mc3sim.sh template and submits via sbatch on Hamilton.
-# Adapted from QueueSim() in simFuncs.R (supervisor / neotrans).
-#
-# Depends on: FilePaths.R, zzz.R
-# Usage:
-#   source("R/_setup.R")
-#   SubmitGrid(scenarios = c("nt", "mk"), models = paste0("model", 1:12))
 
 
 #' Submit inference jobs for the full parameter grid

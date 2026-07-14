@@ -11,10 +11,8 @@ module load r
 
 cd /nobackup/djfb16/morphosim
 
-# Usage: sbatch run_convergence.sh [max_trees] [scenario] [model]
-# Examples:
-#   sbatch run_convergence.sh 300 nt model1
-#   sbatch run_convergence.sh 300 mk model4
+#sbatch run_convergence.sh [max_trees] [scenario] [model]
+
 
 MAX_TREES_ARG=""
 if [ -n "$1" ]; then
@@ -33,7 +31,7 @@ echo "=== $(date '+%Y-%m-%d %H:%M:%S') starting ${SCENARIO}/${MODEL:-all} ==="
 Rscript run/check_convergence.R --scenario $SCENARIO $MODEL_ARG $MAX_TREES_ARG
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') finished ${SCENARIO}/${MODEL:-all} ==="
 
-# --- Git push temporarily disabled while .ckp cleanup is running on the-matrix ---
+# --- Git push  disabled while .ckp cleanup is running on the-matrix ---
 # Re-enable once the cleanup (screen: gitcleanup) has finished and pushed.
 #
 # cd /nobackup/djfb16/the-matrix

@@ -1,27 +1,6 @@
 # Cross-metric analysis: does tree accuracy (CID) track other measures of
 # model performance -- MCMC convergence, known-answer parameter recovery,
 # and CGR/SBC calibration?
-#
-# This answers the supervisor's question ("do models that produce better
-# trees also have better results?") at two grains:
-#
-#   1. Model-level (ModelLevelScorecard() + ModelRankCorrelations()): for
-#      each scenario, rank the 12 models by mean CID and by each other
-#      metric, then correlate the ranks. This is literally "do the models
-#      that top the tree-accuracy ranking also top the other rankings?" --
-#      but note n = at most 12 per scenario, so treat p-values as
-#      indicative, not confirmatory (see docs/tree_accuracy_methodology.md).
-#
-#   2. Grid-cell-level (GridCellCorrelations()): within each model,
-#      correlate CID against each other metric across the ~64-192 grid
-#      cells that model was run on. Much higher power than the model-level
-#      comparison, but answers a different, complementary question: "in the
-#      parameter regimes where THIS model's trees are worse, is its
-#      parameter recovery/convergence also worse?" rather than "which
-#      model is best overall?".
-#
-# Reuses SpearmanCorrelation() from R/analysis/Correlation.R rather than
-# reimplementing bootstrap-CI Spearman correlation a second time.
 
 #' Aggregate per-replicate convergence diagnostics to grid-cell level
 #'

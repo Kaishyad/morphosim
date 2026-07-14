@@ -2,14 +2,6 @@
 #parameter grid and inference models, then performs pairwise Wilcoxon
 #signed-rank tests versus the Mk baseline (Model 1).
 
-# TO DO:
-#-Iterate over all (simID, modelID) combinations with completed inference.
-#-Call Imputation.R::ImputationForReplicate() for each.
-#-Pool results and compute per-replicate mean accuracy.
-#-Run pairwise Wilcoxon tests (Models 2-12 vs Model 1) within each grid cell.
-# -Save aggregated accuracy data frame and Wilcoxon results as .rds files.
-
-
 source("R/core/_setup.R")
 
 # --- Configuration ---

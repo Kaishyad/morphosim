@@ -1,23 +1,6 @@
 #Fits GAMs and extracts threshold estimates for each model across all
 #parameter axes, for both generative scenarios.
 
-#For each scenario, CID improvement over that scenario's OWN baseline is
-#computed per replicate (model1/Mk for the mk scenario, model8/NT for the nt
-#scenario -- see BASELINE_BY_SCENARIO in R/core/Grid.R), a GAM is fitted with
-#three predictors (tree_length, rate_ratio, chars_per_taxon), and the
-#parameter threshold at which each model outperforms the baseline is
-#extracted. A sensitivity check re-fits with k*2 to flag unstable estimates.
-#
-#FIX (2026-07): this script used to hardcode BASELINE_ID <- "model1" for
-#BOTH scenarios, so every nt-scenario threshold was measuring improvement
-#over the wrong (Mk, not NT) baseline. The baseline is now looked up per
-#scenario from BASELINE_BY_SCENARIO, matching ComputeImprovement()'s and
-#ThresholdSummary()'s own defaults in R/analysis/ThresholdGAM.R.
-
-# Output files are written per scenario to the-matrix/results/:
-#   threshold_summary_{scenario}.rds / .csv
-#   gam_objects_{scenario}.rds
-
 source("R/core/_setup.R")
 
 # --- Configuration ---
@@ -50,8 +33,6 @@ dir.create(file.path(OutputDir(), "results"), showWarnings = FALSE,
 for (scenario in SCENARIOS) {
   cli::cli_h1("Scenario: {scenario}")
 
-  # FIX: baseline is now resolved per scenario (model1 for mk, model8 for
-  # nt) instead of a single hardcoded "model1" for both.
   BASELINE_ID <- BASELINE_BY_SCENARIO[[scenario]]
   if (is.null(BASELINE_ID)) {
     cli::cli_alert_danger("No baseline defined for scenario '{scenario}' -- skipping.")

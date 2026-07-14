@@ -1,16 +1,10 @@
-## ============================================================
 ## 01_tree_accuracy_plots.R
 ## Core "proof it's working" plots: tree accuracy (CID) by model,
 ## by scenario, relative to the correct scenario baseline, and a
 ## win-count view so no model is only ever judged against a baseline.
 ##
 ## Run:  Rscript viz/01_tree_accuracy_plots.R
-## Input: PATHS$tree_accuracy_rep (run/tree_accuracy.R output) --
-##        columns: scenario, gridTag, repID, modelID, median_cid,
-##        iqr_cid, n_trees
-##        PATHS$tree_accuracy_sum -- grid-cell summary with the same
-##        keys plus PARAM_GRID columns (tree_length, gain_loss, ...)
-## ============================================================
+
 
 source("viz/00_config_theme.R")
 
