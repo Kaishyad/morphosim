@@ -14,7 +14,8 @@ scripts <- c(
   "viz/05_summary_dashboard.R",
   "viz/06_parameter_grid_by_model.R",
   "viz/07_cross_metric_analysis.R",  # requires run/cross_metric_analysis.R to have been run first
-  "viz/08_tree_similarity_grid.R"
+  "viz/08_tree_similarity_grid.R",
+  "viz/09_model_deep_dive.R"        # all-model ranking, param main effects, mk vs nt, readable tables
 )
 
 for (s in scripts) {
