@@ -47,19 +47,28 @@ echo "Log: $LOG"
 
 POLL_INTERVAL=300  # seconds between queue checks (5 min)
 
+# The requeue lists live in the-matrix's results/ dir, not morphosim's --
+# OutputDir() in R resolves to dirname(getwd())/the-matrix (see
+# R/core/_setup.R: ntOutDir). Resolve it the same way here rather than
+# hardcoding, so this stays correct if _setup.R ever changes.
+MATRIX_DIR="$(dirname "$(pwd)")/the-matrix"
+REQUEUE_LIST="$MATRIX_DIR/results/requeue_list.txt"
+REQUEUE_AUDIT="$MATRIX_DIR/results/requeue_from_audit.txt"
+echo "Resolved the-matrix results dir: $MATRIX_DIR/results"
+
 # --- Step 1: archive stale outputs for convergence-failed cells -----------
-if [ -f results/requeue_list.txt ] && grep -qv '^#' results/requeue_list.txt; then
+if [ -f "$REQUEUE_LIST" ] && grep -qv '^#' "$REQUEUE_LIST"; then
   echo ""
-  echo "--- Archiving stale outputs for results/requeue_list.txt entries ---"
+  echo "--- Archiving stale outputs for $REQUEUE_LIST entries ---"
   Rscript run/requeue_failed.R --run
 else
   echo ""
-  echo "No results/requeue_list.txt (or it's empty/comment-only) -- skipping archive step."
+  echo "No $REQUEUE_LIST (or it's empty/comment-only) -- skipping archive step."
 fi
 
 # --- Step 2: collect every affected scenario/model combo from both lists --
 COMBO_FILE=$(mktemp)
-for f in results/requeue_list.txt results/requeue_from_audit.txt; do
+for f in "$REQUEUE_LIST" "$REQUEUE_AUDIT"; do
   [ -f "$f" ] || continue
   grep -v '^#' "$f" | awk -F'\t' 'NF==4 {print $1"\t"$4}'
 done | sort -u > "$COMBO_FILE"
