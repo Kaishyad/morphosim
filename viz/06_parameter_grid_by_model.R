@@ -1,16 +1,4 @@
-## ============================================================
-## 06_parameter_grid_by_model.R
-## How do the individual grid parameters (tree_length, gain_loss,
-## part_rate, n_char) affect EACH model's tree accuracy -- not just
-## threshold-vs-baseline, but the raw shape of performance across
-## the grid, per model.
-##
-## Run:  Rscript viz/06_parameter_grid_by_model.R
-## Input: PATHS$tree_accuracy_sum (run/tree_accuracy.R grid-cell summary) --
-##        one row per (scenario, gridTag, modelID) with median_cid plus the
-##        PARAM_GRID columns already joined in (tree_length, gain_loss,
-##        n_char, n_taxa, and part_rate for nt only -- NA for mk).
-## ============================================================
+# 06_parameter_grid_by_model.R
 
 source("viz/00_config_theme.R")
 
@@ -23,10 +11,7 @@ AXES <- c("tree_length", "gain_loss", "n_char")   # present in both scenarios
 AXIS_LABELS <- c(tree_length = "Tree length", gain_loss = "Gain:loss ratio",
                   n_char = "Number of characters", part_rate = "Partition rate scalar")
 
-# =================================================================
 # 1) Marginal effect lines -- one axis at a time, other axes averaged
-#    out. One line per model, faceted by scenario.
-# =================================================================
 for (ax in AXES) {
   marg <- sum_df %>%
     group_by(scenario, modelID, .val = .data[[ax]]) %>%
@@ -68,11 +53,7 @@ if ("part_rate" %in% names(sum_df) && any(!is.na(sum_df$part_rate))) {
   message("No part_rate values found -- skipping plot 21 (nt scenario grid may not have been run/merged yet).")
 }
 
-# =================================================================
 # 2) Two-parameter interaction heatmaps, faceted by model.
-#    tree_length x gain_loss (both scenarios) and, nt only,
-#    tree_length x part_rate.
-# =================================================================
 interaction_heatmap <- function(data, x_ax, y_ax, subtitle, filename, width, height) {
   cell <- data %>%
     group_by(scenario, modelID, x = .data[[x_ax]], y = .data[[y_ax]]) %>%
@@ -111,12 +92,7 @@ if ("part_rate" %in% names(sum_df) && any(!is.na(sum_df$part_rate))) {
   )
 }
 
-# =================================================================
 # 3) Main-effect sensitivity summary: for each model x grid axis,
-##    Spearman correlation between the axis and median_cid across
-##    grid cells. Positive = CID rises (gets worse) as the axis
-##    increases; negative = model improves as the axis increases.
-# =================================================================
 sens_axes <- c(AXES, "part_rate")
 
 sens_df <- bind_rows(lapply(sens_axes, function(ax) {
@@ -147,11 +123,7 @@ p_sens <- ggplot(sens_df, aes(x = axis, y = fct_rev(modelID), fill = rho)) +
   theme(panel.grid = element_blank(), axis.text.x = element_text(angle = 30, hjust = 1))
 save_fig(p_sens, "24_parameter_sensitivity_summary", width = 9, height = 7)
 
-# =================================================================
 # 4) Win-region map: for the tree_length x gain_loss plane, which
-##    model has the lowest mean CID in each cell (averaged over the
-##    other axes)? Categorical tile map, faceted by scenario.
-# =================================================================
 win_region <- sum_df %>%
   group_by(scenario, modelID, tree_length, gain_loss) %>%
   summarise(mean_cid = mean(median_cid, na.rm = TRUE), .groups = "drop") %>%

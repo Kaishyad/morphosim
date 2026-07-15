@@ -1,40 +1,10 @@
-## ============================================================
-## 03_parameter_grid_effects.R
-## How does accuracy change as you move through the parameter grid?
-##
-## Two data sources, kept intentionally separate as a cross-check:
-##
-##  (A) run/gam_threshold.R's own output (threshold_summary_{mk,nt}.rds).
-##      FIX (2026-07): this used to hardcode BASELINE_ID <- "model1" for
-##      BOTH scenarios, so nt-scenario thresholds were silently measuring
-##      improvement over the wrong (Mk) baseline. gam_threshold.R now
-##      resolves the baseline per scenario via BASELINE_BY_SCENARIO
-##      (R/core/Grid.R: model1 for mk, model8 for nt), so this is now the
-##      SAME scenario-correct comparison as (B) below, just computed by
-##      the actual pipeline script with its full GAM-fitting machinery
-##      (sensitivity checks, k-doubling, etc.) rather than the simplified
-##      version below.
-##
-##  (B) A second, independently-computed comparison, built directly in
-##      this script from tree_accuracy_per_rep.rds: mk models vs model1,
-##      nt models vs model8, using the same predictors (tree_length,
-##      rate_ratio = gain_loss, chars_per_taxon = n_char / n_taxa) and a
-##      ggplot geom_smooth() GAM per model/predictor (not mgcv::gam()
-##      directly, so no sensitivity/threshold-stability checks here).
-##      Kept alongside (A) deliberately: if the two ever disagree it's a
-##      fast sanity check that something in the pipeline has drifted,
-##      without needing to re-derive the plot from scratch.
-##
-## Run:  Rscript viz/03_parameter_grid_effects.R
-## ============================================================
+# 03_parameter_grid_effects.R
 
 source("viz/00_config_theme.R")
 
 predictors <- c("tree_length", "rate_ratio", "chars_per_taxon")
 
-# =================================================================
 # (A) Pipeline's own threshold summaries (baseline = model1 always)
-# =================================================================
 thresh_mk <- safe_read_rds(PATHS$threshold_mk)
 thresh_nt <- safe_read_rds(PATHS$threshold_nt)
 thresh_df <- bind_rows(thresh_mk, thresh_nt)
@@ -69,10 +39,7 @@ if (!is.null(thresh_df) && nrow(thresh_df) > 0L) {
           "(run run/gam_threshold.R first).")
 }
 
-# =================================================================
 # (B) Scenario-correct baseline comparison, computed here directly:
-##     mk vs model1, nt vs model8.
-# =================================================================
 cid_data <- safe_read_rds(PATHS$tree_accuracy_rep)
 
 if (!is.null(cid_data)) {
@@ -125,7 +92,7 @@ if (!is.null(cid_data)) {
     )
   save_fig(p3, "14_improvement_vs_scenario_baseline", width = 11, height = 7)
 
-  # Zero-crossing per model/predictor/scenario, linear interpolation
+# Zero-crossing per model/predictor/scenario, linear interpolation
   find_crossing <- function(x, y) {
     o <- order(x); x <- x[o]; y <- y[o]
     sign_change <- which(diff(sign(y)) != 0)

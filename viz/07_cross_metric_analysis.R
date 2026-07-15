@@ -1,16 +1,4 @@
-## ============================================================
-## 07_cross_metric_analysis.R
-## Does tree accuracy track other measures of model performance?
-## The direct answer to "do models that produce better trees also
-## have better results?" -- a bump chart and scorecard heatmap for
-## the model-comparison view, plus scatter plots for the underlying
-## correlations at both the model and grid-cell level.
-##
-## Run:  Rscript viz/07_cross_metric_analysis.R
-## Requires: run/cross_metric_analysis.R output (cross_metric_gridcell.rds,
-## cross_metric_model_scorecard.rds, cross_metric_rank_correlations.rds,
-## cross_metric_gridcell_correlations.rds).
-## ============================================================
+# 07_cross_metric_analysis.R
 
 source("viz/00_config_theme.R")
 
@@ -24,14 +12,7 @@ if (is.null(scorecard) || is.null(cell_df)) {
   quit(save = "no")
 }
 
-# ---------------------------------------------------------------
 # PLOT 1: Bump chart -- rank concordance across metrics
-# One column per available metric (tree accuracy always first), one line
-# per model connecting its rank in each column. Straight, flat lines mean
-# a model ranks consistently well (or badly) across the board; crossing
-# lines mean tree accuracy and the other metric disagree about which
-# model is "better".
-# ---------------------------------------------------------------
 rank_cols <- grep("^rank_", colnames(scorecard), value = TRUE)
 # Friendly labels for whichever metrics happen to be present
 metric_labels <- c(
@@ -79,10 +60,7 @@ if (length(present_cols) >= 2L) {
   message("Fewer than 2 rank_* columns available -- skipping bump chart (plot 1).")
 }
 
-# ---------------------------------------------------------------
 # PLOT 2: Composite scorecard heatmap -- models x metrics, colored by rank
-# The single "put this in front of your supervisor" figure.
-# ---------------------------------------------------------------
 if (length(present_cols) >= 2L) {
   heat_df <- scorecard %>%
     select(scenario, modelID, all_of(present_cols)) %>%
@@ -107,11 +85,7 @@ if (length(present_cols) >= 2L) {
   save_fig(p2, "17_composite_scorecard_heatmap", width = 11, height = 7)
 }
 
-# ---------------------------------------------------------------
 # PLOT 3: Model-level scatter -- mean CID vs mean known-answer MSE,
-# one point per model, with the correlation from ModelRankCorrelations()
-# annotated per scenario.
-# ---------------------------------------------------------------
 if ("avg_mse_tree_len" %in% colnames(scorecard)) {
   scat_df <- scorecard %>% label_models()
 
@@ -148,11 +122,7 @@ if ("avg_mse_tree_len" %in% colnames(scorecard)) {
   message("avg_mse_tree_len not in scorecard -- skipping plot 3 (need known_answer_summary.rds).")
 }
 
-# ---------------------------------------------------------------
 # PLOT 4: Grid-cell-level -- within each model, does CID track
-# known-answer MSE across parameter regimes? Higher-n, complementary
-# view to plot 3's model-level comparison.
-# ---------------------------------------------------------------
 if ("mse_tree_len" %in% colnames(cell_df)) {
   cell_plot_df <- cell_df %>%
     filter(!is.na(median_cid), !is.na(mse_tree_len)) %>%

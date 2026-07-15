@@ -1,15 +1,4 @@
-## ============================================================
-## 02_convergence_diagnostics.R
-## "Validation" plots: did the MCMC actually converge before we
-## trust the accuracy numbers in 01_tree_accuracy_plots.R?
-##
-## Run:  Rscript viz/02_convergence_diagnostics.R
-## Input: PATHS$convergence (run/check_convergence.R output) --
-##        columns: scenario, gridTag, repID, modelID, pass, rhat_max,
-##        ess_min, tree_ess, asdsf, rhat_pass, ess_pass, asdsf_pass
-## Reference lines use the pipeline's own ESS_MIN / RHAT_MAX / ASDSF_MAX
-## thresholds (from R/core/_setup.R) rather than hardcoded numbers.
-## ============================================================
+# 02_convergence_diagnostics.R
 
 source("viz/00_config_theme.R")
 
@@ -18,9 +7,7 @@ if (is.null(df)) quit(save = "no")
 
 df <- df %>% label_models()
 
-# ---------------------------------------------------------------
 # PLOT 1: Convergence pass-rate heatmap (the "can we trust this" gate)
-# ---------------------------------------------------------------
 pass_df <- df %>%
   group_by(modelID, scenario) %>%
   summarise(pass_rate = mean(as.numeric(pass), na.rm = TRUE), n = n(), .groups = "drop")
@@ -38,9 +25,7 @@ p1 <- ggplot(pass_df, aes(x = scenario, y = fct_rev(modelID), fill = pass_rate))
   theme(panel.grid = element_blank())
 save_fig(p1, "06_convergence_pass_rate_heatmap", width = 6, height = 7)
 
-# ---------------------------------------------------------------
 # PLOT 2: R-hat distribution with the pipeline's own threshold line
-# ---------------------------------------------------------------
 p2 <- ggplot(df, aes(x = modelID, y = rhat_max, color = scenario)) +
   geom_hline(yintercept = RHAT_MAX, linetype = "dashed", color = "grey40") +
   geom_jitter(width = 0.15, alpha = 0.35, size = 0.8) +
@@ -55,9 +40,7 @@ p2 <- ggplot(df, aes(x = modelID, y = rhat_max, color = scenario)) +
   )
 save_fig(p2, "07_rhat_by_model", height = 7)
 
-# ---------------------------------------------------------------
 # PLOT 3: ESS distribution (log scale, pipeline's ESS_MIN reference)
-# ---------------------------------------------------------------
 p3 <- ggplot(df, aes(x = modelID, y = ess_min, color = scenario)) +
   geom_hline(yintercept = ESS_MIN, linetype = "dashed", color = "grey40") +
   geom_jitter(width = 0.15, alpha = 0.35, size = 0.8) +
@@ -73,9 +56,7 @@ p3 <- ggplot(df, aes(x = modelID, y = ess_min, color = scenario)) +
   )
 save_fig(p3, "08_ess_by_model", height = 7)
 
-# ---------------------------------------------------------------
 # PLOT 4: ASDSF distribution (MC^3 chain agreement)
-# ---------------------------------------------------------------
 p4 <- ggplot(df, aes(x = modelID, y = asdsf, color = scenario)) +
   geom_hline(yintercept = ASDSF_MAX, linetype = "dashed", color = "grey40") +
   geom_jitter(width = 0.15, alpha = 0.35, size = 0.8) +
@@ -90,10 +71,7 @@ p4 <- ggplot(df, aes(x = modelID, y = asdsf, color = scenario)) +
   )
 save_fig(p4, "09_asdsf_by_model", height = 7)
 
-# ---------------------------------------------------------------
 # PLOT 5: Tree ESS vs scalar ESS -- move-schedule diagnostic already
-# tracked by check_convergence.R's console report; visualised here.
-# ---------------------------------------------------------------
 has_tree_ess <- df %>% filter(!is.na(tree_ess), !is.na(ess_min))
 if (nrow(has_tree_ess) > 0L) {
   p5 <- ggplot(has_tree_ess, aes(x = ess_min, y = tree_ess, color = scenario)) +
@@ -110,10 +88,7 @@ if (nrow(has_tree_ess) > 0L) {
   save_fig(p5, "10_tree_ess_vs_scalar_ess", height = 5.5)
 }
 
-# ---------------------------------------------------------------
 # PLOT 6: Does poor convergence predict poor tree accuracy?
-# Skipped gracefully if tree_accuracy_per_rep.rds isn't available.
-# ---------------------------------------------------------------
 acc <- safe_read_rds(PATHS$tree_accuracy_rep)
 if (!is.null(acc)) {
   acc <- acc %>% rename(cid = median_cid)

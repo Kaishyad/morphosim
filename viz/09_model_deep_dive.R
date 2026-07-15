@@ -1,16 +1,4 @@
-## 09_model_deep_dive.R
-## Deeper comparison across ALL models and ALL parameter combinations:
-##  - overall ranking (every model, both scenarios)
-##  - what actually differentiates models: parameter main effects
-##    (tree_length, gain_loss, n_char, part_rate)
-##  - mk vs nt: does going NT actually help, model by model
-##  - best parameter combination per model
-##  - readable, number-annotated tables (not just raw CSV)
-##
-## Run:  Rscript viz/09_model_deep_dive.R
-## Input: PATHS$tree_accuracy_sum (same input as 08_tree_similarity_grid.R)
-## Assumes viz/00_config_theme.R has already defined: safe_read_rds, save_fig,
-## PATHS, MODEL_LABELS, model_palette().
+# 09_model_deep_dive.R
 
 source("viz/00_config_theme.R")
 
@@ -19,11 +7,7 @@ if (is.null(sum_df)) quit(save = "no")
 
 sum_df <- sum_df %>% filter(!is.na(median_cid))
 
-# ---------------------------------------------------------------
 # Sanity check: which models are actually present. This is printed
-# every run so a silently-missing model (e.g. model9 pending rerun)
-# is obvious rather than just quietly absent from every plot below.
-# ---------------------------------------------------------------
 present <- sum_df %>%
   distinct(scenario, modelID) %>%
   arrange(scenario, modelID)
@@ -50,11 +34,7 @@ model_colors <- setNames(model_palette(length(model_order)), MODEL_LABELS[model_
 mk_df <- sum_df %>% filter(scenario == "mk")
 nt_df <- sum_df %>% filter(scenario == "nt")
 
-# =================================================================
 # 1. OVERALL RANKING -- every model, both scenarios, full spread
-#    (not just the mean -- shows how consistent each model is
-#    across the whole parameter grid).
-# =================================================================
 p_rank <- ggplot(sum_df, aes(x = modelID_label, y = median_cid, fill = modelID_label)) +
   geom_boxplot(outlier.size = 0.8, alpha = 0.85) +
   stat_summary(fun = mean, geom = "point", shape = 23, size = 2, fill = "white") +
@@ -66,13 +46,7 @@ p_rank <- ggplot(sum_df, aes(x = modelID_label, y = median_cid, fill = modelID_l
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 save_fig(p_rank, "31_overall_model_ranking", width = 12, height = 9)
 
-# =================================================================
 # 2. PARAMETER MAIN EFFECTS -- what actually differentiates models.
-#    One line per model, per parameter, faceted by scenario.
-#    For nt, part_rate is averaged over here (it gets its own plot
-#    below) so these stay readable as trend lines rather than a
-#    dense multi-facet grid.
-# =================================================================
 .MainEffectPlot <- function(param, param_label) {
   df <- sum_df %>%
     group_by(scenario, modelID_label, .data[[param]]) %>%
@@ -109,12 +83,7 @@ if ("part_rate" %in% colnames(nt_df) && nrow(nt_df) > 0L) {
   save_fig(p_pr, "35_main_effect_part_rate_nt", width = 11, height = 7)
 }
 
-# =================================================================
 # 3. MK vs NT -- does going NT actually help, model by model?
-#    Joined on the shared parameters (tree_length, gain_loss, n_char);
-#    nt side averaged over part_rate so each row is one comparable
-#    (model, param combo) pair.
-# =================================================================
 nt_avg <- nt_df %>%
   group_by(modelID, modelID_label, tree_length, gain_loss, n_char) %>%
   summarise(median_cid_nt = mean(median_cid, na.rm = TRUE), .groups = "drop")
@@ -152,10 +121,7 @@ if (nrow(mk_vs_nt) > 0L) {
   save_fig(p_summary, "37_mk_vs_nt_win_rate", width = 10, height = 7)
 }
 
-# =================================================================
 # 4. BEST PARAMETER COMBINATION PER MODEL -- one row per model,
-#    showing exactly which combination that model does best on.
-# =================================================================
 best_combo_per_model <- sum_df %>%
   group_by(scenario, modelID_label) %>%
   slice_min(median_cid, n = 1, with_ties = FALSE) %>%
@@ -182,17 +148,12 @@ readr::write_csv(
   file.path(PATHS$results_dir, "best_combo_per_model.csv")
 )
 
-# =================================================================
 # 5. READABLE TABLES -- numbers overlaid on a heatmap (sorted,
-#    rounded, best model first) instead of a raw wide CSV.
-#    Also writes a cleaned-up, rounded, sorted CSV alongside it.
-# =================================================================
 .ReadableTable <- function(df, param_cols, title, filename, width, height) {
   df <- df %>%
     mutate(cell_label = do.call(paste, c(lapply(param_cols, function(p) sprintf("%s=%s", p, df[[p]])), sep = ", ")))
 
-  # Row order: best (lowest mean across models) first, so the easiest
-  # combinations to read are at the top.
+# Row order: best (lowest mean across models) first, so the easiest
   row_order <- df %>%
     group_by(cell_label) %>%
     summarise(row_mean = mean(median_cid, na.rm = TRUE), .groups = "drop") %>%
@@ -214,7 +175,7 @@ readr::write_csv(
          panel.grid = element_blank())
   save_fig(p, filename, width = width, height = height)
 
-  # Clean, sorted, rounded CSV to accompany the figure
+# Clean, sorted, rounded CSV to accompany the figure
   wide_clean <- df %>%
     select(cell_label, modelID_label, median_cid) %>%
     mutate(median_cid = round(median_cid, 3)) %>%

@@ -1,11 +1,4 @@
-## 08_tree_similarity_grid.R
-## For every model and every parameter combination, how close did the
-## trees get to the true tree (median CID across the 10 reps)? Answers
-## which model is best overall, and which parameter combinations are
-## easy or hard.
-##
-## Run:  Rscript viz/08_tree_similarity_grid.R
-## Input: PATHS$tree_accuracy_sum (run/tree_accuracy.R grid-cell summary)
+# 08_tree_similarity_grid.R
 
 source("viz/00_config_theme.R")
 
@@ -18,7 +11,6 @@ sum_df$cell_label <- sprintf("TL=%.1f  GL=%.2f  NC=%d",
                              sum_df$tree_length, sum_df$gain_loss, sum_df$n_char)
 
 # Order models best-to-worst by mean CID (pooled across scenarios), used
-# for every plot below so the best models are always on the left.
 model_order <- sum_df %>%
   group_by(modelID) %>%
   summarise(mean_cid = mean(median_cid, na.rm = TRUE), .groups = "drop") %>%
@@ -31,11 +23,7 @@ sum_df <- sum_df %>%
 mk_df <- sum_df %>% filter(scenario == "mk")
 nt_df <- sum_df %>% filter(scenario == "nt")
 
-# ---------------------------------------------------------------
 # Heatmap: every grid cell x every model, coloured by median CID.
-# mk and nt are separate figures (nt facets by part_rate, mk has no
-# part_rate) rather than one combined plot.
-# ---------------------------------------------------------------
 .HeatmapCells <- function(df, facet_by_part_rate = FALSE) {
   df <- df %>%
     arrange(tree_length, gain_loss, n_char) %>%
@@ -70,9 +58,7 @@ if (nrow(nt_df) > 0L) {
   save_fig(p2, "27_tree_similarity_heatmap_nt_by_part_rate", width = 20, height = 12)
 }
 
-# ---------------------------------------------------------------
 # Best model per grid cell -- which model wins where.
-# ---------------------------------------------------------------
 .BestModelPerCell <- function(df) {
   df %>%
     group_by(scenario, gridTag, cell_label, tree_length, gain_loss, n_char,
@@ -116,9 +102,7 @@ if (nrow(best_nt) > 0L) {
   save_fig(p4, "29_best_model_per_cell_nt_by_part_rate", width = 14, height = 12)
 }
 
-# ---------------------------------------------------------------
 # Top/bottom 10 (model, parameter combination) pairs per scenario.
-# ---------------------------------------------------------------
 extremes <- sum_df %>%
   group_by(scenario) %>%
   group_modify(~ bind_rows(
@@ -140,11 +124,7 @@ if (nrow(extremes) > 0L) {
   save_fig(p5, "30_best_worst_model_gridcell_combos", width = 11, height = 10)
 }
 
-# ---------------------------------------------------------------
 # Tables. Long CSV for filtering/pivoting yourself, plus a wide table
-# per scenario (one row per parameter combination, one column per
-# model) so you can read model comparison straight across a row.
-# ---------------------------------------------------------------
 export_cols <- intersect(c("scenario", "modelID", "gridTag", "tree_length", "gain_loss",
                            "n_char", "part_rate", "median_cid", "iqr_cid", "n_reps"),
                          colnames(sum_df))

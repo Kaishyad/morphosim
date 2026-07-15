@@ -1,13 +1,4 @@
-## ============================================================
-## 05_summary_dashboard.R
-## One-page combined figure: the single image you'd put in a
-## presentation or the top of the results chapter.
-##
-## Run:  Rscript viz/05_summary_dashboard.R
-## Requires: tree_accuracy_per_rep + convergence_summary (+ tree_accuracy_summary
-## for the win-count panel). Also requires 'patchwork':
-## install.packages("patchwork")
-## ============================================================
+# 05_summary_dashboard.R
 
 source("viz/00_config_theme.R")
 suppressPackageStartupMessages(library(patchwork))
@@ -57,8 +48,6 @@ panelC <- ggplot(rank_df, aes(x = fct_reorder(modelID, mean_cid, .fun = mean), y
   theme(legend.position = "none")
 
 # Panel D: grid-cell win counts -- who's best, and how often, with
-# no baseline framing at all (complements the baseline-relative
-# panels above so the dashboard doesn't only show baseline deltas).
 sum_df <- safe_read_rds(PATHS$tree_accuracy_sum)
 
 if (!is.null(sum_df)) {

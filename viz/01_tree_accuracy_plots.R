@@ -1,10 +1,4 @@
-## 01_tree_accuracy_plots.R
-## Core "proof it's working" plots: tree accuracy (CID) by model,
-## by scenario, relative to the correct scenario baseline, and a
-## win-count view so no model is only ever judged against a baseline.
-##
-## Run:  Rscript viz/01_tree_accuracy_plots.R
-
+# 01_tree_accuracy_plots.R
 
 source("viz/00_config_theme.R")
 
@@ -16,11 +10,7 @@ rep_df <- rep_df %>%
   rename(cid = median_cid) %>%
   label_models()
 
-# ---------------------------------------------------------------
 # PLOT 1: CID distribution by model, faceted by scenario
-# Every model shown on its own terms -- the headline "which models
-# recover trees best" figure, no baseline framing at all.
-# ---------------------------------------------------------------
 p1 <- ggplot(rep_df, aes(x = modelID, y = cid, fill = scenario)) +
   geom_boxplot(outlier.alpha = 0.3, width = 0.6, position = position_dodge(0.7)) +
   scale_fill_manual(values = SCENARIO_COLORS, name = "Generative scenario") +
@@ -32,11 +22,7 @@ p1 <- ggplot(rep_df, aes(x = modelID, y = cid, fill = scenario)) +
   )
 save_fig(p1, "01_cid_by_model_scenario", height = 7)
 
-# ---------------------------------------------------------------
 # PLOT 2: Delta-CID relative to the scenario-appropriate baseline
-# mk models are compared to model1 (Mk baseline); nt models are
-# compared to model8 (NT baseline) -- never a single global baseline.
-# ---------------------------------------------------------------
 delta_list <- lapply(names(BASELINE_BY_SCENARIO), function(sc) {
   base_id  <- BASELINE_BY_SCENARIO[[sc]]
   sc_df    <- rep_df %>% filter(scenario == sc)
@@ -69,10 +55,7 @@ p2 <- ggplot(delta_df, aes(x = modelID, y = delta_cid, fill = scenario)) +
   )
 save_fig(p2, "02_delta_cid_vs_scenario_baseline", height = 6.5)
 
-# ---------------------------------------------------------------
 # PLOT 3: Model ranking heatmap -- mean CID, model x scenario
-# Compact "at a glance" summary, independent of any baseline.
-# ---------------------------------------------------------------
 rank_df <- rep_df %>%
   group_by(modelID, scenario) %>%
   summarise(mean_cid = mean(cid), .groups = "drop") %>%
@@ -92,9 +75,7 @@ p3 <- ggplot(rank_df, aes(x = scenario, y = fct_rev(modelID), fill = mean_cid)) 
   theme(panel.grid = element_blank())
 save_fig(p3, "03_model_ranking_heatmap", width = 6, height = 7)
 
-# ---------------------------------------------------------------
 # PLOT 4: Violin + jitter for full distributional shape
-# ---------------------------------------------------------------
 p4 <- ggplot(rep_df, aes(x = modelID, y = cid, color = scenario)) +
   geom_violin(aes(fill = scenario), alpha = 0.15, position = position_dodge(0.8), linewidth = 0.4) +
   geom_jitter(size = 0.6, alpha = 0.4, position = position_jitterdodge(dodge.width = 0.8, jitter.width = 0.15)) +
@@ -108,13 +89,7 @@ p4 <- ggplot(rep_df, aes(x = modelID, y = cid, color = scenario)) +
   )
 save_fig(p4, "04_cid_distribution_detail", height = 7)
 
-# ---------------------------------------------------------------
 # PLOT 5: Win-count -- for every (scenario, grid cell) which model
-# has the lowest mean CID? This is the "all models get to show where
-# they're best" view: nothing here is expressed relative to a
-# baseline, it's just who wins each grid cell and how often.
-# Uses the grid-cell summary so each cell is compared on equal footing.
-# ---------------------------------------------------------------
 sum_df <- safe_read_rds(PATHS$tree_accuracy_sum)
 
 if (!is.null(sum_df)) {
@@ -126,7 +101,7 @@ if (!is.null(sum_df)) {
     label_models() %>%
     count(scenario, modelID, name = "n_wins")
 
-  # keep every model in the plot even if it never wins, per scenario
+# keep every model in the plot even if it never wins, per scenario
   all_combos <- expand_grid(
     scenario = names(BASELINE_BY_SCENARIO),
     modelID  = factor(MODEL_LABELS[MODEL_IDS], levels = MODEL_LABELS[MODEL_IDS])

@@ -1,6 +1,5 @@
 #Shared config, palette, and ggplot theme for morphosim/viz.
 
-
 if (!file.exists("R/core/_setup.R")) {
   stop("Run viz scripts from the morphosim repo root (R/core/_setup.R not found ",
        "relative to ", getwd(), ").")
@@ -11,13 +10,12 @@ matrix_override <- Sys.getenv("MORPHOSIM_MATRIX_DIR", unset = NA)
 if (!is.na(matrix_override)) options("ntOutDir" = matrix_override)
 
 source("R/core/_setup.R")   # brings in OutputDir(), GridTag(), ScenarioGrid(),
-                             # PARAM_GRID, MODEL_IDS, ESS_MIN, RHAT_MAX, ASDSF_MAX
+# PARAM_GRID, MODEL_IDS, ESS_MIN, RHAT_MAX, ASDSF_MAX
 
 suppressPackageStartupMessages({
   library(tidyverse)
   library(scales)
 })
-
 
 .results_dir <- file.path(OutputDir(), "results")
 
@@ -42,17 +40,13 @@ PATHS <- list(
 
 dir.create(PATHS$fig_dir, showWarnings = FALSE, recursive = TRUE)
 
-# ---------------------------------------------------------------
-# MODEL LABELS 
+# MODEL LABELS
 MODEL_LABELS <- setNames(
   paste0("M", 1:12),
   MODEL_IDS
 )
 MODEL_LABELS["model1"] <- "M1 (Mk baseline)"
 MODEL_LABELS["model8"] <- "M8 (NT baseline)"
-
-
-
 
 SCENARIO_COLORS <- c(mk = "#2C7FB8", nt = "#D95F02")
 
@@ -77,7 +71,6 @@ theme_matrix <- function(base_size = 12) {
 }
 theme_set(theme_matrix())
 
-
 save_fig <- function(plot, name, width = 8, height = 5.5, dpi = 300, formats = c("png", "pdf")) {
   for (fmt in formats) {
     ggsave(
@@ -87,7 +80,6 @@ save_fig <- function(plot, name, width = 8, height = 5.5, dpi = 300, formats = c
   }
   message("Saved: ", name, " (", paste(formats, collapse = ", "), ") -> ", PATHS$fig_dir)
 }
-
 
 safe_read_rds <- function(path) {
   if (!file.exists(path)) {
@@ -104,7 +96,6 @@ safe_read_csv <- function(path) {
   }
   readr::read_csv(path, show_col_types = FALSE)
 }
-
 
 label_models <- function(df, col = "modelID") {
   present <- intersect(MODEL_IDS, unique(df[[col]]))

@@ -1,18 +1,4 @@
-## ============================================================
-## 04_imputation_accuracy_plots.R
-## (renamed from 04_error_mse_plots.R: the pipeline reports imputation
-## ACCURACY, not MSE, and has no bias/variance decomposition -- so
-## this script is rebuilt around analysis/imputation_analysis.R's
-## real outputs rather than a metric that doesn't exist in the data.
-## Update run_all.R if you had the old filename hardcoded elsewhere.)
-##
-## Run:  Rscript viz/04_imputation_accuracy_plots.R
-## Input: PATHS$imputation_rep (per-replicate) -- scenario, gridTag,
-##        repID, modelID, acc_neo, acc_trans, mean_acc
-##        PATHS$imputation_sum (grid-cell summary) -- adds n_reps + grid params
-##        PATHS$imputation_wilcox -- pairwise Wilcoxon vs BASELINE_ID
-##        (currently model1 for both scenarios, same caveat as script 03)
-## ============================================================
+# 04_imputation_accuracy_plots.R
 
 source("viz/00_config_theme.R")
 
@@ -21,10 +7,7 @@ if (is.null(df)) quit(save = "no")
 
 df <- df %>% label_models()
 
-# ---------------------------------------------------------------
 # PLOT 1: Imputation accuracy distribution by model/scenario
-# Higher is better (proportion of correctly imputed states).
-# ---------------------------------------------------------------
 p1 <- ggplot(df, aes(x = modelID, y = mean_acc, fill = scenario)) +
   geom_boxplot(outlier.alpha = 0.3, width = 0.6, position = position_dodge(0.7)) +
   scale_fill_manual(values = SCENARIO_COLORS, name = "Generative scenario") +
@@ -36,9 +19,7 @@ p1 <- ggplot(df, aes(x = modelID, y = mean_acc, fill = scenario)) +
   )
 save_fig(p1, "16_imputation_accuracy_by_model", height = 7)
 
-# ---------------------------------------------------------------
 # PLOT 2: Ranked bar chart (mean +/- SE) -- quick summary
-# ---------------------------------------------------------------
 summary_df <- df %>%
   group_by(modelID, scenario) %>%
   summarise(mean_of_mean_acc = mean(mean_acc, na.rm = TRUE),
@@ -57,12 +38,7 @@ p2 <- ggplot(summary_df, aes(x = fct_reorder(modelID, mean_of_mean_acc), y = mea
   )
 save_fig(p2, "17_imputation_accuracy_ranked_bar", height = 7)
 
-# ---------------------------------------------------------------
 # PLOT 3: neo vs trans partition decomposition (the real analogue
-# of a "which part of the signal is driving performance" plot --
-## there's no bias/variance split in the pipeline, but there IS a
-## neomorphic vs transformational character split).
-# ---------------------------------------------------------------
 part_long <- df %>%
   select(modelID, scenario, repID, gridTag, acc_neo, acc_trans) %>%
   pivot_longer(c(acc_neo, acc_trans), names_to = "partition", values_to = "accuracy") %>%
@@ -80,13 +56,7 @@ p3 <- ggplot(part_long, aes(x = modelID, y = accuracy, fill = partition)) +
   )
 save_fig(p3, "18_imputation_accuracy_by_partition", width = 9, height = 7)
 
-# ---------------------------------------------------------------
 # PLOT 4: Significance vs baseline (Wilcoxon results) -- how often
-# is each model significantly better/worse/no-different from the
-# baseline across grid cells? This complements the ranked-bar view
-# with an explicit "how often does it actually win" read, rather
-## than reducing everything to a single baseline-relative number.
-# ---------------------------------------------------------------
 wilcox_df <- safe_read_rds(PATHS$imputation_wilcox)
 
 if (!is.null(wilcox_df)) {
