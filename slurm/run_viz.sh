@@ -13,6 +13,7 @@ module load r
 
 MORPHOSIM=/nobackup/djfb16/morphosim
 MATRIX=/nobackup/djfb16/the-matrix
+BRANCH="restore-75bb2e8"
 
 cd $MORPHOSIM
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') starting viz suite ==="
@@ -20,8 +21,9 @@ Rscript viz/run_all.R
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') finished viz suite ==="
 
 cd $MATRIX
+git checkout "$BRANCH"
 git add figures/
 git commit -m "Update viz figures ($(date '+%Y-%m-%d %H:%M'))" || echo "Nothing to commit."
-git push origin main
+git push origin "$BRANCH"
 
 echo "All done at $(date)"

@@ -9,6 +9,7 @@
 
 # Usage: sbatch slurm/run_audit_incomplete_runs.sh [scenario] [model]
 
+BRANCH="restore-75bb2e8"
 
 SCENARIO_ARG=""
 if [ -n "$1" ]; then
@@ -28,6 +29,7 @@ Rscript run/audit_incomplete_runs.R $SCENARIO_ARG $MODEL_ARG
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') finished audit_incomplete_runs ==="
 
 cd /nobackup/djfb16/the-matrix
+git checkout "$BRANCH"
 git add results/incomplete_runs_audit.csv results/requeue_from_audit.txt 2>/dev/null
 
 if ! git diff --cached --quiet; then
@@ -36,10 +38,10 @@ if ! git diff --cached --quiet; then
   PUSHED=false
   while [ $ATTEMPT -lt $MAX_RETRIES ]; do
     ATTEMPT=$((ATTEMPT + 1))
-    git pull --rebase origin main
+    git pull --rebase origin "$BRANCH"
     git add results/incomplete_runs_audit.csv results/requeue_from_audit.txt 2>/dev/null
     git commit -m "audit_incomplete_runs: $(date '+%Y-%m-%d %H:%M')" 2>/dev/null || true
-    if git push origin main; then
+    if git push origin "$BRANCH"; then
       PUSHED=true
       break
     fi
@@ -49,7 +51,7 @@ if ! git diff --cached --quiet; then
   done
   if [ "$PUSHED" = false ]; then
     echo "WARNING: push failed. Push manually:"
-    echo "  cd /nobackup/djfb16/the-matrix && git push origin main"
+    echo "  cd /nobackup/djfb16/the-matrix && git push origin $BRANCH"
   fi
 else
   echo "No changes to commit."

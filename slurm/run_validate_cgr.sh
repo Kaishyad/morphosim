@@ -7,7 +7,7 @@
 #SBATCH --output=/nobackup/djfb16/morphosim/logs/validate_cgr_%j.out
 #SBATCH --error=/nobackup/djfb16/morphosim/logs/validate_cgr_%j.err
 
-
+BRANCH="restore-75bb2e8"
 
 module load r
 
@@ -17,16 +17,17 @@ Rscript R/validation/validate_cgr.R
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') finished validate_cgr ==="
 
 cd /nobackup/djfb16/the-matrix
+git checkout "$BRANCH"
 git add results/cgr_coverage.rds results/cgr_coverage.csv
 
 if ! git diff --cached --quiet; then
   git commit -m "validate_cgr: coverage results $(date '+%Y-%m-%d %H:%M')"
-  git pull --rebase origin main
-  if git push origin main; then
+  git pull --rebase origin "$BRANCH"
+  if git push origin "$BRANCH"; then
     echo "Pushed CGR coverage results."
   else
     echo "WARNING: push failed. Push manually with:"
-    echo "  cd /nobackup/djfb16/the-matrix && git push origin main"
+    echo "  cd /nobackup/djfb16/the-matrix && git push origin $BRANCH"
   fi
 else
   echo "No changes to commit."

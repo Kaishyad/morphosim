@@ -11,6 +11,7 @@
 # Merges per-model known_answer_summary files and pushes to GitHub.
 
 SCENARIO="${1:-}"
+BRANCH="restore-75bb2e8"
 
 module load r
 
@@ -22,19 +23,18 @@ else
 fi
 
 cd /nobackup/djfb16/the-matrix
+git checkout "$BRANCH"
 git add results/known_answer_summary.rds results/known_answer_summary.csv
 
 if ! git diff --cached --quiet; then
+  git commit -m "merge: known answer summary${SCENARIO:+ ($SCENARIO)} $(date '+%Y-%m-%d %H:%M')"
   MAX_RETRIES=5
   ATTEMPT=0
   PUSHED=false
   while [ $ATTEMPT -lt $MAX_RETRIES ]; do
     ATTEMPT=$((ATTEMPT + 1))
-    git stash --include-untracked 2>/dev/null || true
-    git pull --rebase origin main
-    git stash pop 2>/dev/null || true
-    git add results/known_answer_summary.rds results/known_answer_summary.csv
-    if git push origin main; then
+    git pull --rebase origin "$BRANCH"
+    if git push origin "$BRANCH"; then
       PUSHED=true
       break
     fi
@@ -44,7 +44,7 @@ if ! git diff --cached --quiet; then
   done
   if [ "$PUSHED" = false ]; then
     echo "WARNING: push failed after $MAX_RETRIES attempts."
-    echo "Push manually: cd /nobackup/djfb16/the-matrix && git push origin main"
+    echo "Push manually: cd /nobackup/djfb16/the-matrix && git push origin $BRANCH"
   fi
 else
   echo "No changes to commit."

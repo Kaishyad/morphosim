@@ -1,6 +1,7 @@
 #!/bin/bash
 
 MATRIX=/nobackup/djfb16/the-matrix
+BRANCH="restore-75bb2e8"
 SCENARIO=nt
 MODEL=model11
 EXPECTED=1920  
@@ -26,9 +27,10 @@ while true; do
     echo ""
     echo "All $MODEL inference jobs complete for scenario $SCENARIO!"
     cd /nobackup/djfb16/the-matrix
+    git checkout "$BRANCH"
     git add results/$SCENARIO/
     git commit -m "Inference: $SCENARIO $MODEL all $EXPECTED results"
-    git push origin main
+    git push origin "$BRANCH"
     echo "Pushed to GitHub."
     break
   fi

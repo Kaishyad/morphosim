@@ -10,6 +10,7 @@
 module load r
 
 SCENARIO="${1:-}"
+BRANCH="restore-75bb2e8"
 
 cd /nobackup/djfb16/morphosim
 if [ -n "$SCENARIO" ]; then
@@ -19,16 +20,17 @@ else
 fi
 
 cd /nobackup/djfb16/the-matrix
+git checkout "$BRANCH"
 git add results/convergence_summary.rds results/requeue_list.txt
 
 if ! git diff --cached --quiet; then
-  git commit -m "merge: convergence summary + requeue list"
-  git pull --git push origin restore-75bb2e8
-  if git push origin restore-75bb2e8; then
+  git commit -m "merge: convergence summary + requeue list $(date '+%Y-%m-%d %H:%M')"
+  git pull --rebase origin "$BRANCH"
+  if git push origin "$BRANCH"; then
     echo "Pushed merged convergence results."
   else
     echo "WARNING: push failed. Push manually with:"
-    echo "  cd /nobackup/djfb16/the-matrix && git push origin restore-75bb2e8"
+    echo "  cd /nobackup/djfb16/the-matrix && git push origin $BRANCH"
   fi
 else
   echo "No changes to commit."
