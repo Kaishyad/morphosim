@@ -22,13 +22,13 @@ cd /nobackup/djfb16/the-matrix
 git add results/convergence_summary.rds results/requeue_list.txt
 
 if ! git diff --cached --quiet; then
-  git commit -m "merge: convergence summary + requeue list $(date '+%Y-%m-%d %H:%M')"
-  git pull --rebase origin main
-  if git push origin main; then
+  git commit -m "merge: convergence summary + requeue list"
+  git pull --git push origin restore-75bb2e8
+  if git push origin restore-75bb2e8; then
     echo "Pushed merged convergence results."
   else
     echo "WARNING: push failed. Push manually with:"
-    echo "  cd /nobackup/djfb16/the-matrix && git push origin main"
+    echo "  cd /nobackup/djfb16/the-matrix && git push origin restore-75bb2e8"
   fi
 else
   echo "No changes to commit."
