@@ -7,7 +7,7 @@
 #SBATCH --output=/nobackup/djfb16/morphosim/logs/viz_%j.out
 #SBATCH --error=/nobackup/djfb16/morphosim/logs/viz_%j.err
 
-#Runs the viz  and pushes the resulting figures to the-matrix
+#Runs the viz and pushes the resulting figures to the-matrix
 
 module load r
 
