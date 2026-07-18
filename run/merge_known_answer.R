@@ -29,12 +29,15 @@ cli::cli_alert_info("Found {length(per_model_files)} per-model file(s) to merge:
 cli::cli_ul(basename(per_model_files))
 
 per_model_dfs <- lapply(per_model_files, readRDS)
-new_df <- do.call(rbind, per_model_dfs)
+new_df <- dplyr::bind_rows(per_model_dfs)
 
 
 existing_df <- if (file.exists(ka_rds)) readRDS(ka_rds) else NULL
 
-combined_df <- if (!is.null(existing_df)) rbind(existing_df, new_df) else new_df
+# bind_rows() (not base rbind()) so a column present in one side but not the
+# other -- e.g. rate_param, added after some existing_df rows were written --
+# gets filled with NA instead of erroring on a column-count mismatch.
+combined_df <- if (!is.null(existing_df)) dplyr::bind_rows(existing_df, new_df) else new_df
 key <- with(combined_df, paste(scenario, gridTag, modelID, sep = "|"))
 combined_df <- combined_df[!duplicated(key, fromLast = TRUE), ]
 
