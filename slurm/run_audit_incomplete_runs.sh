@@ -9,7 +9,7 @@
 
 # Usage: sbatch slurm/run_audit_incomplete_runs.sh [scenario] [model]
 
-BRANCH="restore-75bb2e8"
+BRANCH="clean-rebuild"
 
 SCENARIO_ARG=""
 if [ -n "$1" ]; then

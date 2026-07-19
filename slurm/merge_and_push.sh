@@ -10,7 +10,7 @@
 module load r
 
 SCENARIO="${1:-}"
-BRANCH="restore-75bb2e8"
+BRANCH="clean-rebuild"
 
 cd /nobackup/djfb16/morphosim
 if [ -n "$SCENARIO" ]; then

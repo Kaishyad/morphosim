@@ -11,7 +11,7 @@
 # Run after merge_tree_accuracy.sh has completed successfully.
 
 SCENARIO="${1:-mk}"
-BRANCH="restore-75bb2e8"
+BRANCH="clean-rebuild"
 
 module load r
 

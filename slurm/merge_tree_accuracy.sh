@@ -10,7 +10,7 @@
 # Usage: sbatch --dependency=afterany:... slurm/merge_tree_accuracy.sh [scenario]
 
 SCENARIO="${1:-}"
-BRANCH="restore-75bb2e8"
+BRANCH="clean-rebuild"
 module load r
 cd /nobackup/djfb16/morphosim
 if [ -n "$SCENARIO" ]; then

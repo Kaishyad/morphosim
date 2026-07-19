@@ -11,7 +11,7 @@
 # Merges per-model known_answer_summary files and pushes to GitHub.
 
 SCENARIO="${1:-}"
-BRANCH="restore-75bb2e8"
+BRANCH="clean-rebuild"
 
 module load r
 

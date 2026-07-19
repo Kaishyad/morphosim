@@ -9,7 +9,7 @@
 
 MODEL=model1
 SCENARIO=mk
-BRANCH="restore-75bb2e8"
+BRANCH="clean-rebuild"
 
 cd /nobackup/djfb16/the-matrix
 git checkout "$BRANCH"

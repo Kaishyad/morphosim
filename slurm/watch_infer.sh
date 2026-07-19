@@ -1,7 +1,7 @@
 #!/bin/bash
 
 MATRIX=/nobackup/djfb16/the-matrix
-BRANCH="restore-75bb2e8"
+BRANCH="clean-rebuild"
 SCENARIO=mk
 MODEL=model11
 EXPECTED=640  

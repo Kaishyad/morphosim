@@ -7,7 +7,7 @@
 #SBATCH --output=/nobackup/djfb16/morphosim/logs/model_comparison_%j.out
 #SBATCH --error=/nobackup/djfb16/morphosim/logs/model_comparison_%j.err
 
-BRANCH="restore-75bb2e8"
+BRANCH="clean-rebuild"
 
 module load r
 

@@ -13,7 +13,7 @@ module load r
 
 MORPHOSIM=/nobackup/djfb16/morphosim
 MATRIX=/nobackup/djfb16/the-matrix
-BRANCH="restore-75bb2e8"
+BRANCH="clean-rebuild"
 
 cd $MORPHOSIM
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') starting viz suite ==="

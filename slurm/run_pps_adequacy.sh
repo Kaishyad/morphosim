@@ -10,7 +10,7 @@
 
 SCENARIO="${1:-}"
 MODEL="${2:-}"
-BRANCH="restore-75bb2e8"
+BRANCH="clean-rebuild"
 
 module load r
 
