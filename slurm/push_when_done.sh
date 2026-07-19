@@ -5,7 +5,7 @@
 
 SCENARIO="$1"
 MODEL="$2"
-BRANCH="restore-75bb2e8"
+BRANCH="clean-rebuild"
 
 if [ -z "$SCENARIO" ] || [ -z "$MODEL" ]; then
   echo "Usage: bash push_when_done.sh <mk|nt> <modelN>"
