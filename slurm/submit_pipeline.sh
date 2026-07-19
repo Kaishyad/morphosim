@@ -16,7 +16,7 @@
 set -e
 cd /nobackup/djfb16/morphosim
 
-CONV_JOB="${1:-17872509}"
+CONV_JOB="${1:-17936992}"
 
 MODELS=(model1 model2 model3 model4 model5 model6 model7 model8 model9 model10 model11 model12)
 SCENARIOS=(mk nt)
