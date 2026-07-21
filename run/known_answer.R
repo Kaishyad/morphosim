@@ -84,6 +84,15 @@ for (scenario in SCENARIOS) {
       result$modelID  <- modelID
       result$scenario <- scenario
       all_results[[paste(scenario, modelID, sep = "_")]] <- result
+      # Fail loud here instead of silently writing a NaN-filled .rds that looks
+      # like a completed run to merge_known_answer.R.
+      if (all(is.nan(result$cov_tree_len))) {
+        cli::cli_alert_danger(
+          "{modelID}/{scenario}: cov_tree_len is NaN for every grid cell -- \\
+           no valid log files were found. Check ParamLogFile() paths before \\
+           trusting this output."
+        )
+      }
     }
   }
 }
