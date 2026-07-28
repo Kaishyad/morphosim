@@ -1,5 +1,3 @@
-#this at the top of every analysis script: source("R/core/_setup.R")
-
 # --- Paths
 options("ntOutDir"      = file.path(dirname(getwd()), "the-matrix"))
 options("ntRepoDir"     = file.path(getOption("ntOutDir"), "simulations"))

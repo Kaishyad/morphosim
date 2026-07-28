@@ -7,7 +7,7 @@
 #SBATCH --output=/nobackup/djfb16/morphosim/logs/merge_tree_accuracy_%j.out
 #SBATCH --error=/nobackup/djfb16/morphosim/logs/merge_tree_accuracy_%j.err
 
-# Usage: sbatch --dependency=afterany:... slurm/merge_tree_accuracy.sh [scenario]
+# sbatch --dependency=afterany:... slurm/merge_tree_accuracy.sh [scenario]
 
 SCENARIO="${1:-}"
 BRANCH="clean-rebuild"

@@ -1,12 +1,8 @@
 #!/bin/bash
-# Submit one convergence-check job per model, then a single merge+push job
-# that runs afterwards.
-#
-# Usage:
-#   ./submit_all_convergence.sh [scenario] [max_trees]
-# Examples:
-#   ./submit_all_convergence.sh nt 300
-#   ./submit_all_convergence.sh mk
+
+
+# ./submit_all_convergence.sh [scenario] [max_trees]
+
 
 SCENARIO="${1:-mk}"
 MAX_TREES="${2:-}"

@@ -1,12 +1,5 @@
 #!/bin/bash
 #SLURM for inference
-#One job is one model × one simulation replicate.
-# Filled in by MakeSlurm.R before submission, placeholders:
-#   %SIMSCENARIO%  generative scenario ("nt" or "mk")
-#   %SIMREP%       replicate ID, zero-padded to 3 digits (e.g. "sim001")
-#   %SCRIPTID%     model script name without .Rev (e.g. "model1")
-#   %SEED%         integer random seed
-#   %GRID_TAG%     parameter combination tag (e.g. "tl1.0_n0.5_c50")
 
 #SBATCH -n 16
 #SBATCH --mem=4G
@@ -18,7 +11,7 @@
 #SBATCH -p shared
 #SBATCH --export=ALL
 
-# --- Paths ---
+# --- Paths
 RB=~/diss/revbayes/projects/cmake/build-mpi/rb-mpi
 MORPHOSIM=/nobackup/$USER/morphosim
 MATRIX=/nobackup/$USER/the-matrix
@@ -26,20 +19,16 @@ MATRIX=/nobackup/$USER/the-matrix
 # Simulation directory: scenario / grid tag / replicate
 SIM_SUBDIR=simulations/%SIMSCENARIO%/%GRID_TAG%/%SIMREP%
 
-# --- Load modules ---
 module load gcc/11.2
 module load boost/1.78.0
 module load openmpi/4.1.1
 
-# --- Pull latest code ---
 cd $MORPHOSIM
 git pull origin main --rebase
 
-# --- Pull latest data ---
 cd $MATRIX
 git pull origin main --rebase
 
-# --- Run inference ---
 echo "Starting inference: %SCRIPTID% on %SIMSCENARIO%/%GRID_TAG%/%SIMREP% at $(date)"
 cd $MORPHOSIM
 
@@ -52,7 +41,7 @@ mpirun $RB \
 
 echo "Inference complete at $(date)"
 
-# --- Compress tree files ---
+#--- Compress tree files
 cd $MATRIX/$SIM_SUBDIR
 for file in %SCRIPTID%_run_*.trees; do
   [ -f "$file" ] && \
@@ -60,10 +49,10 @@ for file in %SCRIPTID%_run_*.trees; do
     rm "$file"
 done
 
-# Record temp disk usage
+#Record temp disk usage
 du -hs $TMPDIR > mc3-tmpdir_usage_%SCRIPTID%.log 2>/dev/null || true
 
-# --- Push outputs to the-matrix ---
+# --- Push outputs to the-matrix
 cd $MATRIX
 git add $SIM_SUBDIR/
 git commit -m "Inference: %SIMSCENARIO%/%GRID_TAG%/%SIMREP%/%SCRIPTID%" || true

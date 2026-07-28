@@ -1,12 +1,9 @@
-# Submits inference jobs for the morphosim parameter grid on Hamilton.
-# Mirrors Simulate.R exactly: uses sbatch --wrap (no .sh template files),
-# which avoids all line-ending issues that plagued mc3sim.sh.
-#
-# Usage (run from /nobackup/djfb16/morphosim):
-#   Rscript slurm/Infer.R  # dry run, all models, both scenarios
-#   Rscript slurm/Infer.R --run   # submit all
-#   Rscript slurm/Infer.R --run --scenario mk  # mk only
-#   Rscript slurm/Infer.R --run --scenario mk --model model1   # mk + model1 only
+#Submits inference jobs 
+
+#Rscript slurm/Infer.R  # dry run, all models, both scenarios
+# Rscript slurm/Infer.R --run   # submit all
+#Rscript slurm/Infer.R --run --scenario mk  # mk only
+#Rscript slurm/Infer.R --run --scenario mk --model model1   # mk + model1 only
 
 source("R/core/_setup.R")
 
@@ -93,7 +90,7 @@ for (scenario in scenarios) {
         out_log  <- file.path(log_dir, paste0(job_name, ".out"))
         err_log  <- file.path(log_dir, paste0(job_name, ".err"))
 
-        #Skip only if inference is actually complete for BOTH runs.
+        #Skip only if inference is actually complete for both runs.
         
         inferDirAbs <- InferDirAbs(scenario, gridTag, repID, scriptID)
         if (JobLogsComplete(scenario, gridTag, repID, scriptID)) {
@@ -116,7 +113,7 @@ for (scenario in scenarios) {
 
         .wait_for_slot()
 
-        # module loads + mpirun rb-mpi, no git push (done by push_when_done.sh)
+        #no git push done by push_when_done.sh actually
         infer_subdir <- file.path("results", scenario, gridTag, repID, scriptID)
 
         wrap_cmd <- paste(

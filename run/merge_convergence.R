@@ -29,8 +29,7 @@ cli::cli_ul(basename(per_model_files))
 per_model_dfs <- lapply(per_model_files, readRDS)
 new_df <- do.call(rbind, per_model_dfs)
 
-# Merge with any existing combined summary (e.g. previously-merged scenarios),
-# de-duplicating on the natural key so re-running the merge is idempotent.
+# Merge with any existing combined summary 
 existing_df <- if (file.exists(conv_rds)) readRDS(conv_rds) else NULL
 
 combined_df <- if (!is.null(existing_df)) rbind(existing_df, new_df) else new_df

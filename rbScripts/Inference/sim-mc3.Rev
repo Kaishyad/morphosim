@@ -1,4 +1,4 @@
-# Inference
+#Inference
 #Reads simulated neo.nex and trans.nex from simDir, sources the specified
 #model script, runs MC³ with stopping rules, and writes all outputs to
 #outDir.

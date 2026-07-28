@@ -46,9 +46,7 @@ gain_loss_neo ~ dnLognormal(0, 1)
 moves.append( mvScale(gain_loss_neo, weight = 1.0) )
 Q_neo := fnFreeBinary( simplex(1, gain_loss_neo), rescaled = TRUE )
 
-gain_loss_trans ~ dnLognormal(0, 1)
-moves.append( mvScale(gain_loss_trans, weight = 1.0) )
-Q_trans := fnFreeBinary( simplex(1, gain_loss_trans), rescaled = TRUE )
+Q_trans <- fnJC(2)
 
 #--- ACRV: free rates (non-parametric)
 #Rate values (site_rates_raw) are drawn i.i.d. from an unconstrained

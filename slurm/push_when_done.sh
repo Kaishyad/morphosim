@@ -1,7 +1,6 @@
 #!/bin/bash
-# push_when_done.sh
-# Usage: bash push_when_done.sh <scenario> <model>
-# e.g.  bash push_when_done.sh mk model12
+
+#bash push_when_done.sh <scenario> <model>
 
 SCENARIO="$1"
 MODEL="$2"

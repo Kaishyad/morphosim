@@ -2,7 +2,7 @@
 
 source("R/core/_setup.R")
 
-# --- Argument parsing ---
+#Argument parsing
 args_cli      <- commandArgs(trailingOnly = TRUE)
 scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
 model_flag    <- args_cli[which(args_cli == "--model")    + 1]
@@ -14,9 +14,7 @@ message(sprintf("Scenarios: %s | Models: %s",
                 paste(SCENARIOS,    collapse = ", "),
                 paste(EVAL_MODELS,  collapse = ", ")))
 
-# --- Per-model-job output paths
-# When --model is given (one model per SLURM job, run concurrently), write to a
-# per-scenario-per-model file rather than the shared known_answer_summary.rds.
+#Per-model-job output paths
 SINGLE_MODEL_MODE <- !is.na(model_flag[1])
 
 results_dir <- file.path(OutputDir(), "results")
@@ -34,7 +32,7 @@ dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
 ka_rds <- file.path(results_dir, "known_answer_summary.rds")
 ka_csv <- file.path(results_dir, "known_answer_summary.csv")
 
-# --- Load convergence filter ---
+# convergence filter
 conv_rds <- file.path(OutputDir(), "results", "convergence_summary.rds")
 
 if (!file.exists(conv_rds)) {
@@ -49,13 +47,13 @@ cli::cli_alert_info(
   "{nrow(converged)} converged run(s) available for known-answer test."
 )
 
-# --- Run KnownAnswerSummary for each model ---
+# Run KnownAnswerSummary for each model
 all_results <- list()
 
 for (scenario in SCENARIOS) {
   cli::cli_h1(paste("Scenario:", scenario))
   conv_scenario <- converged[converged$scenario == scenario, ]
-  grid          <- ScenarioGrid(scenario)  # FIX: use scenario-specific grid
+  grid          <- ScenarioGrid(scenario)  
 
   for (mi in seq_along(EVAL_MODELS)) {
     modelID    <- EVAL_MODELS[mi]
@@ -72,7 +70,7 @@ for (scenario in SCENARIOS) {
     result <- tryCatch(
       KnownAnswerSummary(modelID  = modelID,
                          scenario = scenario,
-                         grid     = grid,   # FIX: pass scenario grid
+                         grid     = grid,  
                          nRep     = N_REP),
       error = function(e) {
         cli::cli_alert_danger("KnownAnswerSummary failed for {modelID}/{scenario}: {conditionMessage(e)}")
@@ -84,20 +82,18 @@ for (scenario in SCENARIOS) {
       result$modelID  <- modelID
       result$scenario <- scenario
       all_results[[paste(scenario, modelID, sep = "_")]] <- result
-      # Fail loud here instead of silently writing a NaN-filled .rds that looks
-      # like a completed run to merge_known_answer.R.
+      #have fail loud here instead of silently writing a NAN filled .rds that looks like a completed run to merge_known_answer.R
       if (all(is.nan(result$cov_tree_len))) {
         cli::cli_alert_danger(
-          "{modelID}/{scenario}: cov_tree_len is NaN for every grid cell -- \\
-           no valid log files were found. Check ParamLogFile() paths before \\
-           trusting this output."
+          "{modelID}/{scenario}: cov_tree_len is NaN for every grid cell \\
+           no valid log files were found."
         )
       }
     }
   }
 }
 
-# --- Combine and save ---
+#Combine and save
 summary_df <- do.call(rbind,
                       all_results[!vapply(all_results, is.null, logical(1))])
 
@@ -111,7 +107,7 @@ if (SINGLE_MODEL_MODE) {
   cli::cli_alert_success("Per-model known-answer saved to: {per_model_rds}")
   cli::cli_alert_info("Run merge_known_answer.R after all model jobs finish.")
 } else {
-  # Full run (no --model flag): load existing, merge, de-duplicate, save combined
+  # Full run, load existing, merge, de-duplicate, save combined
   existing_df <- if (file.exists(ka_rds)) readRDS(ka_rds) else NULL
   combined_df <- if (!is.null(existing_df)) {
     key <- with(rbind(existing_df, summary_df),
@@ -127,7 +123,7 @@ if (SINGLE_MODEL_MODE) {
   cli::cli_alert_success("  CSV : {ka_csv}")
 }
 
-# --- Console report ---
+#Console report
 cli::cli_h2("Coverage rates (target ~0.95)")
 
 for (mid in EVAL_MODELS) {

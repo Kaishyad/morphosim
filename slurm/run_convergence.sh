@@ -30,22 +30,3 @@ fi
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') starting ${SCENARIO}/${MODEL:-all} ==="
 Rscript run/check_convergence.R --scenario $SCENARIO $MODEL_ARG $MAX_TREES_ARG
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') finished ${SCENARIO}/${MODEL:-all} ==="
-
-# --- Git push  disabled while .ckp cleanup is running on the-matrix ---
-# Re-enable once the cleanup (screen: gitcleanup) has finished and pushed.
-#
-# cd /nobackup/djfb16/the-matrix
-# git add results/convergence_summary.rds results/requeue_list.txt
-#
-# if ! git diff --cached --quiet; then
-#   git commit -m "convergence: ${SCENARIO} ${MODEL:-all} $(date '+%Y-%m-%d %H:%M')"
-#
-#   MAX_RETRIES=5
-#   ATTEMPT=0
-#   PUSHED=false
-#
-#   while [ $ATTEMPT -lt $MAX_RETRIES ]; do
-#     ATTEMPT=$((ATTEMPT + 1))
-#
-#     git pull --rebase origin main
-#     if git push origin main; then

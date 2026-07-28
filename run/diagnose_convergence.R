@@ -1,5 +1,4 @@
-# Diagnostic: compare tree counts and per-stage timing across models
-# Run from morphosim/ root: Rscript R/analysis/diagnose_convergence.R
+#Diagnostic: compare tree counts and per-stage timing across models
 
 source("R/core/_setup.R")
 scenario <- "nt"

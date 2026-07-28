@@ -2,8 +2,8 @@
 
 # Partitioning : Single (neo + trans combined) -- same as M11
 # Q    : 9-state Mk, but with ESTIMATED symmetric exchange rates (fnGTR-style) instead of M11 fixed fnJC(9)
-# APRV  : Absent -- same as M11
-# ACRV : Absent -- same as M11
+# APRV  : Absent  same as M11
+# ACRV : Absent  same as M11
 # Root freq : Stationary, fixed equal (1/9 each) -- same as M11
 
 

@@ -8,10 +8,9 @@ scripts <- c(
   "viz/01_tree_accuracy_plots.R",
   "viz/02_convergence_diagnostics.R",
   "viz/03_parameter_grid_effects.R",
-# "viz/04_imputation_accuracy_plots.R",  
   "viz/05_summary_dashboard.R",
   "viz/06_parameter_grid_by_model.R",
-  "viz/07_cross_metric_analysis.R",  # requires run/cross_metric_analysis.R to have been run first
+  "viz/07_cross_metric_analysis.R",  
   "viz/08_tree_similarity_grid.R",
   "viz/09_model_deep_dive.R",        
   "viz/10_known_answer_analysis.R"
