@@ -11,10 +11,12 @@
 #SBATCH -p shared
 #SBATCH --export=ALL
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
+
 # --- Paths
 RB=~/diss/revbayes/projects/cmake/build-mpi/rb-mpi
-MORPHOSIM=/nobackup/$USER/morphosim
-MATRIX=/nobackup/$USER/the-matrix
+MORPHOSIM="$MORPHOSIM_DIR"
+MATRIX="$MATRIX_DIR"
 
 # Simulation directory: scenario / grid tag / replicate
 SIM_SUBDIR=simulations/%SIMSCENARIO%/%GRID_TAG%/%SIMREP%

@@ -1,8 +1,8 @@
 #Asymmetry alone
 
 #Partitioning : Single
-#Neo Q : Asymmetric (fnFreeBinary: gain != loss)
-#Trans Q  : Symmetric  
+#Q : Asymmetric (fnFreeBinary: gain != loss), single Q applied to neo+trans combined
+#(single partition -- there's no separate neo/trans treatment here, unlike M4+)
 #APRV : Absent
 #ACRV : Absent
 # Root freq : Stationary

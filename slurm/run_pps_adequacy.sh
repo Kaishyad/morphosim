@@ -4,25 +4,25 @@
 #SBATCH --time=08:00:00
 #SBATCH -p shared
 #SBATCH --job-name=pps_adequacy
-#SBATCH --output=/nobackup/djfb16/morphosim/logs/pps_adequacy_%j.out
-#SBATCH --error=/nobackup/djfb16/morphosim/logs/pps_adequacy_%j.err
+#SBATCH --output=logs/pps_adequacy_%j.out
+#SBATCH --error=logs/pps_adequacy_%j.err
 
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
 SCENARIO="${1:-}"
 MODEL="${2:-}"
-BRANCH="clean-rebuild"
 
 module load r
 
-cd /nobackup/djfb16/morphosim
+cd "$MORPHOSIM_DIR"
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') starting pps_adequacy ${SCENARIO:-all}/${MODEL:-all} ==="
 
 if [ -n "$SCENARIO" ] && [ -n "$MODEL" ]; then
-  Rscript run/pps_adequacy.R --scenario "$SCENARIO" --model "$MODEL"
+  Rscript run/pps_adequacy/pps_adequacy.R --scenario "$SCENARIO" --model "$MODEL"
 elif [ -n "$SCENARIO" ]; then
-  Rscript run/pps_adequacy.R --scenario "$SCENARIO"
+  Rscript run/pps_adequacy/pps_adequacy.R --scenario "$SCENARIO"
 else
-  Rscript run/pps_adequacy.R
+  Rscript run/pps_adequacy/pps_adequacy.R
 fi
 
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') finished pps_adequacy ${SCENARIO:-all}/${MODEL:-all} ==="
@@ -32,18 +32,18 @@ echo "=== $(date '+%Y-%m-%d %H:%M:%S') finished pps_adequacy ${SCENARIO:-all}/${
 # needs merging (no merge_pps.R exists yet; write one before scripting the
 # push for per-model runs, same pattern as merge_known_answer.R).
 if [ -z "$SCENARIO" ] && [ -z "$MODEL" ]; then
-  cd /nobackup/djfb16/the-matrix
+  cd "$MATRIX_DIR"
   git checkout "$BRANCH"
   git add results/pps_adequacy.rds results/pps_adequacy.csv
 
   if ! git diff --cached --quiet; then
-    git commit -m "pps_adequacy: results $(date '+%Y-%m-%d %H:%M')"
+    git commit -m "pps_adequacy: results $(date '+%Y-%m-%d')"
     git pull --rebase origin "$BRANCH"
     if git push origin "$BRANCH"; then
       echo "Pushed PPS adequacy results."
     else
       echo "WARNING: push failed. Push manually with:"
-      echo "  cd /nobackup/djfb16/the-matrix && git push origin $BRANCH"
+      echo "  cd "$MATRIX_DIR" && git push origin $BRANCH"
     fi
   else
     echo "No changes to commit."

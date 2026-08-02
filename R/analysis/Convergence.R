@@ -110,7 +110,7 @@ ComputeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
 #' Centralises tree-file extraction so it happens exactly once per
 #' (scenario, gridTag, repID, modelID, run) regardless of how many
 #' downstream diagnostics need the trees. If the source is a .tar.gz,
-#' it is extracted to a tempfile under /nobackup/djfb16/tmp which is
+#' it is extracted to a tempfile under TmpDir() (see R/core/FilePaths.R) which is
 #' always removed on exit (success, error, or timeout) via on.exit() —
 #' previously these tempfiles were never cleaned up, and were found to
 #' have accumulated to 45GB / ~24k files, degrading filesystem
@@ -126,7 +126,7 @@ ComputeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   tr <- sub("\\.tar\\.gz$", ".trees", gz)
 
   if (file.exists(gz)) {
-    tmp <- tempfile(fileext = ".trees", tmpdir = "/nobackup/djfb16/tmp")
+    tmp <- tempfile(fileext = ".trees", tmpdir = TmpDir())
     on.exit(unlink(tmp), add = TRUE)
     system(paste("tar -xzf", shQuote(gz), "-O >", shQuote(tmp)))
     tryCatch(ape::read.tree(tmp), error = function(e) NULL)
@@ -331,7 +331,7 @@ CheckConvergence <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   # Load tree files once and share across ASDSF and TreeESS — previously
   # each function extracted the .tar.gz independently (2x the tar/IO cost
   # per replicate), and neither cleaned up its tempfile, which had
-  # accumulated to 45GB / ~24k orphaned files under /nobackup/djfb16/tmp
+  # accumulated to 45GB / ~24k orphaned files under TmpDir()
   # and was degrading filesystem performance for the whole batch.
   treesList <- lapply(seq_len(nRuns), function(run) {
     .LoadTrees(scenario, gridTag, repID, modelID, run)

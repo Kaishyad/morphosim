@@ -1,7 +1,7 @@
 #!/bin/bash
 
-MATRIX=/nobackup/djfb16/the-matrix
-BRANCH="clean-rebuild"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
+MATRIX="$MATRIX_DIR"
 SCENARIO=nt
 MODEL=model11
 EXPECTED=1920  
@@ -18,15 +18,15 @@ while true; do
   PENDING=$(squeue -u $USER -h 2>/dev/null | grep "inf_${SCENARIO}" | grep " PD " | wc -l)
 
   #Count any that errored 
-  ERRORS=$(find /nobackup/$USER/morphosim/logs -name "inf_${SCENARIO}_*_${MODEL}.err" \
-           -newer /nobackup/$USER/morphosim/slurm/Infer.R -size +0c 2>/dev/null | wc -l)
+  ERRORS=$(find $MORPHOSIM_DIR/logs -name "inf_${SCENARIO}_*_${MODEL}.err" \
+           -newer $MORPHOSIM_DIR/slurm/Infer.R -size +0c 2>/dev/null | wc -l)
 
   echo "$(date): $DONE / $EXPECTED complete | Running: $RUNNING | Pending: $PENDING | Errors: $ERRORS"
 
   if [ "$DONE" -ge "$EXPECTED" ]; then
     echo ""
     echo "All $MODEL inference jobs complete for scenario $SCENARIO!"
-    cd /nobackup/djfb16/the-matrix
+    cd "$MATRIX_DIR"
     git checkout "$BRANCH"
     git add results/$SCENARIO/
     git commit -m "Inference: $SCENARIO $MODEL all $EXPECTED results"

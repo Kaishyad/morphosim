@@ -213,7 +213,7 @@ ModelLevelScorecard <- function(cross_df) {
 #'
 #' This is the direct answer to "do models that produce better trees also
 #' have better results?" at the model-comparison grain. Reuses
-#' SpearmanCorrelation() (R/analysis/Correlation.R) for the bootstrap CI.
+#' SpearmanCorrelation() (R/analysis/Correlation.R, now a generic helper) for the bootstrap CI.
 #' n is small here (<=12 per scenario) -- report rho and the CI, not just a
 #' p-value, and treat this as descriptive/exploratory rather than a
 #' confirmatory test (see docs/tree_accuracy_methodology.md).

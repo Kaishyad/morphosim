@@ -4,23 +4,23 @@
 #SBATCH --time=00:45:00
 #SBATCH -p shared
 #SBATCH --job-name=cross_metric
-#SBATCH --output=/nobackup/djfb16/morphosim/logs/cross_metric_%j.out
-#SBATCH --error=/nobackup/djfb16/morphosim/logs/cross_metric_%j.err
+#SBATCH --output=logs/cross_metric_%j.out
+#SBATCH --error=logs/cross_metric_%j.err
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
 #Merges tree accuracy with convergence/known-answer/CGR and tests whether
 #models with better trees also have better results, at model and
 #grid-cell level.
 
-BRANCH="clean-rebuild"
 
 module load r
 
-cd /nobackup/djfb16/morphosim
+cd "$MORPHOSIM_DIR"
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') starting cross_metric_analysis ==="
-Rscript run/cross_metric_analysis.R
+Rscript run/cross_metric/cross_metric_analysis.R
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') finished cross_metric_analysis ==="
 
-cd /nobackup/djfb16/the-matrix
+cd "$MATRIX_DIR"
 git checkout "$BRANCH"
 git add results/cross_metric_gridcell.rds \
         results/cross_metric_gridcell.csv \
@@ -46,7 +46,7 @@ if ! git diff --cached --quiet; then
             results/cross_metric_rank_correlations.csv \
             results/cross_metric_gridcell_correlations.rds \
             results/cross_metric_gridcell_correlations.csv
-    git commit -m "cross_metric_analysis: results $(date '+%Y-%m-%d %H:%M')" 2>/dev/null || true
+    git commit -m "cross_metric_analysis: results $(date '+%Y-%m-%d')" 2>/dev/null || true
     if git push origin "$BRANCH"; then
       PUSHED=true
       break
@@ -57,7 +57,7 @@ if ! git diff --cached --quiet; then
   done
   if [ "$PUSHED" = false ]; then
     echo "WARNING: push failed. Push manually:"
-    echo "  cd /nobackup/djfb16/the-matrix && git push origin $BRANCH"
+    echo "  cd "$MATRIX_DIR" && git push origin $BRANCH"
   fi
 else
   echo "No changes to commit."

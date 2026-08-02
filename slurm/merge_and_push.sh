@@ -4,33 +4,33 @@
 #SBATCH --time=01:00:00
 #SBATCH -p shared
 #SBATCH --job-name=merge_convergence
-#SBATCH --output=/nobackup/djfb16/morphosim/logs/merge_%j.out
-#SBATCH --error=/nobackup/djfb16/morphosim/logs/merge_%j.err
+#SBATCH --output=logs/merge_%j.out
+#SBATCH --error=logs/merge_%j.err
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
 module load r
 
 SCENARIO="${1:-}"
-BRANCH="clean-rebuild"
 
-cd /nobackup/djfb16/morphosim
+cd "$MORPHOSIM_DIR"
 if [ -n "$SCENARIO" ]; then
-  Rscript run/merge_convergence.R --scenario "$SCENARIO"
+  Rscript run/convergence/merge_convergence.R --scenario "$SCENARIO"
 else
-  Rscript run/merge_convergence.R
+  Rscript run/convergence/merge_convergence.R
 fi
 
-cd /nobackup/djfb16/the-matrix
+cd "$MATRIX_DIR"
 git checkout "$BRANCH"
 git add results/convergence_summary.rds results/requeue_list.txt
 
 if ! git diff --cached --quiet; then
-  git commit -m "merge: convergence summary + requeue list $(date '+%Y-%m-%d %H:%M')"
+  git commit -m "merge: convergence summary + requeue list $(date '+%Y-%m-%d')"
   git pull --rebase origin "$BRANCH"
   if git push origin "$BRANCH"; then
     echo "Pushed merged convergence results."
   else
     echo "WARNING: push failed. Push manually with:"
-    echo "  cd /nobackup/djfb16/the-matrix && git push origin $BRANCH"
+    echo "  cd "$MATRIX_DIR" && git push origin $BRANCH"
   fi
 else
   echo "No changes to commit."

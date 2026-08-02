@@ -41,7 +41,7 @@ TreeAccuracy <- function(scenario, gridTag, repID, modelID,
 
     if (file.exists(gz)) {
       tmp <- tempfile(fileext = ".trees",
-                      tmpdir  = "/nobackup/djfb16/tmp")
+                      tmpdir  = TmpDir())
       on.exit(unlink(tmp), add = TRUE)
       system(paste("tar -xzf", shQuote(gz), "-O >", shQuote(tmp)))
       trees <- tryCatch(ape::read.tree(tmp), error = function(e) NULL)

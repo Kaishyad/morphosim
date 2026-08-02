@@ -10,7 +10,7 @@
 #' for that replicate.
 #'
 #' @param cid_data   Data frame with columns: scenario, gridTag, repID,
-#'                   modelID, median_cid. Produced by analysis/tree_accuracy.R.
+#'                   modelID, median_cid. Produced by run/tree_accuracy/tree_accuracy.R.
 #' @param modelID    Inference model to evaluate (e.g. "model4").
 #' @param baselineID Baseline model to compare against. Default NULL resolves
 #'                   to BASELINE_BY_SCENARIO[[scenario]] -- model1 for mk,

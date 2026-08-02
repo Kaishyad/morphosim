@@ -2,7 +2,7 @@
 
 # Partitioning : Two (neo | trans)
 # Neo Q  : Asymmetric fnFreeBinary
-# Trans Q : Asymmetric fnFreeBinary
+# Trans Q : Symmetric fnJC(2) -- matches the nt simulation's trans generative process
 # APRV : Present (partition rate scalar)
 # ACRV  : Present (free rates, 4 categories)
 # Root freq : Stationary

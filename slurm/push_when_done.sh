@@ -1,17 +1,17 @@
 #!/bin/bash
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
 #bash push_when_done.sh <scenario> <model>
 
 SCENARIO="$1"
 MODEL="$2"
-BRANCH="clean-rebuild"
 
 if [ -z "$SCENARIO" ] || [ -z "$MODEL" ]; then
   echo "Usage: bash push_when_done.sh <mk|nt> <modelN>"
   exit 1
 fi
 
-cd /nobackup/djfb16/the-matrix
+cd "$MATRIX_DIR"
 git checkout "$BRANCH"
 
 for tl in 1.00 1.50 2.50 5.00; do

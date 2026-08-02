@@ -4,6 +4,13 @@ options("ntRepoDir"     = file.path(getOption("ntOutDir"), "simulations"))
 options("ntSlurmDir"    = file.path(getwd(), "slurm"))
 options("ntRBScriptDir" = file.path(getwd(), "rbScripts"))
 options("ntRemoteDir"   = paste0("/nobackup/", Sys.getenv("USER")))
+options("ntTmpDir"      = file.path(getOption("ntRemoteDir"), "tmp"))
+options("ntRbBinary"    = file.path(Sys.getenv("HOME"), "diss/revbayes/projects/cmake/build-mpi/rb-mpi"))
+# Every path above is read through an accessor in R/core/FilePaths.R
+# (OutputDir(), RemoteDir(), TmpDir(), RbBinary(), ...) rather than being
+# hardcoded elsewhere — change the value here (or override with
+# options("ntTmpDir" = ...) before sourcing this file) and it takes effect
+# everywhere.
 
 # --- Packages
 library(ape)
@@ -44,6 +51,5 @@ ASDSF_MAX <- 0.05  # average SD of split frequencies ceiling
   grid          = PARAM_GRID,
   nRep          = N_REP,
   psrfThreshold = RHAT_MAX,
-  essThreshold  = ESS_MIN,
-  eps           = 0.05   # TODO: check tolerance value used in Plotting.R
+  essThreshold  = ESS_MIN
 )

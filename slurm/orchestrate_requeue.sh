@@ -1,4 +1,5 @@
 #!/bin/bash
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
 # orchestrate_requeue.sh
 #
 # Fully automates the requeue -> reconverge -> push cycle, end to end, for
@@ -8,7 +9,7 @@
 #
 # For each affected (scenario, model) combo, in turn:
 #   1. [requeue_list.txt only] archive the stale output dirs so
-#      JobLogsComplete() stops skipping them (run/requeue_failed.R)
+#      JobLogsComplete() stops skipping them (run/requeue/requeue_failed.R)
 #   2. resubmit via slurm/Infer.R --run --scenario S --model M
 #      (Infer.R self-caps concurrent jobs at MAX_QUEUE_DEPTH = 70; nothing
 #      to change here, it already enforces this)
@@ -26,16 +27,16 @@
 # long as the underlying inference jobs take (hours), so it must survive
 # you disconnecting:
 #
-#   cd /nobackup/djfb16/morphosim
+#   cd "$MORPHOSIM_DIR"
 #   screen -S requeue
-#   bash run/orchestrate_requeue.sh
+#   bash slurm/orchestrate_requeue.sh
 #   [Ctrl-A D to detach]
 #   screen -r requeue     # to reattach later and check progress
 #
 # Progress is also written to logs/orchestrate_requeue_<timestamp>.log.
 
 set -uo pipefail
-cd /nobackup/djfb16/morphosim
+cd "$MORPHOSIM_DIR"
 module load r
 
 LOG="logs/orchestrate_requeue_$(date +%Y%m%d_%H%M%S).log"
@@ -60,7 +61,7 @@ echo "Resolved the-matrix results dir: $MATRIX_DIR/results"
 if [ -f "$REQUEUE_LIST" ] && grep -qv '^#' "$REQUEUE_LIST"; then
   echo ""
   echo "--- Archiving stale outputs for $REQUEUE_LIST entries ---"
-  Rscript run/requeue_failed.R --run
+  Rscript run/requeue/requeue_failed.R --run
 else
   echo ""
   echo "No $REQUEUE_LIST (or it's empty/comment-only) -- skipping archive step."

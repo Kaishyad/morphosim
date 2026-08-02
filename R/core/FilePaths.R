@@ -29,6 +29,19 @@ RemoteDir <- function() {
   getOption("ntRemoteDir") %||% paste0("/nobackup/", Sys.getenv("USER"))
 }
 
+#' Scratch tmp directory for large intermediate files (e.g. tree extraction)
+#' Override with options("ntTmpDir" = ...); defaults to RemoteDir()/tmp.
+TmpDir <- function() {
+  getOption("ntTmpDir") %||% file.path(RemoteDir(), "tmp")
+}
+
+#' Path to the compiled RevBayes MPI binary
+#' Override with options("ntRbBinary" = ...); defaults to ~/diss/revbayes/...
+RbBinary <- function() {
+  getOption("ntRbBinary") %||%
+    file.path(Sys.getenv("HOME"), "diss/revbayes/projects/cmake/build-mpi/rb-mpi")
+}
+
 # --- Simulation helpers ---
 
 #' Format a replicate ID from an integer seed, e.g. "sim001"
@@ -74,21 +87,24 @@ SimMatrixFile <- function(scenario, gridTag, repID, type = c("neo", "trans")) {
 #'
 #' Written every 36 iterations. Used for tree and general parameter inspection.
 #' Stored in results/<scenario>/<gridTag>/<repID>/<modelID>/ (separate from sim data).
-LogFile <- function(scenario, gridTag, repID, modelID, run = 1) {
+#' @param prefix Optional filename prefix (e.g. "imp_" for imputation runs,
+#'   which write imp_<modelID>_run_<N>.log via imp-mc3.Rev instead of
+#'   <modelID>_run_<N>.log via sim-mc3.Rev, in the same directory).
+LogFile <- function(scenario, gridTag, repID, modelID, run = 1, prefix = "") {
   file.path(InferDirAbs(scenario, gridTag, repID, modelID),
-            paste0(modelID, "_run_", run, ".log"))
+            paste0(prefix, modelID, "_run_", run, ".log"))
 }
 
 #' Path to the stochastic-only parameter log (run_{N}.p.log)
-ParamLogFile <- function(scenario, gridTag, repID, modelID, run = 1) {
+ParamLogFile <- function(scenario, gridTag, repID, modelID, run = 1, prefix = "") {
   file.path(InferDirAbs(scenario, gridTag, repID, modelID),
-            paste0(modelID, ".p_run_", run, ".log"))
+            paste0(prefix, modelID, ".p_run_", run, ".log"))
 }
 
 #' Path to a compressed tree file
-TreeGzFile <- function(scenario, gridTag, repID, modelID, run = 1) {
+TreeGzFile <- function(scenario, gridTag, repID, modelID, run = 1, prefix = "") {
   file.path(InferDirAbs(scenario, gridTag, repID, modelID),
-            paste0(modelID, "_run_", run, ".tar.gz"))
+            paste0(prefix, modelID, "_run_", run, ".tar.gz"))
 }
 
 #' Path to a processed result .rds file (in the-matrix/results/)
@@ -141,11 +157,12 @@ ConvergenceFile <- function(scenario, gridTag, repID, modelID) {
 #' @param repID     Replicate ID e.g. "sim001"
 #' @param modelID   Model script name e.g. "model1"
 #' @param nRuns     Number of independent MCMC runs expected (default 2)
+#' @param prefix    Optional filename prefix, see LogFile()
 #' @return Logical TRUE if the .log file exists for every run.
 #' @export
-JobLogsComplete <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
+JobLogsComplete <- function(scenario, gridTag, repID, modelID, nRuns = 2, prefix = "") {
   all(vapply(seq_len(nRuns), function(run) {
-    file.exists(LogFile(scenario, gridTag, repID, modelID, run))
+    file.exists(LogFile(scenario, gridTag, repID, modelID, run, prefix = prefix))
   }, logical(1)))
 }
 

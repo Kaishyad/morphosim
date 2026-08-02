@@ -4,6 +4,9 @@
 # Rscript slurm/Infer.R --run   # submit all
 #Rscript slurm/Infer.R --run --scenario mk  # mk only
 #Rscript slurm/Infer.R --run --scenario mk --model model1   # mk + model1 only
+# Rscript slurm/Infer.R --run --imputation   # imputation runs instead of
+#   standard inference -- requires imp_neo.nex/imp_trans.nex to already
+#   exist (run/imputation/mask_replicates.R first)
 
 source("R/core/_setup.R")
 
@@ -15,6 +18,7 @@ SUBMIT_PAUSE_SEC  <- 0.5
 # --- Argument parsing
 args_cli      <- commandArgs(trailingOnly = TRUE)
 dry_run       <- !("--run" %in% args_cli)
+imputation    <- "--imputation" %in% args_cli
 scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
 model_flag    <- args_cli[which(args_cli == "--model")    + 1]
 
@@ -22,17 +26,25 @@ scenarios <- if (!is.na(scenario_flag[1])) scenario_flag else c("nt", "mk")
 models    <- if (!is.na(model_flag[1]))    model_flag    else paste0("model", 1:12)
 
 if (dry_run) message("Dry run — pass --run to submit jobs")
-message(sprintf("Scenarios: %s | Models: %s",
+message(sprintf("Scenarios: %s | Models: %s%s",
                 paste(scenarios, collapse = ", "),
-                paste(models,    collapse = ", ")))
+                paste(models,    collapse = ", "),
+                if (imputation) " | IMPUTATION run" else ""))
 
 # --- Paths 
 remote_dir <- getOption("ntRemoteDir")          
-rb_mpi     <- "/home/djfb16/diss/revbayes/projects/cmake/build-mpi/rb-mpi"
+rb_mpi     <- RbBinary()
 morphosim  <- file.path(remote_dir, "morphosim")
 matrix_dir <- file.path(remote_dir, "the-matrix")
 log_dir    <- file.path(morphosim, "logs")
-infer_script <- file.path(morphosim, "rbScripts", "Inference", "sim-mc3.Rev")
+infer_script <- file.path(morphosim, "rbScripts", "Inference",
+                          if (imputation) "imp-mc3.Rev" else "sim-mc3.Rev")
+# imp-mc3.Rev reads imp_neo.nex/imp_trans.nex (produced by MaskReplicate())
+# instead of neo.nex/trans.nex, and every output file it writes gets an
+# imp_ prefix so it can coexist in the same results/ directory as a normal
+# inference run of the same model.
+data_file    <- if (imputation) "imp_neo.nex" else "neo.nex"
+out_prefix   <- if (imputation) "imp_" else ""
 
 # --- Queue helpers 
 .queue_depth <- function() {
@@ -77,15 +89,16 @@ for (scenario in scenarios) {
       repID     <- SimID(rep)
       simDirAbs <- SimDirAbs(scenario, gridTag, repID)
 
-      #Skip if simulated data doesn't exist
-      if (!file.exists(file.path(simDirAbs, "neo.nex"))) {
+      #Skip if simulated (or, for imputation, masked) data doesn't exist
+      if (!file.exists(file.path(simDirAbs, data_file))) {
         skipped <- skipped + 1L
         next
       }
 
       for (scriptID in models) {
 
-        job_name <- paste0("inf_", scenario, "_", gridTag, "_", repID,
+        job_name <- paste0(if (imputation) "impinf_" else "inf_",
+                           scenario, "_", gridTag, "_", repID,
                            "_", scriptID)
         out_log  <- file.path(log_dir, paste0(job_name, ".out"))
         err_log  <- file.path(log_dir, paste0(job_name, ".err"))
@@ -93,7 +106,7 @@ for (scenario in scenarios) {
         #Skip only if inference is actually complete for both runs.
         
         inferDirAbs <- InferDirAbs(scenario, gridTag, repID, scriptID)
-        if (JobLogsComplete(scenario, gridTag, repID, scriptID)) {
+        if (JobLogsComplete(scenario, gridTag, repID, scriptID, prefix = out_prefix)) {
           skipped <- skipped + 1L
           next
         }
@@ -124,7 +137,7 @@ for (scenario in scenarios) {
             shQuote(infer_script),
             paste(sapply(rb_args, shQuote), collapse = " "), ";",
           "cd", shQuote(file.path(matrix_dir, infer_subdir)), ";",
-          "for f in ", paste0(scriptID, "_run_*.trees;"),
+          "for f in ", paste0(out_prefix, scriptID, "_run_*.trees;"),
             "do [ -f \"$f\" ] &&",
             "tar -czf \"${f%.trees}.tar.gz\" \"$f\" &&",
             "rm \"$f\";",

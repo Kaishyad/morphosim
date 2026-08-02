@@ -4,26 +4,26 @@
 #SBATCH --time=00:30:00
 #SBATCH -p shared
 #SBATCH --job-name=viz
-#SBATCH --output=/nobackup/djfb16/morphosim/logs/viz_%j.out
-#SBATCH --error=/nobackup/djfb16/morphosim/logs/viz_%j.err
+#SBATCH --output=logs/viz_%j.out
+#SBATCH --error=logs/viz_%j.err
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
 #Runs the viz and pushes the resulting figures to the-matrix
 
 module load r
 
-MORPHOSIM=/nobackup/djfb16/morphosim
-MATRIX=/nobackup/djfb16/the-matrix
-BRANCH="clean-rebuild"
+MORPHOSIM="$MORPHOSIM_DIR"
+MATRIX="$MATRIX_DIR"
 
 cd $MORPHOSIM
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') starting viz suite ==="
-Rscript viz/run_all.R
+Rscript run/shared/run_all.R
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') finished viz suite ==="
 
 cd $MATRIX
 git checkout "$BRANCH"
 git add figures/
-git commit -m "Update viz figures ($(date '+%Y-%m-%d %H:%M'))" || echo "Nothing to commit."
+git commit -m "Update viz figures ($(date '+%Y-%m-%d'))" || echo "Nothing to commit."
 git push origin "$BRANCH"
 
 echo "All done at $(date)"

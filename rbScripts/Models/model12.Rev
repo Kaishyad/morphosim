@@ -1,10 +1,11 @@
-# Model 12 (v4): optimized state-space inflation, building on Model 11
+#Model 12
 
-# Partitioning : Single (neo + trans combined) -- same as M11
-# Q    : 9-state Mk, but with ESTIMATED symmetric exchange rates (fnGTR-style) instead of M11 fixed fnJC(9)
-# APRV  : Absent  same as M11
-# ACRV : Absent  same as M11
-# Root freq : Stationary, fixed equal (1/9 each) -- same as M11
+# Partitioning : Single (neo + trans combined)
+# Q  : Symmetric Mk, 9 states (fnJC(9))
+# APRV  : Absent
+# ACRV  : Present (lognormal, 6 discrete categories)
+# Root freq : Stationary
+
 
 
 
@@ -33,27 +34,21 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-#--- Q matrix: 9-state, ESTIMATED symmetric exchange rates, equal frequencies
-# n_states*(n_states-1)/2 = 36 symmetric exchangeabilities. Frequencies are
-# held fixed and equal (not estimated) so this model differs from M11 in
-#  the exchange ratesand doesn't also confound the root-frequency axis.
-n_states <- 9
-n_rates  <- (n_states * (n_states - 1)) / 2
+#--- ACRV: lognormal, 6 discretized rate categories
+rate_log_sd ~ dnExponential(1.0)
+moves.append( mvScale(rate_log_sd, weight = 1.0) )
+site_rates := fnDiscretizeDistribution( dnLognormal(0, rate_log_sd), 6 )
 
-er_morph ~ dnDirichlet( rep(1.0, n_rates) )
-moves.append( mvBetaSimplex(er_morph,      weight = 2.0) )
-moves.append( mvDirichletSimplex(er_morph, weight = 1.0) )
-
-bf_morph <- simplex( rep(1.0, n_states) )
-
-Q_morph := fnGTR(er_morph, bf_morph)
-
-#--- Model: single partition, 9-state, estimated exchange rates
+#--- Model: single partition, 9-state symmetric Mk with ACRV
+#fnJC(9) produces a 9x9 equal-rates matrix with stationary
+#frequencies fixed at 1/9 each. Applied to binary data, only
+#the 0 and 1 rows/columns will have non-zero data likelihood.
 m_morph ~ dnPhyloCTMC(
-  tree   = phylogeny,
-  Q      = Q_morph,
-  type   = "Standard",
-  coding = "variable"
+  tree      = phylogeny,
+  Q         = fnJC(9),
+  siteRates = site_rates,
+  type      = "Standard",
+  coding    = "variable"
 )
 m_morph.clamp(allChars)
 

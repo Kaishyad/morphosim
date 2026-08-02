@@ -4,25 +4,25 @@
 #SBATCH --time=01:00:00
 #SBATCH -p shared
 #SBATCH --job-name=merge_tree_acc
-#SBATCH --output=/nobackup/djfb16/morphosim/logs/merge_tree_accuracy_%j.out
-#SBATCH --error=/nobackup/djfb16/morphosim/logs/merge_tree_accuracy_%j.err
+#SBATCH --output=logs/merge_tree_accuracy_%j.out
+#SBATCH --error=logs/merge_tree_accuracy_%j.err
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
 # sbatch --dependency=afterany:... slurm/merge_tree_accuracy.sh [scenario]
 
 SCENARIO="${1:-}"
-BRANCH="clean-rebuild"
 module load r
-cd /nobackup/djfb16/morphosim
+cd "$MORPHOSIM_DIR"
 if [ -n "$SCENARIO" ]; then
-  Rscript run/merge_tree_accuracy.R --scenario "$SCENARIO"
+  Rscript run/tree_accuracy/merge_tree_accuracy.R --scenario "$SCENARIO"
 else
-  Rscript run/merge_tree_accuracy.R
+  Rscript run/tree_accuracy/merge_tree_accuracy.R
 fi
-cd /nobackup/djfb16/the-matrix
+cd "$MATRIX_DIR"
 git checkout "$BRANCH"
 git add results/tree_accuracy_summary.rds results/tree_accuracy_per_rep.rds
 if ! git diff --cached --quiet; then
-  git commit -m "merge: tree accuracy summary${SCENARIO:+ ($SCENARIO)} $(date '+%Y-%m-%d %H:%M')"
+  git commit -m "merge: tree accuracy summary${SCENARIO:+ ($SCENARIO)} $(date '+%Y-%m-%d')"
   MAX_RETRIES=5
   ATTEMPT=0
   PUSHED=false
@@ -39,7 +39,7 @@ if ! git diff --cached --quiet; then
   done
   if [ "$PUSHED" = false ]; then
     echo "WARNING: push failed. Push manually:"
-    echo "  cd /nobackup/djfb16/the-matrix && git push origin $BRANCH"
+    echo "  cd "$MATRIX_DIR" && git push origin $BRANCH"
   fi
 else
   echo "No changes to commit."

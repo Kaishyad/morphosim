@@ -1,10 +1,11 @@
 #!/bin/bash
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
 #bash submit_pipeline.sh   # uses CONV_JOB=17872509 below
 #bash submit_pipeline.sh 17872509   # or pass the convergence job ID explicitly
 
 set -e
-cd /nobackup/djfb16/morphosim
+cd "$MORPHOSIM_DIR"
 
 CONV_JOB="${1:-17936992}"
 

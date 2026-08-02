@@ -4,30 +4,30 @@
 #SBATCH --time=4:00:00
 #SBATCH -p shared
 #SBATCH --job-name=gam_threshold
-#SBATCH --output=/nobackup/djfb16/morphosim/logs/gam_threshold_%j.out
-#SBATCH --error=/nobackup/djfb16/morphosim/logs/gam_threshold_%j.err
+#SBATCH --output=logs/gam_threshold_%j.out
+#SBATCH --error=logs/gam_threshold_%j.err
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
 # Usage: sbatch slurm/run_gam_threshold.sh [scenario]
 # Run after merge_tree_accuracy.sh has completed successfully.
 
 SCENARIO="${1:-mk}"
-BRANCH="clean-rebuild"
 
 module load r
 
-cd /nobackup/djfb16/morphosim
+cd "$MORPHOSIM_DIR"
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') starting gam_threshold ${SCENARIO} ==="
-Rscript run/gam_threshold.R --scenario $SCENARIO
+Rscript run/gam_threshold/gam_threshold.R --scenario $SCENARIO
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') finished gam_threshold ${SCENARIO} ==="
 
-cd /nobackup/djfb16/the-matrix
+cd "$MATRIX_DIR"
 git checkout "$BRANCH"
 git add results/threshold_summary_${SCENARIO}.rds \
         results/threshold_summary_${SCENARIO}.csv \
         results/gam_objects_${SCENARIO}.rds
 
 if ! git diff --cached --quiet; then
-  git commit -m "gam_threshold: ${SCENARIO} $(date '+%Y-%m-%d %H:%M')"
+  git commit -m "gam_threshold: ${SCENARIO} $(date '+%Y-%m-%d')"
   MAX_RETRIES=5
   ATTEMPT=0
   PUSHED=false
@@ -44,7 +44,7 @@ if ! git diff --cached --quiet; then
   done
   if [ "$PUSHED" = false ]; then
     echo "WARNING: push failed. Push manually:"
-    echo "  cd /nobackup/djfb16/the-matrix && git push origin $BRANCH"
+    echo "  cd "$MATRIX_DIR" && git push origin $BRANCH"
   fi
 else
   echo "No changes to commit."

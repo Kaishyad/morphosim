@@ -4,30 +4,30 @@
 #SBATCH --time=00:30:00
 #SBATCH -p shared
 #SBATCH --job-name=merge_known_answer
-#SBATCH --output=/nobackup/djfb16/morphosim/logs/merge_known_answer_%j.out
-#SBATCH --error=/nobackup/djfb16/morphosim/logs/merge_known_answer_%j.err
+#SBATCH --output=logs/merge_known_answer_%j.out
+#SBATCH --error=logs/merge_known_answer_%j.err
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
 # Usage: sbatch --dependency=afterany:<job1>:...<jobN> slurm/merge_known_answer.sh [scenario]
 # Merges per-model known_answer_summary files and pushes to GitHub.
 
 SCENARIO="${1:-}"
-BRANCH="clean-rebuild"
 
 module load r
 
-cd /nobackup/djfb16/morphosim
+cd "$MORPHOSIM_DIR"
 if [ -n "$SCENARIO" ]; then
-  Rscript run/merge_known_answer.R --scenario "$SCENARIO"
+  Rscript run/known_answer/merge_known_answer.R --scenario "$SCENARIO"
 else
-  Rscript run/merge_known_answer.R
+  Rscript run/known_answer/merge_known_answer.R
 fi
 
-cd /nobackup/djfb16/the-matrix
+cd "$MATRIX_DIR"
 git checkout "$BRANCH"
 git add results/known_answer_summary.rds results/known_answer_summary.csv
 
 if ! git diff --cached --quiet; then
-  git commit -m "merge: known answer summary${SCENARIO:+ ($SCENARIO)} $(date '+%Y-%m-%d %H:%M')"
+  git commit -m "merge: known answer summary${SCENARIO:+ ($SCENARIO)} $(date '+%Y-%m-%d')"
   MAX_RETRIES=5
   ATTEMPT=0
   PUSHED=false
@@ -44,7 +44,7 @@ if ! git diff --cached --quiet; then
   done
   if [ "$PUSHED" = false ]; then
     echo "WARNING: push failed after $MAX_RETRIES attempts."
-    echo "Push manually: cd /nobackup/djfb16/the-matrix && git push origin $BRANCH"
+    echo "Push manually: cd "$MATRIX_DIR" && git push origin $BRANCH"
   fi
 else
   echo "No changes to commit."

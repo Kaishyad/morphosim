@@ -2,13 +2,14 @@
 
 #Partitioning : Two (neo | trans)
 #Neo Q  : Asymmetric fnFreeBinary (gain != loss)
-#Trans Q  : Asymmetric fnFreeBinary (gain != loss)
+#Trans Q  : Symmetric fnJC(2) -- matches the nt simulation's trans generative process
 #APRV  : Present (partition rate scalar)
 #ACRV : Absent
 #Root freq : Stationary
 
-#adds asymmetric Q matrices to the 2-partition structure of M4. 
-#Each partition gets its own gain/loss ratio, allowing neo and trans characters to have independently skewed transition rates.
+#adds an asymmetric Q matrix for neo to the 2-partition structure of M4.
+#Trans keeps the fixed symmetric fnJC(2) rate (matching the true simulation,
+#same fix applied to M7/M8/M9/M10) -- only neo's gain/loss ratio is estimated here.
 
 taxa  <- neo.names()
 nTaxa <- neo.size()
@@ -39,8 +40,8 @@ part_rate_neo   <- 1.0
 part_rate_trans ~ dnExponential(1.0)
 moves.append( mvScale(part_rate_trans, weight = 1.0) )
 
-#--- Asymmetric Q matrices
-#Each partition has its own gain/loss ratio. Prior centred on 1 (symmetric case) wit lognormal(0,1), consistent with M3.
+#--- Q matrices: neo asymmetric (estimated), trans fixed symmetric
+#Prior on gain_loss_neo centred on 1 (symmetric case) with lognormal(0,1), consistent with M3.
 gain_loss_neo ~ dnLognormal(0, 1)
 moves.append( mvScale(gain_loss_neo, weight = 1.0) )
 Q_neo := fnFreeBinary( simplex(1, gain_loss_neo), rescaled = TRUE )

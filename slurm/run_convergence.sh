@@ -4,12 +4,13 @@
 #SBATCH --time=06:00:00
 #SBATCH -p shared
 #SBATCH --job-name=convergence
-#SBATCH --output=/nobackup/djfb16/morphosim/logs/convergence_%j.out
-#SBATCH --error=/nobackup/djfb16/morphosim/logs/convergence_%j.err
+#SBATCH --output=logs/convergence_%j.out
+#SBATCH --error=logs/convergence_%j.err
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
 module load r
 
-cd /nobackup/djfb16/morphosim
+cd "$MORPHOSIM_DIR"
 
 #sbatch run_convergence.sh [max_trees] [scenario] [model]
 
@@ -28,5 +29,5 @@ if [ -n "$MODEL" ]; then
 fi
 
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') starting ${SCENARIO}/${MODEL:-all} ==="
-Rscript run/check_convergence.R --scenario $SCENARIO $MODEL_ARG $MAX_TREES_ARG
+Rscript run/convergence/check_convergence.R --scenario $SCENARIO $MODEL_ARG $MAX_TREES_ARG
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') finished ${SCENARIO}/${MODEL:-all} ==="
