@@ -105,8 +105,8 @@ for (scenario in scenarios) {
 
         #Skip only if inference is actually complete for both runs.
         
-        inferDirAbs <- InferDirAbs(scenario, gridTag, repID, scriptID)
-        if (JobLogsComplete(scenario, gridTag, repID, scriptID, prefix = out_prefix)) {
+        inferDirAbs <- InferDirAbs(scenario, gridTag, repID, scriptID, imputation = imputation)
+        if (JobLogsComplete(scenario, gridTag, repID, scriptID, prefix = out_prefix, imputation = imputation)) {
           skipped <- skipped + 1L
           next
         }
@@ -127,7 +127,8 @@ for (scenario in scenarios) {
         .wait_for_slot()
 
         #no git push done by push_when_done.sh actually
-        infer_subdir <- file.path("results", scenario, gridTag, repID, scriptID)
+        infer_subdir <- file.path(if (imputation) "results_imputation" else "results",
+                                  scenario, gridTag, repID, scriptID)
 
         wrap_cmd <- paste(
           "module load gcc/11.2 boost/1.78.0 openmpi/4.1.1;",

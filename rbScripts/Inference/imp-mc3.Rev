@@ -6,7 +6,7 @@
 
 # Arguments (positional):
 #   args[1] = simDir   path to simulation directory containing imp_neo.nex, imp_trans.nex
-#   args[2] = outDir   path to inference output directory (results/scenario/gridTag/repID/modelID)
+#   args[2] = outDir   path to inference output directory (results_imputation/scenario/gridTag/repID/modelID)
 #   args[3] = script   model script name without .Rev (e.g. "model1")
 #   args[4] = minEss   minimum ESS stopping criterion (default: 333)
 #   args[5] = seed_v   random seed (default: 0)
@@ -32,9 +32,9 @@ neo   <- readDiscreteCharacterData(simDir + "/imp_neo.nex")
 trans <- readDiscreteCharacterData(simDir + "/imp_trans.nex")
 
 # --- File paths ---
-# All outputs go to outDir (results/), keeping inference separate from sim data.
-# imp_ prefix distinguishes imputation outputs from standard inference outputs
-# in the same model directory.
+# All outputs go to outDir (results_imputation/), fully separate from both
+# the simulated data AND from standard inference output (results/) -- the
+# imp_ filename prefix is kept too, belt-and-suspenders.
 filePrefix = outDir + "/imp_" + script
 ckpFile    = outDir + "/imp_" + script + ".ckp"
 paramFile  = outDir + "/imp_" + script + ".p.log"

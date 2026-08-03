@@ -63,13 +63,17 @@ SimDirAbs <- function(scenario, gridTag, repID) {
 #' Relative path to an inference output directory within the-matrix
 #' Inference outputs are kept separate from simulated data:
 #'   results/<scenario>/<gridTag>/<repID>/<modelID>/
-InferDir <- function(scenario, gridTag, repID, modelID) {
-  file.path("results", scenario, gridTag, repID, modelID)
+#' @param imputation If TRUE, returns the SEPARATE imputation output tree
+#'   (results_imputation/...) instead of results/... -- keeps imputation
+#'   runs from ever being mixed in with normal inference output.
+InferDir <- function(scenario, gridTag, repID, modelID, imputation = FALSE) {
+  root <- if (imputation) "results_imputation" else "results"
+  file.path(root, scenario, gridTag, repID, modelID)
 }
 
 #' Absolute path to an inference output directory in the local the-matrix clone
-InferDirAbs <- function(scenario, gridTag, repID, modelID) {
-  file.path(OutputDir(), InferDir(scenario, gridTag, repID, modelID))
+InferDirAbs <- function(scenario, gridTag, repID, modelID, imputation = FALSE) {
+  file.path(OutputDir(), InferDir(scenario, gridTag, repID, modelID, imputation = imputation))
 }
 
 #' Path to the true tree file for a replicate
@@ -86,24 +90,24 @@ SimMatrixFile <- function(scenario, gridTag, repID, type = c("neo", "trans")) {
 #' Path to a RevBayes MCMC full log file ({modelID}_run_{N}.log)
 #'
 #' Written every 36 iterations. Used for tree and general parameter inspection.
-#' Stored in results/<scenario>/<gridTag>/<repID>/<modelID>/ (separate from sim data).
-#' @param prefix Optional filename prefix (e.g. "imp_" for imputation runs,
-#'   which write imp_<modelID>_run_<N>.log via imp-mc3.Rev instead of
-#'   <modelID>_run_<N>.log via sim-mc3.Rev, in the same directory).
-LogFile <- function(scenario, gridTag, repID, modelID, run = 1, prefix = "") {
-  file.path(InferDirAbs(scenario, gridTag, repID, modelID),
+#' Stored in results/<scenario>/<gridTag>/<repID>/<modelID>/ (separate from sim data),
+#' or results_imputation/... when imputation = TRUE.
+#' @param prefix Optional filename prefix (imp-mc3.Rev writes imp_<modelID>_run_<N>.log)
+#' @param imputation If TRUE, looks in results_imputation/ instead of results/
+LogFile <- function(scenario, gridTag, repID, modelID, run = 1, prefix = "", imputation = FALSE) {
+  file.path(InferDirAbs(scenario, gridTag, repID, modelID, imputation = imputation),
             paste0(prefix, modelID, "_run_", run, ".log"))
 }
 
 #' Path to the stochastic-only parameter log (run_{N}.p.log)
-ParamLogFile <- function(scenario, gridTag, repID, modelID, run = 1, prefix = "") {
-  file.path(InferDirAbs(scenario, gridTag, repID, modelID),
+ParamLogFile <- function(scenario, gridTag, repID, modelID, run = 1, prefix = "", imputation = FALSE) {
+  file.path(InferDirAbs(scenario, gridTag, repID, modelID, imputation = imputation),
             paste0(prefix, modelID, ".p_run_", run, ".log"))
 }
 
 #' Path to a compressed tree file
-TreeGzFile <- function(scenario, gridTag, repID, modelID, run = 1, prefix = "") {
-  file.path(InferDirAbs(scenario, gridTag, repID, modelID),
+TreeGzFile <- function(scenario, gridTag, repID, modelID, run = 1, prefix = "", imputation = FALSE) {
+  file.path(InferDirAbs(scenario, gridTag, repID, modelID, imputation = imputation),
             paste0(prefix, modelID, "_run_", run, ".tar.gz"))
 }
 
@@ -160,9 +164,9 @@ ConvergenceFile <- function(scenario, gridTag, repID, modelID) {
 #' @param prefix    Optional filename prefix, see LogFile()
 #' @return Logical TRUE if the .log file exists for every run.
 #' @export
-JobLogsComplete <- function(scenario, gridTag, repID, modelID, nRuns = 2, prefix = "") {
+JobLogsComplete <- function(scenario, gridTag, repID, modelID, nRuns = 2, prefix = "", imputation = FALSE) {
   all(vapply(seq_len(nRuns), function(run) {
-    file.exists(LogFile(scenario, gridTag, repID, modelID, run, prefix = prefix))
+    file.exists(LogFile(scenario, gridTag, repID, modelID, run, prefix = prefix, imputation = imputation))
   }, logical(1)))
 }
 

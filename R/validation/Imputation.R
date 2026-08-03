@@ -82,22 +82,29 @@ ScoreImputation <- function(scenario, gridTag, repID, modelID,
                             nRuns     = 2) {
   partition <- match.arg(partition)
   simDir    <- SimDirAbs(scenario, gridTag, repID)
-  
+  # FIX: imp-mc3.Rev writes .states files into the inference OUTPUT
+  # directory (results_imputation/.../modelID/), not simDir, and names them
+  # by partition (imp_neo_run_N.states / imp_trans_run_N.states), not by
+  # modelID -- each model already has its own directory, so the filename
+  # doesn't need to repeat it. See the mnJointConditionalAncestralState
+  # monitors in rbScripts/Inference/imp-mc3.Rev.
+  outDir    <- InferDirAbs(scenario, gridTag, repID, modelID, imputation = TRUE)
+
   trueFile  <- file.path(simDir, paste0(partition, ".nex"))
   impFile   <- file.path(simDir, paste0("imp_", partition, ".nex"))
-  
+
   trueStates <- ReadTrueStates(trueFile)
   masked     <- MaskedPositions(impFile)
-  
+
   if (!any(masked)) {
     warning("No masked positions found in ", impFile)
     return(NA_real_)
   }
-  
+
   # Pool reconstructed states across runs
   allRecov <- lapply(seq_len(nRuns), function(run) {
-    statesFile <- file.path(simDir,
-                            paste0("imp_", modelID, "_run_", run, ".states"))
+    statesFile <- file.path(outDir,
+                            paste0("imp_", partition, "_run_", run, ".states"))
     ParseStatesFile(statesFile, nTip = nrow(trueStates))
   })
   allRecov <- allRecov[!vapply(allRecov, is.null, logical(1))]

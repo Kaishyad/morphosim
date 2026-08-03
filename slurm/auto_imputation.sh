@@ -16,9 +16,9 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
 #      scenarios, via slurm/Infer.R --run --imputation. Also no dependency
 #      on your normal inference -- it's a separate MCMC run.
 #   3. Polls squeue every 5 min until all those imputation jobs clear.
-#   4. Pushes imputation results to GitHub (same directories as normal
-#      inference output, just imp_-prefixed files -- push_when_done.sh
-#      handles both automatically).
+#   4. Pushes imputation results to GitHub -- results_imputation/, a
+#      separate tree from your normal results/, and only the exact files
+#      needed (no .ckp checkpoint files) via push_imputation_when_done.sh.
 #   5. Waits for STANDARD (non-imputation) inference to show every one of
 #      the 12 models as converged in convergence_summary.rds. This is a
 #      real dependency: run/imputation/imputation_analysis.R only scores
@@ -84,7 +84,7 @@ echo ""
 echo "--- Pushing imputation results to GitHub ---"
 for scenario in "${SCENARIOS[@]}"; do
   for model in "${MODELS[@]}"; do
-    bash slurm/push_when_done.sh "$scenario" "$model"
+    bash slurm/push_imputation_when_done.sh "$scenario" "$model"
   done
 done
 
