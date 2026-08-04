@@ -56,18 +56,27 @@ monitors.append( mnFile(filename  = filePrefix + ".trees", printgen = 12,
 # One monitor per partition; RevBayes appends _run_{N} to the filename automatically.
 # ScoreImputation() reads imp_run_{N}.states and compares MAP tip states
 # at masked positions to the known true states from the original nexus files.
+#
+# KNOWN LIMITATION: this assumes a two-partition model (m_neo/m_trans as
+# separate CTMC nodes) -- true for models 4,5,6,7,8,9,10. Single-partition
+# models (1,2,3,11,12) only expose one combined `m_morph` node covering
+# both partitions at once, so this script cannot currently run imputation
+# for them -- it will fail before reaching here (m_neo/m_trans undefined).
+# Supporting those would need m_morph's ancestral states monitored once,
+# then ScoreImputation() taught to split the combined states file back into
+# neo/trans column ranges -- not done yet.
 monitors.append( mnJointConditionalAncestralState(
   filename   = outDir + "/imp_neo.states",
   printgen   = 12,
   tree       = phylogeny,
-  ctmc       = m_morph[1],
+  ctmc       = m_neo,
   type       = "Standard"
 ) )
 monitors.append( mnJointConditionalAncestralState(
   filename   = outDir + "/imp_trans.states",
   printgen   = 12,
   tree       = phylogeny,
-  ctmc       = m_morph[2],
+  ctmc       = m_trans,
   type       = "Standard"
 ) )
 
