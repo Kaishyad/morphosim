@@ -175,12 +175,7 @@ ModelLevelScorecard <- function(cross_df) {
     prop_adequate                 = FALSE
   )
 
-  # Each metric m gets one averaged column "avg_<m>" (e.g. avg_median_cid,
-  # avg_mean_rhat_max -- yes that reads a little redundantly for columns
-  # that already say "mean_" in their own name, but it keeps the naming
-  # rule for this function uniform and unambiguous: "avg_" always means
-  # "averaged across grid cells by ModelLevelScorecard()", regardless of
-  # what the underlying per-cell column was already called.
+  # each metric m gets an averaged column "avg_<m>"
   keys <- unique(cross_df[, c("scenario", "modelID")])
   rows <- lapply(seq_len(nrow(keys)), function(i) {
     k   <- keys[i, ]

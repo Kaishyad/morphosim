@@ -2,17 +2,10 @@
 
 #' Map a model ID to its logged gain/loss rate parameter column(s)
 #'
-#' No model logs a column literally called "rate_loss" — the true column
-#' name(s) depend on the model's Q-matrix structure:
-#'   - model1 has a fixed fnJC(2) Q (gain = loss by construction): no free
-#'     rate parameter exists, so coverage cannot be tested. Returns character(0).
-#'   - model2/model3 use a single asymmetric Q (fnFreeBinary): the free
-#'     parameter is "gain_loss_ratio".
-#'   - two-partition models (model4 and up) estimate the neo and trans
-#'     gain/loss ratios separately: "gain_loss_neo" and "gain_loss_trans".
-#'     (model7/model9 force these to be shared/tied at the .Rev level, but
-#'     RevBayes still logs them under both column names since they're the
-#'     same node; either name will work for those two models.)
+#' No model logs a column literally called "rate_loss" — the real name(s)
+#' depend on Q-matrix structure: model1 has a fixed symmetric Q (no free
+#' rate param), model2/model3 use a single asymmetric Q ("gain_loss_ratio"),
+#' and two-partition models log neo/trans separately.
 #'
 #' @param modelID Model script name, e.g. "model4"
 #' @return Character vector of column name(s) to test, possibly empty.
@@ -44,7 +37,7 @@ RateLossParams <- function(modelID) {
 CredibleInterval <- function(scenario, gridTag, repID, modelID,
                              parameter, nRuns = 2, burnFrac = 0.1) {
   samples <- unlist(lapply(seq_len(nRuns), function(run) {
-    f <- ParamLogFile(scenario, gridTag, repID, modelID, run)  # FIX: use .p.log
+    f <- ParamLogFile(scenario, gridTag, repID, modelID, run)
     if (!file.exists(f)) return(NULL)
     log <- read.table(f, header = TRUE, comment.char = "#", fill = TRUE)
     if (!parameter %in% colnames(log)) {
@@ -100,28 +93,25 @@ CoverageRate <- function(scenario, gridTag, modelID,
 #'   rate_loss   = 1 / gain_loss
 #'
 #' @param modelID  Model to evaluate
-#' @param scenario "nt" or "mk"  # FIX: added scenario argument
+#' @param scenario "nt" or "mk"
 #' @param grid     Parameter grid (default uses ScenarioGrid)
 #' @param nRep     Replicates per cell (default N_REP)
 #' @return Data frame with coverage rates and MSE for both focal parameters
 #'   across all grid cells.
 #' @export
 KnownAnswerSummary <- function(modelID  = "model1",
-                               scenario = "mk",           # FIX: was hardcoded "nt"
+                               scenario = "mk",
                                grid     = ScenarioGrid(scenario),
                                nRep     = N_REP) {
   rows <- vector("list", nrow(grid))
 
-  # FIX: "rate_loss" is never an actual logged column name for any model;
-  # look up the real column name(s) for this modelID instead (see
-  # RateLossParams() above). model1 has no free rate parameter at all.
   rateLossCols <- RateLossParams(modelID)
 
   # Mean squared error of posterior mean vs true value
   .MSE <- function(scenario, gridTag, modelID, parameter, trueVal, nRep) {
     postMeans <- vapply(seq_len(nRep), function(rep) {
       repID <- SimID(rep)
-      f <- ParamLogFile(scenario, gridTag, repID, modelID, run = 1)  # FIX: .p.log
+      f <- ParamLogFile(scenario, gridTag, repID, modelID, run = 1)
       if (!file.exists(f)) return(NA_real_)
       log <- read.table(f, header = TRUE, comment.char = "#", fill = TRUE)
       if (!parameter %in% colnames(log)) return(NA_real_)
@@ -136,7 +126,6 @@ KnownAnswerSummary <- function(modelID  = "model1",
     row     <- grid[gi, ]
     gridTag <- GridTag(row)
 
-    # True parameter values as fixed by the simulation design
     trueTreeLen  <- row$tree_length
     trueRateLoss <- 1 / row$gain_loss  # rate_loss = 1 / gain_loss in sim scripts
 
@@ -195,7 +184,7 @@ PriorVsPost <- function(scenario, gridTag, repID, modelID,
                         priorMean  = 0,
                         priorSD    = 2) {
   samples <- unlist(lapply(1:2, function(run) {
-    f <- ParamLogFile(scenario, gridTag, repID, modelID, run)  # FIX: .p.log
+    f <- ParamLogFile(scenario, gridTag, repID, modelID, run)
     if (!file.exists(f)) return(NULL)
     log <- read.table(f, header = TRUE, comment.char = "#", fill = TRUE)
     n   <- nrow(log)

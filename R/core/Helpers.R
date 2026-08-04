@@ -80,8 +80,6 @@ AsHMS <- function(secs) {
   }
 }
 
-# FIX: colClasses = rep("real", 5) is not a valid R type — changed to "numeric".
-# The original silently fell through to the warning handler on every call.
 .ReadTable <- function(x) {
   tryCatch(
     read.table(x, header = TRUE, colClasses = rep("numeric", 5)),

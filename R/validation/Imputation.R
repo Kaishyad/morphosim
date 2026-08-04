@@ -82,12 +82,8 @@ ScoreImputation <- function(scenario, gridTag, repID, modelID,
                             nRuns     = 2) {
   partition <- match.arg(partition)
   simDir    <- SimDirAbs(scenario, gridTag, repID)
-  # FIX: imp-mc3.Rev writes .states files into the inference OUTPUT
-  # directory (results_imputation/.../modelID/), not simDir, and names them
-  # by partition (imp_neo_run_N.states / imp_trans_run_N.states), not by
-  # modelID -- each model already has its own directory, so the filename
-  # doesn't need to repeat it. See the mnJointConditionalAncestralState
-  # monitors in rbScripts/Inference/imp-mc3.Rev.
+  # .states files live in the inference output dir, named by partition
+  # (imp_neo_run_N.states), not by modelID — see imp-mc3.Rev's monitors
   outDir    <- InferDirAbs(scenario, gridTag, repID, modelID, imputation = TRUE)
 
   trueFile  <- file.path(simDir, paste0(partition, ".nex"))
@@ -111,8 +107,7 @@ ScoreImputation <- function(scenario, gridTag, repID, modelID,
   
   if (length(allRecov) == 0) return(NA_real_)
   
-  # Use majority-rule across runs for each tip
-  # allRecov is a list of named vectors (one per tip); pool and take mode
+  # majority-rule across runs for each tip
   tipNames <- names(allRecov[[1]])
   recov <- vapply(tipNames, function(tip) {
     states <- unlist(lapply(allRecov, `[[`, tip))
@@ -120,24 +115,17 @@ ScoreImputation <- function(scenario, gridTag, repID, modelID,
     names(tab)[which.max(tab)]
   }, character(1))
   
-  # Compare to true states at masked positions only
-  # trueStates is a matrix: rows = taxa, cols = characters
-  # recov is a named vector indexed by tip_XX_state column names
-  # masked is a logical matrix matching trueStates dimensions
   correct <- 0L
   total   <- 0L
   
   for (tipCol in tipNames) {
-    # tip column name format: "tip_01_state" -> taxon "tip_01"
+    # "tip_01_state" -> taxon "tip_01"
     taxon <- sub("_state$", "", tipCol)
     if (!taxon %in% rownames(trueStates)) next
     
-    # Find which characters are masked for this taxon
     maskedChars <- which(masked[taxon, ])
     if (length(maskedChars) == 0) next
     
-    # Compare reconstructed state to true state
-    # RevBayes encodes states as integers starting from 0
     trueChar <- trueStates[taxon, maskedChars]
     recovState <- recov[[tipCol]]
     

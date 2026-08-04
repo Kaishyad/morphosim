@@ -42,7 +42,6 @@ ComputeImprovement <- function(cid_data, modelID,
 
   merged$improvement <- merged$median_cid_mk - merged$median_cid_nt
 
-  # FIX: use ScenarioGrid(scenario) not PARAM_GRID to get correct grid for scenario
   grid          <- ScenarioGrid(scenario)
   grid$gridTag  <- apply(grid, 1, function(r) GridTag(as.list(r)))
   grid_cols     <- grid[, c("tree_length", "gain_loss", "n_char", "n_taxa", "gridTag")]
@@ -85,22 +84,10 @@ FitThresholdGAM <- function(improvement_df, k = 10L, verbose = FALSE) {
     k <- max(3L, floor(nrow(improvement_df) / 3L))
   }
 
-  # Cap k per-predictor at the number of unique observed values, since
-  # mgcv's smooth constructors require at least k unique covariate values.
-  # With a coarse factorial grid (e.g. 4 levels per axis), a global k=10
-  # would request more basis functions than the data can support and
-  # gam() would error out ("fewer unique covariate combinations than
-  # specified maximum degrees of freedom").
-  #
-  # GUARD: a smooth term with very few unique x-values (k capped down to
-  # 3) can still be rank-deficient once combined with the intercept and
-  # other terms, producing a gam object whose underlying lm has no valid
-  # 'qr' component (summary()/predict.gam() then error with "rank zero").
-  # To avoid this:
-  #   - n_unique < 2 (constant predictor): drop the term entirely.
-  #   - n_unique in [2, 3]: use a linear term instead of a smooth (a
-  #     smooth needs more distinct knots than that to be identifiable).
-  #   - n_unique >= 4: smooth term as before, k capped at n_unique - 1.
+  # Cap k per-predictor at unique observed values (mgcv requires >= k unique
+  # covariate values per smooth). Below 4 unique values a smooth is
+  # rank-deficient, so fall back to a linear term (2-3 values) or drop the
+  # term entirely (constant predictor).
   predictors <- c("tree_length", "rate_ratio", "chars_per_taxon")
 
   term_info <- lapply(predictors, function(p) {

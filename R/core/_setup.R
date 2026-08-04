@@ -6,11 +6,7 @@ options("ntRBScriptDir" = file.path(getwd(), "rbScripts"))
 options("ntRemoteDir"   = paste0("/nobackup/", Sys.getenv("USER")))
 options("ntTmpDir"      = file.path(getOption("ntRemoteDir"), "tmp"))
 options("ntRbBinary"    = file.path(Sys.getenv("HOME"), "diss/revbayes/projects/cmake/build-mpi/rb-mpi"))
-# Every path above is read through an accessor in R/core/FilePaths.R
-# (OutputDir(), RemoteDir(), TmpDir(), RbBinary(), ...) rather than being
-# hardcoded elsewhere — change the value here (or override with
-# options("ntTmpDir" = ...) before sourcing this file) and it takes effect
-# everywhere.
+# Read through the accessors in R/core/FilePaths.R rather than hardcoded elsewhere
 
 # --- Packages
 library(ape)

@@ -132,29 +132,11 @@ ConvergenceFile <- function(scenario, gridTag, repID, modelID) {
 
 #' Is an inference job actually complete?
 #'
-#' FIX (2026-07): this is the single, shared definition of "this job is
-#' done" used by both slurm/Infer.R (deciding whether to skip re-submitting
-#' a job) and run/check_convergence.R (deciding whether a job is ready to be
-#' checked). Previously the two scripts used two different, independently
-#' maintained checks that silently drifted apart:
-#'   - Infer.R only checked run_1's .log file OR its .tar.gz, so a job that
-#'     crashed after RevBayes wrote the first few lines of run_1's log (but
-#'     never produced a run_2) was treated as "already done" and never
-#'     resubmitted.
-#'   - check_convergence.R required BOTH runs' .log files before it would
-#'     even attempt CheckConvergence() on a replicate.
-#'   A job crippled by the first, looser check therefore looked "finished"
-#'   to Infer.R (so it was silently skipped forever) but was invisible to
-#'   check_convergence.R (which never enumerated it, since run_2's log was
-#'   missing) -- producing zero downstream rows with no error anywhere.
-#'   This was the root cause of model12/mk showing "640 skipped" in Infer.R
-#'   with zero .rds output anywhere downstream.
-#'
-#' A job counts as complete only when the full MCMC log exists for every
-#' run (default 2). This deliberately does NOT look at .tar.gz/.trees
-#' files: those are only used by tree-accuracy/convergence analysis, and a
-#' log-complete-but-not-yet-tarred run is still a real, finished RevBayes
-#' run, not a candidate for resubmission.
+#' Single shared definition of "done", used by both slurm/Infer.R (skip
+#' resubmission) and run/check_convergence.R (ready to check). Complete
+#' only when the full MCMC log exists for every run — deliberately ignores
+#' .tar.gz/.trees, since a log-complete-but-not-yet-tarred run is still a
+#' finished RevBayes run, not a candidate for resubmission.
 #'
 #' @param scenario  "nt" or "mk"
 #' @param gridTag   Grid tag string from GridTag()

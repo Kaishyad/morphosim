@@ -107,14 +107,9 @@ ComputeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
 
 #' Load and parse posterior tree samples for one run, with cleanup
 #'
-#' Centralises tree-file extraction so it happens exactly once per
-#' (scenario, gridTag, repID, modelID, run) regardless of how many
-#' downstream diagnostics need the trees. If the source is a .tar.gz,
-#' it is extracted to a tempfile under TmpDir() (see R/core/FilePaths.R) which is
-#' always removed on exit (success, error, or timeout) via on.exit() —
-#' previously these tempfiles were never cleaned up, and were found to
-#' have accumulated to 45GB / ~24k files, degrading filesystem
-#' performance for the whole convergence run.
+#' Centralises tree-file extraction so it happens once per run regardless
+#' of how many downstream diagnostics need the trees. Extracted tempfiles
+#' under TmpDir() are always removed on exit via on.exit().
 #'
 #' @inheritParams ComputeRhat
 #' @param run Integer run index (1 or 2).
@@ -143,11 +138,9 @@ ComputeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
 #' between two independent runs (Lakner et al. 2008). Values < ASDSF_MAX
 #' indicate topological convergence.
 #'
-#' FIX: now takes pre-loaded tree lists (via `treesList`) instead of
-#' re-extracting tree files itself — extraction is shared with
-#' ComputeTreeESS() via .LoadTrees(), called once per run from
-#' CheckConvergence(). Falls back to loading trees itself if
-#' `treesList` is not supplied, so this remains independently callable.
+#' Takes pre-loaded tree lists via `treesList` (shared with ComputeTreeESS()
+#' through .LoadTrees(), called once per run from CheckConvergence()), or
+#' loads trees itself if `treesList` is NULL.
 #'
 #' @inheritParams ComputeRhat
 #' @param treesList Optional list of length nRuns of pre-loaded
@@ -197,10 +190,8 @@ ComputeASDSF <- function(scenario, gridTag, repID, modelID, nRuns = 2,
 
 #' Run an expression with a wall-clock timeout
 #'
-#' Uses R's built-in setTimeLimit() via a tryCatch on the "reached elapsed
-#' time limit" condition. If the expression does not complete within
-#' `seconds`, returns NA via the supplied `on_timeout` value instead of
-#' hanging the whole batch.
+#' Uses setTimeLimit() with a tryCatch on the "reached elapsed time limit"
+#' condition; returns `on_timeout` instead of hanging the whole batch.
 #'
 #' @param expr        Expression to evaluate.
 #' @param seconds     Wall-clock timeout in seconds.
@@ -236,21 +227,10 @@ ComputeASDSF <- function(scenario, gridTag, repID, modelID, nRuns = 2,
 #' to the mean distance series. Pools across runs by summing independent ESS
 #' values, consistent with ComputeESS().
 #'
-#' A low tree_ess relative to scalar parameter ESS suggests the move schedule
-#' is not proposing topology changes frequently enough. A high tree_ess with
-#' low scalar ESS suggests the converse.
-#'
-#' SAFETY: the pairwise distance computation is O(n^2) in the number of
-#' sampled trees and can stall on runs with very large posterior samples or
-#' malformed tree files. Each run's computation is wrapped in a wall-clock
-#' timeout (default 60s, set via TREE_ESS_TIMEOUT_SEC in _setup.R if defined,
-#' else 60) so a single pathological run cannot block the whole batch.
-#'
-#' FIX: now takes pre-loaded tree lists (via `treesList`) instead of
-#' re-extracting tree files itself — extraction is shared with
-#' ComputeASDSF() via .LoadTrees(), called once per run from
-#' CheckConvergence(). Falls back to loading trees itself if
-#' `treesList` is not supplied, so this remains independently callable.
+#' Pairwise distance computation is O(n^2), so each run is wrapped in a
+#' wall-clock timeout (default 60s) to stop a pathological run blocking the
+#' whole batch. Takes pre-loaded tree lists via `treesList` (shared with
+#' ComputeASDSF() through .LoadTrees()), or loads trees itself if NULL.
 #'
 #' @inheritParams ComputeRhat
 #' @param timeoutSec Per-run wall-clock timeout in seconds (default 60).
@@ -279,17 +259,14 @@ ComputeTreeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2,
 
     if (is.null(trees) || length(trees) < 4) return(NA_real_)
 
-    # Cap the number of trees used for the O(n^2) distance matrix —
-    # thin to at most MAX_TREES_FOR_DIST trees evenly spaced through the
-    # posterior sample. This keeps runtime bounded on very long chains
-    # while still capturing the autocorrelation structure.
+    # cap trees used for the O(n^2) distance matrix, evenly spaced
     MAX_TREES_FOR_DIST <- if (exists("TREE_ESS_MAX_TREES")) TREE_ESS_MAX_TREES else 1000L
     if (length(trees) > MAX_TREES_FOR_DIST) {
       idx   <- round(seq(1, length(trees), length.out = MAX_TREES_FOR_DIST))
       trees <- trees[idx]
     }
 
-    # Mean CID distance from each tree to all others — scalar series over time
+    # mean CID distance from each tree to all others — scalar series over time
     dmat    <- TreeDist::ClusteringInfoDistance(trees)
     mn_dist <- rowMeans(as.matrix(dmat))
     .ESS1(mn_dist)
@@ -328,11 +305,7 @@ CheckConvergence <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   rhat <- ComputeRhat(scenario, gridTag, repID, modelID, nRuns)
   ess  <- ComputeESS( scenario, gridTag, repID, modelID, nRuns)
 
-  # Load tree files once and share across ASDSF and TreeESS — previously
-  # each function extracted the .tar.gz independently (2x the tar/IO cost
-  # per replicate), and neither cleaned up its tempfile, which had
-  # accumulated to 45GB / ~24k orphaned files under TmpDir()
-  # and was degrading filesystem performance for the whole batch.
+  # load tree files once, shared across ASDSF and TreeESS
   treesList <- lapply(seq_len(nRuns), function(run) {
     .LoadTrees(scenario, gridTag, repID, modelID, run)
   })
