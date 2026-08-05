@@ -1,4 +1,3 @@
-# parameter_grid_by_model.R
 
 source("run/shared/config_theme.R")
 
@@ -7,11 +6,11 @@ if (is.null(sum_df)) quit(save = "no")
 
 sum_df <- sum_df %>% filter(!is.na(median_cid)) %>% label_models()
 
-AXES <- c("tree_length", "gain_loss", "n_char")   # present in both scenarios
+AXES <- c("tree_length", "gain_loss", "n_char")   #present in both scenarios
 AXIS_LABELS <- c(tree_length = "Tree length", gain_loss = "Gain:loss ratio",
                   n_char = "Number of characters", part_rate = "Partition rate scalar")
 
-# 1) Marginal effect lines -- one axis at a time, other axes averaged
+# Marginal effect lines one axis at a time, other axes averaged
 for (ax in AXES) {
   marg <- sum_df %>%
     group_by(scenario, modelID, .val = .data[[ax]]) %>%
@@ -31,7 +30,7 @@ for (ax in AXES) {
   save_fig(p, paste0("20_marginal_", ax, "_by_model"), subdir = "tree_accuracy", width = 10, height = 6)
 }
 
-# part_rate is nt-only -- its own figure, not averaged into the loop above
+# part_rate is nt-only, its own figure, not averaged into the loop above
 if ("part_rate" %in% names(sum_df) && any(!is.na(sum_df$part_rate))) {
   marg_pr <- sum_df %>%
     filter(scenario == "nt", !is.na(part_rate)) %>%
@@ -53,7 +52,7 @@ if ("part_rate" %in% names(sum_df) && any(!is.na(sum_df$part_rate))) {
   message("No part_rate values found -- skipping plot 21 (nt scenario grid may not have been run/merged yet).")
 }
 
-# 2) Two-parameter interaction heatmaps, faceted by model.
+#Two-parameter interaction heatmaps, faceted by model.
 interaction_heatmap <- function(data, x_ax, y_ax, subtitle, filename, width, height) {
   cell <- data %>%
     group_by(scenario, modelID, x = .data[[x_ax]], y = .data[[y_ax]]) %>%
@@ -92,7 +91,7 @@ if ("part_rate" %in% names(sum_df) && any(!is.na(sum_df$part_rate))) {
   )
 }
 
-# 3) Main-effect sensitivity summary: for each model x grid axis,
+# Main-effect sensitivity summary: for each model x grid axis,
 sens_axes <- c(AXES, "part_rate")
 
 sens_df <- bind_rows(lapply(sens_axes, function(ax) {
@@ -123,7 +122,7 @@ p_sens <- ggplot(sens_df, aes(x = axis, y = fct_rev(modelID), fill = rho)) +
   theme(panel.grid = element_blank(), axis.text.x = element_text(angle = 30, hjust = 1))
 save_fig(p_sens, "24_parameter_sensitivity_summary", subdir = "tree_accuracy", width = 9, height = 7)
 
-# 4) Win-region map: for the tree_length x gain_loss plane, which
+# Win-region map: for the tree_length x gain_loss plane, which
 win_region <- sum_df %>%
   group_by(scenario, modelID, tree_length, gain_loss) %>%
   summarise(mean_cid = mean(median_cid, na.rm = TRUE), .groups = "drop") %>%

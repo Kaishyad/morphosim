@@ -1,5 +1,3 @@
-# tree_similarity_grid.R
-
 source("run/shared/config_theme.R")
 
 sum_df <- safe_read_rds(PATHS$tree_accuracy_sum)
@@ -7,10 +5,9 @@ if (is.null(sum_df)) quit(save = "no")
 
 sum_df <- sum_df %>% filter(!is.na(median_cid))
 
-sum_df$cell_label <- sprintf("TL=%.1f  GL=%.2f  NC=%d",
-                             sum_df$tree_length, sum_df$gain_loss, sum_df$n_char)
+sum_df$cell_label <- sprintf("TL=%.1f  GL=%.2f  NC=%d", sum_df$tree_length, sum_df$gain_loss, sum_df$n_char)
 
-# Order models best-to-worst by mean CID (pooled across scenarios), used
+#Order models best-to-worst by mean CID (pooled across scenarios), used
 model_order <- sum_df %>%
   group_by(modelID) %>%
   summarise(mean_cid = mean(median_cid, na.rm = TRUE), .groups = "drop") %>%
@@ -23,7 +20,7 @@ sum_df <- sum_df %>%
 mk_df <- sum_df %>% filter(scenario == "mk")
 nt_df <- sum_df %>% filter(scenario == "nt")
 
-# Heatmap: every grid cell x every model, coloured by median CID.
+#Heatmap: every grid cell x every model, coloured by median CID.
 .HeatmapCells <- function(df, facet_by_part_rate = FALSE) {
   df <- df %>%
     arrange(tree_length, gain_loss, n_char) %>%

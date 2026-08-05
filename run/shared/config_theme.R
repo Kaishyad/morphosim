@@ -5,12 +5,11 @@ if (!file.exists("R/core/_setup.R")) {
        "relative to ", getwd(), ").")
 }
 
-# --- Point at the-matrix before _setup.R sets its options, if overridden
+# Point at the-matrix before _setup.R sets its options, if overridden
 matrix_override <- Sys.getenv("MORPHOSIM_MATRIX_DIR", unset = NA)
 if (!is.na(matrix_override)) options("ntOutDir" = matrix_override)
 
-source("R/core/_setup.R")   # brings in OutputDir(), GridTag(), ScenarioGrid(),
-# PARAM_GRID, MODEL_IDS, ESS_MIN, RHAT_MAX, ASDSF_MAX
+source("R/core/_setup.R") 
 
 suppressPackageStartupMessages({
   library(tidyverse)

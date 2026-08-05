@@ -1,5 +1,3 @@
-# cross_metric_plots.R
-
 source("run/shared/config_theme.R")
 
 scorecard <- safe_read_rds(PATHS$cross_metric_model)
@@ -7,26 +5,26 @@ cell_df   <- safe_read_rds(PATHS$cross_metric_cell)
 rank_corr <- safe_read_rds(PATHS$cross_metric_rank_corr)
 
 if (is.null(scorecard) || is.null(cell_df)) {
-  message("Need cross_metric_model_scorecard.rds and cross_metric_gridcell.rds -- ",
+  message("Need cross_metric_model_scorecard.rds and cross_metric_gridcell.rds - ",
           "run run/cross_metric_analysis.R first. Skipping 07.")
   quit(save = "no")
 }
 
-# PLOT 1: Bump chart -- rank concordance across metrics
+# PLOT 1: Bump chart - rank concordance across metrics
 rank_cols <- grep("^rank_", colnames(scorecard), value = TRUE)
-# Friendly labels for whichever metrics happen to be present
+#labels for whichever metrics happen to be present
 metric_labels <- c(
   rank_median_cid          = "Tree accuracy\n(CID)",
   rank_mse_tree_len         = "Known-answer\nMSE (tree length)",
   rank_cov_error_tree_len    = "Known-answer\ncoverage error",
   rank_mean_mse_rate_loss     = "Known-answer\nMSE (rate)",
   rank_cov_error_rate_loss     = "Known-answer\ncoverage error (rate)",
-  rank_pass_rate                 = "Convergence\npass rate",
-  rank_mean_rhat_max               = "Convergence\n(R-hat)",
-  rank_cov_error_cgr                 = "CGR\ncoverage error",
-  rank_prop_adequate                   = "PPS\nadequacy"
+  rank_pass_rate= "Convergence\npass rate",
+  rank_mean_rhat_max= "Convergence\n(R-hat)",
+  rank_cov_error_cgr= "CGR\ncoverage error",
+  rank_prop_adequate= "PPS\nadequacy"
 )
-# Keep tree accuracy first, then whatever else is present in a stable order
+#Keep tree accuracy first, then whatever else is present in a stable order
 present_cols <- c("rank_median_cid",
                   setdiff(rank_cols, "rank_median_cid"))
 present_cols <- present_cols[present_cols %in% rank_cols]
@@ -57,10 +55,10 @@ if (length(present_cols) >= 2L) {
     theme(legend.position = "right", panel.grid.major.x = element_blank())
   save_fig(p1, "16_rank_concordance_bump_chart", subdir = "cross_metric", width = 10, height = 8)
 } else {
-  message("Fewer than 2 rank_* columns available -- skipping bump chart (plot 1).")
+  message("Fewer than 2 rank_* columns available - skipping bump chart (plot 1).")
 }
 
-# PLOT 2: Composite scorecard heatmap -- models x metrics, colored by rank
+# PLOT 2: Composite scorecard heatmap - models x metrics, colored by rank
 if (length(present_cols) >= 2L) {
   heat_df <- scorecard %>%
     select(scenario, modelID, all_of(present_cols)) %>%
@@ -85,7 +83,7 @@ if (length(present_cols) >= 2L) {
   save_fig(p2, "17_composite_scorecard_heatmap", subdir = "cross_metric", width = 11, height = 7)
 }
 
-# PLOT 3: Model-level scatter -- mean CID vs mean known-answer MSE,
+# PLOT 3: Model-level scatter - mean CID vs mean known-answer MSE,
 if ("avg_mse_tree_len" %in% colnames(scorecard)) {
   scat_df <- scorecard %>% label_models()
 
@@ -119,10 +117,10 @@ if ("avg_mse_tree_len" %in% colnames(scorecard)) {
   }
   save_fig(p3, "18_model_scatter_cid_vs_known_answer_mse", subdir = "cross_metric", width = 10, height = 5.5)
 } else {
-  message("avg_mse_tree_len not in scorecard -- skipping plot 3 (need known_answer_summary.rds).")
+  message("avg_mse_tree_len not in scorecard - skipping plot 3 (need known_answer_summary.rds).")
 }
 
-# PLOT 4: Grid-cell-level -- within each model, does CID track
+# PLOT 4: Grid-cell-level - within each model, does CID track
 if ("mse_tree_len" %in% colnames(cell_df)) {
   cell_plot_df <- cell_df %>%
     filter(!is.na(median_cid), !is.na(mse_tree_len)) %>%
@@ -141,7 +139,7 @@ if ("mse_tree_len" %in% colnames(cell_df)) {
     theme(legend.position = "top")
   save_fig(p4, "19_gridcell_cid_vs_known_answer_mse_by_model", subdir = "cross_metric", width = 13, height = 10)
 } else {
-  message("mse_tree_len not in cross-metric grid-cell table -- skipping plot 4.")
+  message("mse_tree_len not in cross-metric grid-cell table - skipping plot 4.")
 }
 
-message("\ncross_metric_plots.R complete -- figures written to ", PATHS$fig_dir)
+message("\ncross_metric_plots.R complete - figures written to ", PATHS$fig_dir)

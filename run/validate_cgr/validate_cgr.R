@@ -1,13 +1,9 @@
-
-# For every (model x scenario x grid cell), checks whether each parameter's
-# 95% posterior credible interval contains its known true simulated value at
-# ~95% of replicates. 
+# For every (model x scenario x grid cell), checks whether each parameter's  95% posterior credible interval contains its known true simulated value at ~95% of replicates. 
 source("R/core/_setup.R")
 
-# --- Configuration -------------------------------------------------------
-
-EVAL_MODELS <- MODEL_IDS         # all 12, not just model4/model8
-SCENARIOS   <- c("mk", "nt")     # both generative scenarios
+# Configuration
+EVAL_MODELS <- MODEL_IDS        
+SCENARIOS   <- c("mk", "nt")     
 
 cgr_rds <- file.path(OutputDir(), "results", "cgr_coverage.rds")
 cgr_csv <- file.path(OutputDir(), "results", "cgr_coverage.csv")
@@ -20,7 +16,7 @@ if (!file.exists(conv_rds)) {
 }
 conv_df <- readRDS(conv_rds)
 
-# --- Per-model, per-scenario coverage check -------------------------------
+#Per-model, per-scenario coverage check
 
 cli::cli_h1("CGR / simulation-based calibration")
 
@@ -45,7 +41,7 @@ for (scen in SCENARIOS) {
       next
     }
 
-    # tree_length always applies; rate parameter(s) depend on model structure
+    #tree_length always applies; rate parameter(s) depend on model structure
     rateCols <- RateLossParams(mid)
     params   <- c("tree_length", rateCols)
 
@@ -97,7 +93,7 @@ utils::write.csv(cgr_df, cgr_csv, row.names = FALSE)
 cli::cli_alert_success("Saved: {cgr_rds}")
 cli::cli_alert_success("Saved: {cgr_csv}")
 
-# --- Console report (Table 6.1) -------------------------------------------
+#Report
 
 cli::cli_h2("Coverage rates by scenario x model (target: 0.95 +/- 0.05)")
 

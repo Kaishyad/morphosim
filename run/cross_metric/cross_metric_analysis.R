@@ -1,4 +1,4 @@
-#Answers: "do models that produce better trees also have better results?"
+# "do models that produce better trees also have better results?"
 
 
 source("R/core/_setup.R")
@@ -8,7 +8,7 @@ source("R/analysis/CrossMetric.R")
 results_dir <- file.path(OutputDir(), "results")
 dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
 
-# --- Load inputs, warning (not erroring) on anything optional missing -----
+#Load inputs
 .Load <- function(name, required = TRUE) {
   path <- file.path(results_dir, name)
   if (!file.exists(path)) {
@@ -23,18 +23,18 @@ dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
 }
 
 tree_acc_summary <- .Load("tree_accuracy_summary.rds",  required = TRUE)
-conv_df          <- .Load("convergence_summary.rds",    required = TRUE)
-ka_df            <- .Load("known_answer_summary.rds",   required = TRUE)
-cgr_df           <- .Load("cgr_coverage.rds",            required = FALSE)
-pps_df           <- .Load("pps_adequacy.rds",             required = FALSE)
+conv_df<- .Load("convergence_summary.rds",    required = TRUE)
+ka_df<- .Load("known_answer_summary.rds",   required = TRUE)
+cgr_df<- .Load("cgr_coverage.rds",            required = FALSE)
+pps_df<- .Load("pps_adequacy.rds",             required = FALSE)
 
 cli::cli_h1("Building cross-metric table")
 cross_df <- BuildCrossMetricTable(
   tree_acc_summary = tree_acc_summary,
-  conv_df          = conv_df,
-  ka_df            = ka_df,
-  cgr_df           = cgr_df,
-  pps_df           = pps_df
+  conv_df= conv_df,
+  ka_df= ka_df,
+  cgr_df= cgr_df,
+  pps_df= pps_df
 )
 cli::cli_alert_info("Cross-metric table: {nrow(cross_df)} rows (scenario x gridTag x modelID)")
 
@@ -49,7 +49,7 @@ saveRDS(cross_df, file.path(results_dir, "cross_metric_gridcell.rds"))
 utils::write.csv(cross_df, file.path(results_dir, "cross_metric_gridcell.csv"), row.names = FALSE)
 cli::cli_alert_success("Saved: cross_metric_gridcell.rds / .csv")
 
-# --- Model-level scorecard --------------------------------------------------
+# Model-level scorecard
 cli::cli_h1("Model-level scorecard")
 scorecard <- ModelLevelScorecard(cross_df)
 saveRDS(scorecard, file.path(results_dir, "cross_metric_model_scorecard.rds"))
@@ -65,7 +65,7 @@ for (scen in unique(scorecard$scenario)) {
   print(sub[, print_cols], row.names = FALSE)
 }
 
-# --- Model-level rank correlations (the headline result) -------------------
+# Model-level rank correlations (the headline result
 cli::cli_h1("Does tree-accuracy rank predict rank on other metrics? (model-level)")
 rank_corr <- ModelRankCorrelations(scorecard, B = 1000L)
 saveRDS(rank_corr, file.path(results_dir, "cross_metric_rank_correlations.rds"))
@@ -94,7 +94,7 @@ for (scen in unique(rank_corr$scenario)) {
   }
 }
 
-# --- Grid-cell-level correlations (within-model, higher-powered) -----------
+# Grid-cell-level correlations (within-model, higher-powered)
 cli::cli_h1("Within-model grid-cell correlations (CID vs other metrics)")
 cell_corr <- GridCellCorrelations(cross_df, B = 1000L)
 saveRDS(cell_corr, file.path(results_dir, "cross_metric_gridcell_correlations.rds"))

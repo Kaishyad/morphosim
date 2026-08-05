@@ -5,15 +5,15 @@
 
 source("R/core/_setup.R")
 
-args_cli      <- commandArgs(trailingOnly = TRUE)
+args_cli<- commandArgs(trailingOnly = TRUE)
 scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
 SCENARIOS     <- if (!is.na(scenario_flag[1])) scenario_flag else c("nt", "mk")
 
 results_dir <- file.path(OutputDir(), "results")
-rep_rds     <- file.path(results_dir, "tree_accuracy_per_rep.rds")
-sum_rds     <- file.path(results_dir, "tree_accuracy_summary.rds")
+rep_rds    <- file.path(results_dir, "tree_accuracy_per_rep.rds")
+sum_rds  <- file.path(results_dir, "tree_accuracy_summary.rds")
 
-# --- Merge per-rep files
+#Merge per-rep files
 per_model_files <- list.files(
   results_dir,
   pattern = sprintf("^tree_accuracy_per_rep_(%s)_model[0-9]+\\.rds$",
@@ -42,7 +42,7 @@ cli::cli_alert_success(
   "Merged per-rep CID saved: {rep_rds} ({nrow(combined_rep)} rows)"
 )
 
-# --- Rebuild grid-cell summary from the full combined per-rep data
+#Rebuild grid-cell summary from the full combined per-rep data
 cli::cli_h1("Rebuilding grid-cell summary")
 
 all_scenarios <- unique(combined_rep$scenario)
@@ -92,7 +92,7 @@ cli::cli_alert_success(
   "Grid-cell summary saved: {sum_rds} ({nrow(summary_df)} rows)"
 )
 
-# --- Console summary
+# summary
 cli::cli_h2("Median CID by scenario/model")
 by_model <- do.call(rbind, lapply(
   split(summary_df, list(summary_df$scenario, summary_df$modelID)),

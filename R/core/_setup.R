@@ -6,9 +6,8 @@ options("ntRBScriptDir" = file.path(getwd(), "rbScripts"))
 options("ntRemoteDir"   = paste0("/nobackup/", Sys.getenv("USER")))
 options("ntTmpDir"      = file.path(getOption("ntRemoteDir"), "tmp"))
 options("ntRbBinary"    = file.path(Sys.getenv("HOME"), "diss/revbayes/projects/cmake/build-mpi/rb-mpi"))
-# Read through the accessors in R/core/FilePaths.R rather than hardcoded elsewhere
 
-# --- Packages
+
 library(ape)
 library(TreeTools)
 library(TreeDist)
@@ -16,13 +15,13 @@ library(mgcv)
 library(ggplot2)
 library(cli)
 
-# Source core files 
+#Source core files 
 for (f in list.files("R/core", pattern = "\\.R$", full.names = TRUE)) {
   if (grepl("_setup\\.R", f)) next
   source(f)
 }
 
-# Source function libraries 
+#Source function libraries 
 for (d in c("R/model", "R/simulation", "R/outputs")) {
   for (f in list.files(d, pattern = "\\.R$", full.names = TRUE)) {
     source(f)
@@ -34,8 +33,8 @@ source("R/analysis/ThresholdGAM.R")
 
 # --- Constants
 set.seed(636)
-N_TIP     <- 50L
-N_REP     <- 10L
+N_TIP<- 50L
+N_REP<- 10L
 MODEL_IDS <- paste0("model", 1:12)
 
 # Convergence thresholds 

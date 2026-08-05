@@ -2,10 +2,9 @@
 
 source("R/core/_setup.R")
 
-#Argument parsing
-args_cli      <- commandArgs(trailingOnly = TRUE)
+args_cli<- commandArgs(trailingOnly = TRUE)
 scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
-model_flag    <- args_cli[which(args_cli == "--model")    + 1]
+model_flag  <- args_cli[which(args_cli == "--model")    + 1]
 
 SCENARIOS   <- if (!is.na(scenario_flag[1])) scenario_flag else c("nt", "mk")
 EVAL_MODELS <- if (!is.na(model_flag[1]))    model_flag    else MODEL_IDS
@@ -32,7 +31,7 @@ dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
 ka_rds <- file.path(results_dir, "known_answer_summary.rds")
 ka_csv <- file.path(results_dir, "known_answer_summary.csv")
 
-# convergence filter
+#convergence filter
 conv_rds <- file.path(OutputDir(), "results", "convergence_summary.rds")
 
 if (!file.exists(conv_rds)) {
@@ -47,7 +46,7 @@ cli::cli_alert_info(
   "{nrow(converged)} converged run(s) available for known-answer test."
 )
 
-# Run KnownAnswerSummary for each model
+#Run KnownAnswerSummary for each model
 all_results <- list()
 
 for (scenario in SCENARIOS) {
@@ -102,12 +101,12 @@ if (is.null(summary_df) || nrow(summary_df) == 0L) {
 }
 
 if (SINGLE_MODEL_MODE) {
-  per_model_rds <- .KaFile(SCENARIOS[1])   # one scenario per job when --model set
+  per_model_rds <- .KaFile(SCENARIOS[1])   # one scenario per job when model is specifed 
   saveRDS(summary_df, per_model_rds)
   cli::cli_alert_success("Per-model known-answer saved to: {per_model_rds}")
   cli::cli_alert_info("Run merge_known_answer.R after all model jobs finish.")
 } else {
-  # Full run, load existing, merge, de-duplicate, save combined
+  #Full run, load existing, merge, de-duplicate, save combined
   existing_df <- if (file.exists(ka_rds)) readRDS(ka_rds) else NULL
   combined_df <- if (!is.null(existing_df)) {
     key <- with(rbind(existing_df, summary_df),

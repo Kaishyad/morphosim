@@ -107,7 +107,7 @@ AsHMS <- function(secs) {
 
 
 #
-#' Has an analysis converged? (legacy neotrans interface)
+#' Has an analysis converged? (from neotrans interface)
 #' @param pt Gelman-Rubin statistic threshold
 #' @param et Estimated sample size threshold
 #' @export

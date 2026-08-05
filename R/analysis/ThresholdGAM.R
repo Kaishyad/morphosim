@@ -1,27 +1,17 @@
-#Fits Generalised Additive Models (GAMs) to identify parameter thresholds at
-#which each model outperforms the SCENARIO-APPROPRIATE baseline in
-#topological accuracy.
-#one GAM per inference model per parameter axis.
+#Fits Generalised Additive Models (GAMs) to identify parameter thresholds at which each model outperforms the SCENARIO baseline in topological accuracy.
 
 #' Compute per-replicate CID improvement of a model over its scenario baseline
-#'
-#' delta_CID = CID_baseline - CID_model. Positive values mean the evaluated
-#' model is more accurate (lower distance to true tree) than the baseline
+#' delta_CID = CID_baseline - CID_model. Positive values mean the evaluatedmodel is more accurate (lower distance to true tree) than the baseline
 #' for that replicate.
 #'
 #' @param cid_data   Data frame with columns: scenario, gridTag, repID,
 #'                   modelID, median_cid. Produced by run/tree_accuracy/tree_accuracy.R.
-#' @param modelID    Inference model to evaluate (e.g. "model4").
-#' @param baselineID Baseline model to compare against. Default NULL resolves
-#'                   to BASELINE_BY_SCENARIO[[scenario]] -- model1 for mk,
-#'                   model8 for nt. Pass a value explicitly to override.
-#' @param scenario   Generative scenario, "mk" or "nt" (default "nt").
+#' @param modelID    
+#' @param baselineID Baseline model to compare against. 
 #' @return Data frame with columns: repID, gridTag, tree_length, gain_loss,
 #'   n_char, chars_per_taxon, rate_ratio, improvement.
 #' @export
-ComputeImprovement <- function(cid_data, modelID,
-                               baselineID = NULL,
-                               scenario   = "nt") {
+ComputeImprovement <- function(cid_data, modelID, baselineID = NULL, scenario   = "nt") {
   if (is.null(baselineID)) {
     baselineID <- BASELINE_BY_SCENARIO[[scenario]]
     if (is.null(baselineID)) {
@@ -42,7 +32,7 @@ ComputeImprovement <- function(cid_data, modelID,
 
   merged$improvement <- merged$median_cid_mk - merged$median_cid_nt
 
-  grid          <- ScenarioGrid(scenario)
+  grid<- ScenarioGrid(scenario)
   grid$gridTag  <- apply(grid, 1, function(r) GridTag(as.list(r)))
   grid_cols     <- grid[, c("tree_length", "gain_loss", "n_char", "n_taxa", "gridTag")]
 
@@ -51,19 +41,13 @@ ComputeImprovement <- function(cid_data, modelID,
   merged$chars_per_taxon <- merged$n_char / merged$n_taxa
   merged$rate_ratio      <- merged$gain_loss
 
-  merged[, c("repID", "gridTag", "tree_length", "gain_loss",
-             "n_char", "chars_per_taxon", "rate_ratio", "improvement")]
+  merged[, c("repID", "gridTag", "tree_length", "gain_loss", "n_char", "chars_per_taxon", "rate_ratio", "improvement")]
 }
 
 #' Fit a threshold GAM for one inference model
-#'
-#' Fits:
-#'   improvement ~ s(tree_length, k=k) + s(rate_ratio, k=k) +
-#'                 s(chars_per_taxon, k=k)
-#'
+#'improvement ~ s(tree_length, k=k) + s(rate_ratio, k=k) + s(chars_per_taxon, k=k)
 #' using mgcv::gam() with a Gaussian family (improvement is continuous).
-#' Basis dimension k is checked with mgcv::gam.check(); a warning is issued
-#' if any smooth is near the boundary (p < 0.05 in k-index test).
+#' Basis dimension k is checked with mgcv::gam.check(); a warning is issued  if any smooth is near the boundary (p < 0.05 in k-index test).
 #'
 #' @param improvement_df  Data frame from ComputeImprovement().
 #' @param k               Requested basis dimension for all smooths (default
@@ -84,10 +68,8 @@ FitThresholdGAM <- function(improvement_df, k = 10L, verbose = FALSE) {
     k <- max(3L, floor(nrow(improvement_df) / 3L))
   }
 
-  # Cap k per-predictor at unique observed values (mgcv requires >= k unique
-  # covariate values per smooth). Below 4 unique values a smooth is
-  # rank-deficient, so fall back to a linear term (2-3 values) or drop the
-  # term entirely (constant predictor).
+  #Cap k per-predictor at unique observed values (mgcv requires >= k unique covariate values per smooth). Below 4 unique values a smooth is
+  #rank-deficient, so fall back to a linear term (2-3 values) or drop the term entirely (constant predictor).
   predictors <- c("tree_length", "rate_ratio", "chars_per_taxon")
 
   term_info <- lapply(predictors, function(p) {

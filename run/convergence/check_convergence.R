@@ -1,20 +1,17 @@
 #Checks MCMC convergence for every completed inference 
 
-
 source("R/core/_setup.R")
 
 
-args_cli       <- commandArgs(trailingOnly = TRUE)
+args_cli  <- commandArgs(trailingOnly = TRUE)
 scenario_flag  <- args_cli[which(args_cli == "--scenario")  + 1]
-model_flag     <- args_cli[which(args_cli == "--model")     + 1]
+model_flag  <- args_cli[which(args_cli == "--model")     + 1]
 max_trees_flag <- args_cli[which(args_cli == "--max-trees") + 1]
 
-SCENARIOS  <- if (!is.na(scenario_flag[1])) scenario_flag else c("nt", "mk")
-MODEL_IDS  <- if (!is.na(model_flag[1]))    model_flag    else paste0("model", 1:12)
+SCENARIOS <- if (!is.na(scenario_flag[1])) scenario_flag else c("nt", "mk")
+MODEL_IDS <- if (!is.na(model_flag[1]))    model_flag    else paste0("model", 1:12)
 
-# Allow overriding the O(n^2) tree-distance cap from the command line, e.g.
-# --max-trees 300, without editing _setup.R. ComputeTreeESS() picks this up
-# via TREE_ESS_MAX_TREES if set.
+#let overriding the O(n^2) tree-distance cap from the command line so --max-trees 300
 if (!is.na(max_trees_flag[1])) {
   TREE_ESS_MAX_TREES <- as.integer(max_trees_flag[1])
 }
@@ -24,7 +21,7 @@ message(sprintf("Scenarios: %s | Models: %s%s",
                 paste(MODEL_IDS,  collapse = ", "),
                 if (exists("TREE_ESS_MAX_TREES")) sprintf(" | max-trees: %d", TREE_ESS_MAX_TREES) else ""))
 
-# --- Per-model-job output paths
+#model job output paths
 SINGLE_MODEL_MODE <- !is.na(model_flag[1])
 
 results_dir <- file.path(OutputDir(), "results")
@@ -39,7 +36,7 @@ dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
 }
 requeue_f <- file.path(results_dir, "requeue_list.txt")
 
-# --- Load existing results and skip already-checked rows (per scenario file)
+#get existing results and skip already checked rows 
 existing_df <- NULL
 
 .AlreadyChecked <- function(scenario, gridTag, repID, modelID) {
@@ -50,12 +47,11 @@ existing_df <- NULL
       existing_df$modelID  == modelID)
 }
 
-#--- Helper
-
+#Helper
 .EnumerateCompleted <- function(scenario, grid = PARAM_GRID, nRep = N_REP,
                                 model_ids = MODEL_IDS, nRuns = 2) {
   rows <- vector("list", nrow(grid) * nRep * length(model_ids))
-  k    <- 1L
+  k <- 1L
   
   for (gi in seq_len(nrow(grid))) {
     gridTag <- GridTag(grid[gi, ])
@@ -80,14 +76,14 @@ existing_df <- NULL
   do.call(rbind, rows[seq_len(k - 1L)])
 }
 
-# --- Main loop
+#Main loop
 all_conv <- vector("list", length(SCENARIOS))
 
 for (si in seq_along(SCENARIOS)) {
   scenario <- SCENARIOS[si]
   cli::cli_h1(paste("Checking convergence:", scenario))
 
-  conv_rds    <- .ConvFile(scenario)
+  conv_rds <- .ConvFile(scenario)
   existing_df <- if (file.exists(conv_rds)) readRDS(conv_rds) else NULL
 
   completed <- .EnumerateCompleted(scenario, grid = ScenarioGrid(scenario))
@@ -112,11 +108,11 @@ for (si in seq_along(SCENARIOS)) {
                 paste(row$scenario, row$gridTag, row$repID, row$modelID,
                       sep = "/"),
                 ": ", conditionMessage(e))
-        list(pass       = FALSE,
-             rhat       = NULL,
-             ess        = NULL,
+        list(pass  = FALSE,
+             rhat   = NULL,
+             ess = NULL,
              tree_ess   = NA_real_,
-             asdsf      = NA_real_,
+             asdsf = NA_real_,
              rhat_pass  = FALSE,
              ess_pass   = FALSE,
              asdsf_pass = FALSE)
@@ -126,14 +122,14 @@ for (si in seq_along(SCENARIOS)) {
     
     conv_rows[[ri]] <- data.frame(
       scenario   = row$scenario,
-      gridTag    = row$gridTag,
-      repID      = row$repID,
+      gridTag  = row$gridTag,
+      repID    = row$repID,
       modelID    = row$modelID,
-      pass       = result$pass,
+      pass   = result$pass,
       rhat_max   = if (!is.null(result$rhat))          max(result$rhat, na.rm = TRUE) else NA_real_,
-      ess_min    = if (!is.null(result$ess))            min(result$ess,  na.rm = TRUE) else NA_real_,
-      tree_ess   = if (!is.null(result$tree_ess))       result$tree_ess                else NA_real_,
-      asdsf      = result$asdsf,
+      ess_min  = if (!is.null(result$ess))            min(result$ess,  na.rm = TRUE) else NA_real_,
+      tree_ess  = if (!is.null(result$tree_ess))       result$tree_ess                else NA_real_,
+      asdsf   = result$asdsf,
       rhat_pass  = result$rhat_pass,
       ess_pass   = result$ess_pass,
       asdsf_pass = result$asdsf_pass,
@@ -143,9 +139,7 @@ for (si in seq_along(SCENARIOS)) {
     if (ri %% 50L == 0L) {
       cli::cli_alert_info("  {ri}/{nrow(completed)} checked... (avg {round(mean(rep_times[seq_len(ri)]), 2)}s/run, last 50 avg {round(mean(rep_times[max(1, ri-49):ri]), 2)}s/run)")
 
-      # Checkpoint progress so far so a SLURM walltime kill or node failure
-      # doesn't lose everything checked in this session. Safe to do
-      # repeatedly: combines with existing_df exactly as the final save does.
+      #Checkpoint progress so far so a SLURM walltime kill or node failure doesn't lose everything checked this time  
       partial_new <- do.call(rbind, conv_rows[seq_len(ri)])
       partial_df  <- if (!is.null(existing_df)) rbind(existing_df, partial_new) else partial_new
       saveRDS(partial_df, conv_rds)
@@ -154,14 +148,13 @@ for (si in seq_along(SCENARIOS)) {
   
   all_conv[[si]] <- do.call(rbind, conv_rows)
 
-  # Save this scenario's file (per-model file if SINGLE_MODEL_MODE, else the
-  # shared combined file) with its own results merged in.
+  #Save this scenarios file with its own results merged in.
   existing_df <- if (!is.null(existing_df)) rbind(existing_df, all_conv[[si]]) else all_conv[[si]]
   saveRDS(existing_df, conv_rds)
   cli::cli_alert_success("Saved: {conv_rds} ({nrow(existing_df)} total rows)")
 }
 
-# --- Final summary
+#summary
 conv_df <- do.call(rbind, lapply(SCENARIOS, function(s) {
   f <- .ConvFile(s)
   if (file.exists(f)) readRDS(f) else NULL
@@ -172,7 +165,7 @@ if (is.null(conv_df) || nrow(conv_df) == 0L) {
   quit(save = "no", status = 0)
 }
 
-# --- Report on full combined dataset
+#report on whole combined dataset
 n_pass <- sum(conv_df$pass, na.rm = TRUE)
 n_fail <- sum(!conv_df$pass, na.rm = TRUE)
 n_tot  <- nrow(conv_df)
@@ -182,13 +175,13 @@ cli::cli_alert_info("Total runs checked : {n_tot}")
 cli::cli_alert_info("Passed             : {n_pass} ({round(100 * n_pass / n_tot, 1)}%)")
 cli::cli_alert_info("Failed             : {n_fail} ({round(100 * n_fail / n_tot, 1)}%)")
 
-# Breakdown by model
+#Breakdown by model
 cli::cli_h2("Pass rate by scenario/model")
 by_model <- aggregate(pass ~ scenario + modelID, data = conv_df, FUN = mean)
 by_model$pass <- round(by_model$pass * 100, 1)
 print(by_model)
 
-# Breakdown by failure criterion
+#Breakdown by failure criterion
 fail_df <- conv_df[!conv_df$pass, ]
 if (nrow(fail_df) > 0L) {
   cli::cli_h2("Failure breakdown")
@@ -197,7 +190,7 @@ if (nrow(fail_df) > 0L) {
   cli::cli_alert_info("ASDSF failures  : {sum(!fail_df$asdsf_pass, na.rm = TRUE)}")
 }
 
-# Tree ESS vs scalar ESS comparison (Martin's diagnostic)
+#Tree ESS vs scalar ESS comparison (Martin's noted to look ar it)
 has_tree_ess <- !is.na(conv_df$tree_ess) & !is.na(conv_df$ess_min)
 if (any(has_tree_ess)) {
   ratio <- conv_df$tree_ess[has_tree_ess] / conv_df$ess_min[has_tree_ess]
@@ -207,7 +200,7 @@ if (any(has_tree_ess)) {
   cli::cli_alert_info("Runs with tree_ess >> ess_min (ratio > 2.0): {sum(ratio > 2.0)}")
 }
 
-# --- Write re-queue list (all failures across combined dataset)
+#Write re-queue list (all failurs)
 if (SINGLE_MODEL_MODE) {
   cli::cli_alert_info("Per-model mode: skipping shared requeue_list.txt (run merge_convergence.R after all model jobs finish).")
   quit(save = "no", status = 0)

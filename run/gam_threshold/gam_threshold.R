@@ -1,20 +1,16 @@
-#Fits GAMs and extracts threshold estimates for each model across all
-#parameter axes, for both generative scenarios.
+#Fits GAMs and extracts threshold estimates for each model across all parameter axes, for both generative scenarios.
 
 source("R/core/_setup.R")
 
-# --- Configuration ---
 
-args_cli      <- commandArgs(trailingOnly = TRUE)
+args_cli<- commandArgs(trailingOnly = TRUE)
 scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
 
-SCENARIOS       <- if (!is.na(scenario_flag[1])) scenario_flag else c("nt", "mk")
-GAM_K           <- 10L
+SCENARIOS<- if (!is.na(scenario_flag[1])) scenario_flag else c("nt", "mk")
+GAM_K<- 10L
 RUN_SENSITIVITY <- TRUE
 
 predictors <- c("tree_length", "rate_ratio", "chars_per_taxon")
-
-# Input
 cid_rep_rds <- file.path(OutputDir(), "results", "tree_accuracy_per_rep.rds")
 
 if (!file.exists(cid_rep_rds)) {
@@ -28,7 +24,7 @@ cli::cli_alert_info("Loaded CID data: {nrow(cid_data)} rows.")
 dir.create(file.path(OutputDir(), "results"), showWarnings = FALSE,
            recursive = TRUE)
 
-# --- Main loop over scenarios ------------------------------------------------
+# Main loop over scenarios
 
 for (scenario in SCENARIOS) {
   cli::cli_h1("Scenario: {scenario}")
@@ -44,11 +40,11 @@ for (scenario in SCENARIOS) {
                           paste0("threshold_summary_", scenario, ".rds"))
   thresh_csv <- file.path(OutputDir(), "results",
                           paste0("threshold_summary_", scenario, ".csv"))
-  gam_rds    <- file.path(OutputDir(), "results",
+  gam_rds<- file.path(OutputDir(), "results",
                           paste0("gam_objects_", scenario, ".rds"))
 
-  eval_models    <- setdiff(MODEL_IDS, BASELINE_ID)
-  gam_objects    <- vector("list", length(eval_models))
+  eval_models<- setdiff(MODEL_IDS, BASELINE_ID)
+  gam_objects<- vector("list", length(eval_models))
   names(gam_objects) <- eval_models
   threshold_rows <- vector("list", length(eval_models))
 
@@ -146,7 +142,7 @@ for (scenario in SCENARIOS) {
     )
   }
 
-  # --- Save results for this scenario ----------------------------------------
+  #Save results for this scenario
 
   thresh_df <- do.call(rbind,
                        threshold_rows[!vapply(threshold_rows, is.null,

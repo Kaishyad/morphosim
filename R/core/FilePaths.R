@@ -131,19 +131,12 @@ ConvergenceFile <- function(scenario, gridTag, repID, modelID) {
 }
 
 #' Is an inference job actually complete?
-#'
-#' Single shared definition of "done", used by both slurm/Infer.R (skip
-#' resubmission) and run/check_convergence.R (ready to check). Complete
-#' only when the full MCMC log exists for every run — deliberately ignores
-#' .tar.gz/.trees, since a log-complete-but-not-yet-tarred run is still a
-#' finished RevBayes run, not a candidate for resubmission.
-#'
-#' @param scenario  "nt" or "mk"
-#' @param gridTag   Grid tag string from GridTag()
-#' @param repID     Replicate ID e.g. "sim001"
-#' @param modelID   Model script name e.g. "model1"
-#' @param nRuns     Number of independent MCMC runs expected (default 2)
-#' @param prefix    Optional filename prefix, see LogFile()
+#' @param scenario 
+#' @param gridTag  
+#' @param repID     
+#' @param modelID   
+#' @param nRuns     
+#' @param prefix    
 #' @return Logical TRUE if the .log file exists for every run.
 #' @export
 JobLogsComplete <- function(scenario, gridTag, repID, modelID, nRuns = 2, prefix = "", imputation = FALSE) {
@@ -168,9 +161,7 @@ SlurmTemplate <- function() {
 }
 
 #' Build a grid tag string from a single grid row
-#'
-#' Includes part_rate when present (NT grid). Mk uses the unique()-collapsed
-#' grid (no part_rate column) so falls back to the 3-field tag.
+#' Includes part_rate when present (NT grid). Mk uses the unique()-collapsed grid (no part_rate column) so falls back to the 3-field tag.
 #' @param gridRow Single row of PARAM_GRID or Mk-collapsed grid
 GridTag <- function(gridRow) {
   if (!is.null(gridRow$part_rate) && !is.na(gridRow$part_rate)) {
@@ -187,11 +178,8 @@ GridTag <- function(gridRow) {
   }
 }
 
-#' Return the grid appropriate for a given scenario
-#'
-#' NT uses the full PARAM_GRID (part_rate matters).
-#' Mk uses the unique()-collapsed grid (part_rate irrelevant).
-#' @param scenario "nt" or "mk"
+#' Return the grid right for a given scenario
+#' @param scenario 
 ScenarioGrid <- function(scenario) {
   if (scenario == "mk") {
     unique(PARAM_GRID[, c("tree_length", "gain_loss", "n_char",

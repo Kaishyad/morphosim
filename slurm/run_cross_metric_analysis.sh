@@ -8,9 +8,6 @@
 #SBATCH --error=logs/cross_metric_%j.err
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
-#Merges tree accuracy with convergence/known-answer/CGR and tests whether
-#models with better trees also have better results, at model and
-#grid-cell level.
 
 
 module load r

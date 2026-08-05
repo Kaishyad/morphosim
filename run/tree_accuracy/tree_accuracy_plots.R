@@ -1,5 +1,3 @@
-# tree_accuracy_plots.R
-
 source("run/shared/config_theme.R")
 
 rep_df <- safe_read_rds(PATHS$tree_accuracy_rep)
@@ -55,7 +53,7 @@ p2 <- ggplot(delta_df, aes(x = modelID, y = delta_cid, fill = scenario)) +
   )
 save_fig(p2, "02_delta_cid_vs_scenario_baseline", subdir = "tree_accuracy", height = 6.5)
 
-# PLOT 3: Model ranking heatmap -- mean CID, model x scenario
+# PLOT 3: Model ranking heatmap - mean CID, model x scenario
 rank_df <- rep_df %>%
   group_by(modelID, scenario) %>%
   summarise(mean_cid = mean(cid), .groups = "drop") %>%
@@ -89,7 +87,7 @@ p4 <- ggplot(rep_df, aes(x = modelID, y = cid, color = scenario)) +
   )
 save_fig(p4, "04_cid_distribution_detail", subdir = "tree_accuracy", height = 7)
 
-# PLOT 5: Win-count -- for every (scenario, grid cell) which model
+# PLOT 5: Win-count - for every (scenario, grid cell) which model
 sum_df <- safe_read_rds(PATHS$tree_accuracy_sum)
 
 if (!is.null(sum_df)) {
@@ -122,7 +120,7 @@ if (!is.null(sum_df)) {
     )
   save_fig(p5, "05_grid_cell_win_counts", subdir = "tree_accuracy", width = 10, height = 7)
 } else {
-  message("tree_accuracy_summary.rds not found -- skipping grid-cell win-count plot 5.")
+  message("tree_accuracy_summary.rds not found - skipping grid-cell win-count plot 5.")
 }
 
-message("\ntree_accuracy_plots.R complete -- figures written to ", PATHS$fig_dir)
+message("\ntree_accuracy_plots.R complete - figures written to ", PATHS$fig_dir)

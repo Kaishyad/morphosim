@@ -1,5 +1,4 @@
-#Computes Clustering Information Distance (CID) between posterior trees and
-#the known true tree for all converged runs under both generative scenarios.
+#Computes Clustering Information Distance (CID) between posterior trees and the known true tree for all converged runs under both generative scenarios.
 
 source("R/core/_setup.R")
 
@@ -14,7 +13,7 @@ message(sprintf("Scenarios: %s | Models: %s",
                 paste(SCENARIOS,  collapse = ", "),
                 paste(MODEL_IDS,  collapse = ", ")))
 
-# --- Per-model-job output paths
+# model output paths
 SINGLE_MODEL_MODE <- !is.na(model_flag[1])
 
 results_dir <- file.path(OutputDir(), "results")
@@ -32,7 +31,7 @@ dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
 cid_rds     <- file.path(results_dir, "tree_accuracy_summary.rds")
 cid_rep_rds <- file.path(results_dir, "tree_accuracy_per_rep.rds")
 
-# --- Load convergence filter ---
+# convergence filter
 conv_rds <- file.path(OutputDir(), "results", "convergence_summary.rds")
 
 if (!file.exists(conv_rds)) {
@@ -40,7 +39,7 @@ if (!file.exists(conv_rds)) {
        "\nRun run/check_convergence.R first.")
 }
 
-conv_df   <- readRDS(conv_rds)
+conv_df  <- readRDS(conv_rds)
 converged <- conv_df[conv_df$pass & conv_df$scenario %in% SCENARIOS &
                        conv_df$modelID %in% MODEL_IDS, ]
 
@@ -48,7 +47,7 @@ cli::cli_alert_info(
   "{nrow(converged)} converged run(s) across selected scenarios and models."
 )
 
-# --- Per-replicate CID ---
+# Per-replicate CID
 
 per_rep_rows <- vector("list", nrow(converged))
 
@@ -80,7 +79,7 @@ for (ri in seq_len(nrow(converged))) {
 
   if (ri %% 100L == 0L) {
     cli::cli_alert_info("  {ri}/{nrow(converged)} replicates processed...")
-    # Checkpoint: save progress so a walltime kill doesn't lose everything
+    #save progress so a walltime kill doesn't lose everything
     partial <- do.call(rbind, per_rep_rows[seq_len(ri)])
     saveRDS(partial, .RepFile(SCENARIOS[1]))
   }
@@ -98,7 +97,7 @@ if (SINGLE_MODEL_MODE) {
   cli::cli_alert_success("Per-replicate CID saved to: {cid_rep_rds}")
 }
 
-# --- Grid-cell summary (median of medians) ---
+# Grid-cell summary (median of medians)
 
 cli::cli_h1("Summarising by grid cell")
 
@@ -106,9 +105,7 @@ summary_rows <- vector("list", 0L)
 
 for (scenario in SCENARIOS) {
   scenario_grid         <- ScenarioGrid(scenario)
-  scenario_grid$gridTag <- vapply(seq_len(nrow(scenario_grid)),
-                                   function(i) GridTag(as.list(scenario_grid[i, ])),
-                                   character(1))
+  scenario_grid$gridTag <- vapply(seq_len(nrow(scenario_grid)),function(i) GridTag(as.list(scenario_grid[i, ])), character(1))
 
   for (mid in MODEL_IDS) {
     sub <- per_rep_df[per_rep_df$scenario == scenario &
@@ -132,10 +129,9 @@ for (scenario in SCENARIOS) {
 
 summary_df <- do.call(rbind, summary_rows)
 
-# Join grid parameters per-scenario to avoid cross-contamination when both
-# scenarios are processed in the same run. Merge separately then combine.
+#Join grid parameters per-scenario to avoid cross-contamination when both scenarios are processed in the same run. Merge separately then combine.
 summary_df <- do.call(rbind, lapply(SCENARIOS, function(sc) {
-  sc_grid         <- ScenarioGrid(sc)
+  sc_grid<- ScenarioGrid(sc)
   sc_grid$gridTag <- vapply(seq_len(nrow(sc_grid)),
                              function(i) GridTag(as.list(sc_grid[i, ])),
                              character(1))
@@ -146,7 +142,7 @@ summary_df <- do.call(rbind, lapply(SCENARIOS, function(sc) {
 saveRDS(summary_df, cid_rds)
 cli::cli_alert_success("Tree accuracy summary saved to: {cid_rds}")
 
-# --- Console report ---
+#report
 
 cli::cli_h2("CID summary (mk scenario, model1)")
 

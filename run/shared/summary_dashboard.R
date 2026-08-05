@@ -1,4 +1,3 @@
-# summary_dashboard.R
 
 source("run/shared/config_theme.R")
 suppressPackageStartupMessages(library(patchwork))
@@ -7,14 +6,14 @@ acc  <- safe_read_rds(PATHS$tree_accuracy_rep)
 conv <- safe_read_rds(PATHS$convergence)
 
 if (is.null(acc) || is.null(conv)) {
-  message("Need both tree_accuracy_per_rep.rds and convergence_summary.rds for the dashboard -- skipping.")
+  message("Need both tree_accuracy_per_rep.rds and convergence_summary.rds for the dashboard - skipping.")
   quit(save = "no")
 }
 
 acc  <- acc  %>% rename(cid = median_cid) %>% label_models()
 conv <- conv %>% label_models()
 
-# Panel A: CID by model/scenario (condensed)
+# CID by model/scenario (condensed)
 panelA <- ggplot(acc, aes(x = modelID, y = cid, fill = scenario)) +
   geom_boxplot(outlier.alpha = 0.25, width = 0.6, position = position_dodge(0.7)) +
   scale_fill_manual(values = SCENARIO_COLORS, name = NULL) +
@@ -22,7 +21,7 @@ panelA <- ggplot(acc, aes(x = modelID, y = cid, fill = scenario)) +
   labs(title = "A. Tree accuracy (CID)", x = NULL, y = "CID") +
   theme(legend.position = "top")
 
-# Panel B: convergence pass-rate heatmap (condensed)
+#convergence pass-rate heatmap (condensed)
 pass_df <- conv %>%
   group_by(modelID, scenario) %>%
   summarise(pass_rate = mean(as.numeric(pass), na.rm = TRUE), .groups = "drop")
@@ -35,7 +34,7 @@ panelB <- ggplot(pass_df, aes(x = scenario, y = fct_rev(modelID), fill = pass_ra
   labs(title = "B. Convergence pass rate", x = NULL, y = NULL) +
   theme(panel.grid = element_blank(), legend.position = "top")
 
-# Panel C: model ranking summary (mean CID) -- absolute, no baseline
+# model ranking summary (mean CID) - absolute, no baseline
 rank_df <- acc %>%
   group_by(modelID, scenario) %>%
   summarise(mean_cid = mean(cid), .groups = "drop")
@@ -47,7 +46,7 @@ panelC <- ggplot(rank_df, aes(x = fct_reorder(modelID, mean_cid, .fun = mean), y
   labs(title = "C. Mean accuracy ranking", x = NULL, y = "Mean CID") +
   theme(legend.position = "none")
 
-# Panel D: grid-cell win counts -- who's best, and how often, with
+# grid-cell win counts - who's best, and how often, with
 sum_df <- safe_read_rds(PATHS$tree_accuracy_sum)
 
 if (!is.null(sum_df)) {
@@ -73,7 +72,7 @@ if (!is.null(sum_df)) {
       theme = theme(plot.title = element_text(face = "bold", size = 15))
     )
 } else {
-  message("tree_accuracy_summary.rds not found -- dashboard will omit the grid-cell win panel.")
+  message("tree_accuracy_summary.rds not found - dashboard will omit the grid-cell win panel.")
   dashboard <- (panelA | panelB) / panelC +
     plot_annotation(
       title = "Model performance overview: MK vs NT generative scenarios",
@@ -84,4 +83,4 @@ if (!is.null(sum_df)) {
 
 save_fig(dashboard, "00_summary_dashboard", subdir = "dashboard", width = 13, height = 10)
 
-message("\nsummary_dashboard.R complete -- dashboard written to ", PATHS$fig_dir)
+message("\nsummary_dashboard.R complete - dashboard written to ", PATHS$fig_dir)

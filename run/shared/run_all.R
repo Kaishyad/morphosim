@@ -1,4 +1,4 @@
-# Runs the full visualization suite end to end.
+# Runs the full visualization end to end.
 
 if (!file.exists("R/core/_setup.R")) {
   stop("Run this from the morphosim repo root, e.g.: Rscript run/shared/run_all.R")

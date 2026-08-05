@@ -1,23 +1,14 @@
-#how all 12 models rank against EACH OTHER within a scenario, or
-#how a given model performs on nt-generated vs mk-generated data 
-#whether model complexity helps when it should (nt-generated)
-#without hurting when it shouldn't (mk-generated), 
 
 #' All-models-against-each-other comparison, within one scenario
 #'
-#' Runs a Friedman test (non-parametric repeated-measures ANOVA analogue,
-#' appropriate since the same grid cells are shared across models) to test
-#' whether CID differs across the 12 models at all, then pairwise Wilcoxon
-#' signed-rank tests between every model pair with Holm correction for
-#' multiple comparisons. Models are also ranked by median CID (lower =
-#' more accurate).
+#' Runs a Friedman test (non-parametric repeated-measures ANOVA analogue, appropriate since the same grid cells are shared across models) to test
+#' whether CID differs across the 12 models at all, then pairwise Wilcoxon signed-rank tests between every model pair with Holm correction for
+#' multiple comparisons. Models are also ranked by median CID (lower =  more accurate).
 #'
 #' @param cid_data  Data frame from run/tree_accuracy.R.
-#' @param scenario  "mk" or "nt".
-#' @param models    Models to include (default: all MODEL_IDS present).
-#' @return List with: `friedman` (htest), `pairwise` (data frame of
-#'   pairwise p-values), `ranking` (data frame of median CID per model,
-#'   sorted best to worst).
+#' @param scenario  
+#' @param models   
+#' @return List with: `friedman` (htest), `pairwise` (data frame of pairwise p-values), `ranking` (data frame of median CID per model, sorted best to worst).
 #' @export
 AllModelsComparison <- function(cid_data, scenario, models = NULL) {
   sub <- cid_data[cid_data$scenario == scenario, ]
@@ -50,8 +41,7 @@ AllModelsComparison <- function(cid_data, scenario, models = NULL) {
 
   friedman <- stats::friedman.test(mat)
 
-  # Pairwise Wilcoxon (paired, since same grid cell/replicate under each
-  # model), Holm-corrected across all pairs.
+  #Pairwise Wilcoxon (paired, since same grid cell/replicate under each model), Holm-corrected across all pairs.
   pairwise <- stats::pairwise.wilcox.test(
     x = as.vector(mat),
     g = factor(rep(models, each = nrow(mat)), levels = models),
@@ -63,7 +53,7 @@ AllModelsComparison <- function(cid_data, scenario, models = NULL) {
     modelID    = models,
     median_cid = vapply(models, function(m) stats::median(complete[[m]], na.rm = TRUE), numeric(1)),
     iqr_cid    = vapply(models, function(m) stats::IQR(complete[[m]], na.rm = TRUE), numeric(1)),
-    n          = nrow(complete),
+    n = nrow(complete),
     stringsAsFactors = FALSE
   )
   ranking <- ranking[order(ranking$median_cid), ]
@@ -74,21 +64,9 @@ AllModelsComparison <- function(cid_data, scenario, models = NULL) {
 }
 
 #' A single model vs itself: nt-generated data vs mk-generated data
-#'
-#' Answers whether model complexity helps when it should (data generated
-#' under NT) without hurting when it shouldn't (data generated under
-#' symmetric Mk),, which up to now has only been implicit in separate
-#' per-scenario tables rather than tested directly against each other.
-#'
-#' Matching is done on the axes shared by both scenario grids
-#' (tree_length, gain_loss, n_char, n_taxa); nt's extra part_rate axis is
-#' pooled over (median across part_rate levels per matched cell) since mk
-#' has no such axis to match against.
-#'
-#' @param cid_data  Data frame from run/tree_accuracy.R.
-#' @param modelID   Model to test.
-#' @return List with: `wilcox` (paired Wilcoxon signed-rank htest),
-#'   `summary` (median CID under each scenario + the paired difference).
+#' @param cid_data  
+#' @param modelID  
+#' @return List with: `wilcox` (paired Wilcoxon signed-rank htest),  `summary` (median CID under each scenario + the paired difference).
 #' @export
 ScenarioContrast <- function(cid_data, modelID) {
   sub <- cid_data[cid_data$modelID == modelID, ]
@@ -101,8 +79,7 @@ ScenarioContrast <- function(cid_data, modelID) {
   nt_cid <- merge(sub[sub$scenario == "nt", ], nt_grid[, c("gridTag", match_cols)], by = "gridTag")
   mk_cid <- merge(sub[sub$scenario == "mk", ], mk_grid[, c("gridTag", match_cols)], by = "gridTag")
 
-  # Pool nt across part_rate per matched cell (median), then match on the
-  # shared axes only.
+  #Pool nt across part_rate per matched cell (median), then match on the shared axes only.
   nt_pooled <- stats::aggregate(median_cid ~ tree_length + gain_loss + n_char + n_taxa,
                                 data = nt_cid, FUN = stats::median)
 
