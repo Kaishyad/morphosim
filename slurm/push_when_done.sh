@@ -11,8 +11,7 @@ if [ -z "$SCENARIO" ] || [ -z "$MODEL" ]; then
 fi
 
 cd "$MATRIX_DIR"
-git checkout "$BRANCH"
-echo "On branch: $(git branch --show-current)"
+
 
 FILES=(
   "${MODEL}_run_1.log"
