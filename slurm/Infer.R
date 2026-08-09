@@ -150,7 +150,7 @@ for (scenario in scenarios) {
           "sbatch",
           "--ntasks=16",      
           "--nodes=1",        
-          "--mem=16G",
+          "--mem=32G",
           "--time=23:45:00",
           "--gres=tmp:16G",
           "-p shared",
