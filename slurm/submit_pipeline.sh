@@ -7,7 +7,7 @@ cd "$MORPHOSIM_DIR"
 CONV_JOB="${1:-18237359}"
 # model12 excluded -- its final jobs keep cancelling on submit. Add it back
 # once a full run actually completes (640/640 mk, 1920/1920 nt).
-MODELS=(model1 model2 model3 model4 model5 model6 model7 model8 model9 model10 model11)
+MODELS=(model1 model2 model3 model4 model5 model6 model7 model8 model9 model10 model11 model12)
 SCENARIOS=(mk nt)
 echo "Chaining everything after convergence job $CONV_JOB"
 echo ""
