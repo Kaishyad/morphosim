@@ -11,7 +11,7 @@
 source("R/core/_setup.R")
 
 # --- Safety parameters 
-MAX_QUEUE_DEPTH  <- 200L    
+MAX_QUEUE_DEPTH  <- 100L    
 POLL_INTERVAL_SEC <- 120L
 SUBMIT_PAUSE_SEC  <- 0.5
 
@@ -150,7 +150,7 @@ for (scenario in scenarios) {
           "sbatch",
           "--ntasks=16",      
           "--nodes=1",        
-          "--mem=32G",
+          paste0("--mem=", if (scenario == "nt") "64G" else "8G"),
           "--time=23:45:00",
           "--gres=tmp:16G",
           "-p shared",

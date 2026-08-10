@@ -13,7 +13,8 @@ module load r
 cd "$MORPHOSIM_DIR"
 
 #sbatch run_convergence.sh [max_trees] [scenario] [model]
-#sbatch run_convergence.sh 300 mk model12
+#sbatch run_convergence.sh 300 mk model12 cat logs/convergence_18254164.out
+
 
 
 MAX_TREES_ARG=""
