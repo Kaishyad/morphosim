@@ -22,6 +22,15 @@
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
 
+# Fallback in case config.sh failed to source (known issue under sbatch's
+# spool dir -- BASH_SOURCE resolves to /var/spool/slurmd/jobNNNN/, not the
+# real slurm/ dir, so the source above silently no-ops). Without this,
+# MATRIX_DIR is empty and simDir/outDir below become "/simulations/..."
+# instead of the real absolute path.
+: "${MORPHOSIM_DIR:=/nobackup/${USER}/morphosim}"
+: "${MATRIX_DIR:=/nobackup/${USER}/the-matrix}"
+: "${BRANCH:=clean-rebuild}"
+
 SCENARIO="$1"
 MODEL="$2"
 NPPS="${3:-100}"
