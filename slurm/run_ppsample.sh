@@ -31,7 +31,6 @@ if [ -z "$SCENARIO" ] || [ -z "$MODEL" ]; then
   exit 1
 fi
 
-module load revbayes 2>/dev/null || module load r
 
 cd "$MORPHOSIM_DIR"
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') starting ppsample ${SCENARIO}/${MODEL} (nPPS=${NPPS}) ==="
