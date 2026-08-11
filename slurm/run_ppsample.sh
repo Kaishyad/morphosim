@@ -82,7 +82,7 @@ while IFS=$'\t' read -r scenario gridTag repID model; do
   fi
 
   echo "[$i/$N_COMBOS] ${gridTag}/${repID}: sampling..."
-  mpirun -np 1 "$RB_BIN" --args "$simDir" "$outDir" "$model" "$NPPS" 0 rbScripts/PPS/ppsample.Rev \
+  "$RB_BIN" --args "$simDir" "$outDir" "$model" "$NPPS" 0 rbScripts/PPS/ppsample.Rev \
     >> "logs/ppsample_${SCENARIO}_${MODEL}_detail.log" 2>&1
 done < /tmp/ppsample_combos_$$.txt
 
