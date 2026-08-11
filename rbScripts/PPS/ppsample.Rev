@@ -1,0 +1,85 @@
+#PPS sampling
+#Reads the tree trace + parameter log from a completed sim-mc3.Rev run,
+#draws posterior samples, and simulates new character matrices under the
+#model to produce replicate datasets for PPS::CharacterVariance() /
+#PPSForReplicate() (R/model/PPS.R) to compare against the observed data.
+#
+#Writes pps_0001.nex, pps_0002.nex, ... into outDir/pps/, matching the
+#path PPS.R expects: <simDir>/<modelID>/pps/pps_*.nex
+
+#   args[1] = simDir    path to simulation directory containing neo.nex, trans.nex
+#   args[2] = outDir    path to inference output directory (results/scenario/gridTag/repID/modelID)
+#   args[3] = script    model script name without .Rev
+#   args[4] = nPPS      number of posterior predictive replicates to draw
+#   args[5] = seed_v    random seed
+
+# --- Defaults
+simDir = "simulations/nt/tl1.00_gl0.25_c25/sim001"
+outDir = "results/nt/tl1.00_gl0.25_c25/sim001/model1"
+script = "model1"
+nPPS   = 100
+seed_v = 0
+
+# --- Argument parsing
+if (args.size() >= 1) { simDir = args[1] }
+if (args.size() >= 2) { outDir = args[2] }
+if (args.size() >= 3) { script = args[3] }
+if (args.size() >= 4) { nPPS   = args[4] }
+if (args.size() >= 5) { seed_v = args[5] }
+
+print("Timestamp:", time("year"), time("day"), time("seconds") / 60 / 60)
+seed(seed_v)
+
+write(getwd())
+
+# --- Read simulated (observed) data -- needed to build the model graph,
+#     same as sim-mc3.Rev, so the sourced model script has the right tips
+neo   <- readDiscreteCharacterData(simDir + "/neo.nex")
+trans <- readDiscreteCharacterData(simDir + "/trans.nex")
+
+# --- File paths -- RevBayes inserts _run_N before the final extension,
+#     matching sim-mc3.Rev's monitor filenames exactly:
+#     filePrefix+".log"   -> {script}_run_1.log,   _run_2.log
+#     paramFile ".p.log"  -> {script}.p_run_1.log, .p_run_2.log
+#     filePrefix+".trees" -> {script}_run_1.trees, _run_2.trees
+filePrefix = outDir + "/" + script
+paramFile1 = filePrefix + ".p_run_1.log"
+paramFile2 = filePrefix + ".p_run_2.log"
+treeFile1  = filePrefix + "_run_1.trees"
+treeFile2  = filePrefix + "_run_2.trees"
+
+ppsDir = outDir + "/pps"
+
+if (!fileExists(paramFile1)) {
+  print("ERROR: no parameter log found at " + paramFile1 + " -- run sim-mc3.Rev first")
+  q()
+}
+
+# --- Source model script (builds mymodel / moves / monitors / phylogeny,
+#     same as sim-mc3.Rev)
+source("rbScripts/Models/" + script + ".Rev")
+
+# --- Read the trace(s) produced by inference. sim-mc3.Rev calls
+#     mymc3.burnin() as a SEPARATE phase before mymc3.run() starts, and
+#     the monitors are only attached to the .run() phase -- so everything
+#     logged to *_run_N.p.log / *_run_N.trees is already post-burnin.
+#     No additional burnin trimming here (burnin = 0), unlike a trace
+#     you'd read straight from a single continuous run.
+pTrace1 = readTrace(paramFile1, burnin = 0)
+pTrace2 = readTrace(paramFile2, burnin = 0)
+
+treeTrace1 = readTreeTrace(treeFile1, treetype = "non-clock", burnin = 0)
+treeTrace2 = readTreeTrace(treeFile2, treetype = "non-clock", burnin = 0)
+
+# --- Posterior predictive simulation
+#     Draws nPPS samples from the combined posterior and simulates new
+#     character matrices under the sampled parameter values + tree,
+#     writing each replicate to ppsDir as pps_####.nex
+pps = posteriorPredictiveSimulation(mymodel, directory = ppsDir,
+                                    trace = pTrace1)
+pps.run(thinning = ceil(pTrace1.size() / nPPS))
+
+print("  # # # PPS SAMPLING COMPLETE # # #  ")
+print("Wrote replicates to:", ppsDir)
+print("Timestamp:", time("year"), time("day"), time("seconds") / 60 / 60)
+q()
