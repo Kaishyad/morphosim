@@ -73,8 +73,8 @@ echo "Found $N_COMBOS completed replicate(s) for ${SCENARIO}/${MODEL}"
 i=0
 while IFS=$'\t' read -r scenario gridTag repID model; do
   i=$((i+1))
-  simDir="simulations/${scenario}/${gridTag}/${repID}"
-  outDir="results/${scenario}/${gridTag}/${repID}/${model}"
+  simDir="${MATRIX_DIR}/simulations/${scenario}/${gridTag}/${repID}"
+  outDir="${MATRIX_DIR}/results/${scenario}/${gridTag}/${repID}/${model}"
 
   if [ -d "${outDir}/pps" ] && [ "$(ls -A "${outDir}/pps" 2>/dev/null)" ]; then
     echo "[$i/$N_COMBOS] ${gridTag}/${repID} -- pps/ already populated, skipping"
