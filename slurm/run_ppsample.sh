@@ -31,6 +31,17 @@ if [ -z "$SCENARIO" ] || [ -z "$MODEL" ]; then
   exit 1
 fi
 
+module load r
+module load gcc/11.2 boost/1.78.0 openmpi/4.1.1
+
+# RevBayes is a custom build here, not a module -- same binary Infer.R
+# uses via RbBinary() in R/core/FilePaths.R (mpirun + rb-mpi).
+RB_BIN="${HOME}/diss/revbayes/projects/cmake/build-mpi/rb-mpi"
+if [ ! -x "$RB_BIN" ]; then
+  echo "ERROR: RevBayes binary not found/executable at $RB_BIN"
+  echo "Check R/core/_setup.R's ntRbBinary option if this path has changed."
+  exit 1
+fi
 
 cd "$MORPHOSIM_DIR"
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') starting ppsample ${SCENARIO}/${MODEL} (nPPS=${NPPS}) ==="
@@ -71,7 +82,7 @@ while IFS=$'\t' read -r scenario gridTag repID model; do
   fi
 
   echo "[$i/$N_COMBOS] ${gridTag}/${repID}: sampling..."
-  rb --args "$simDir" "$outDir" "$model" "$NPPS" 0 rbScripts/PPS/ppsample.Rev \
+  mpirun -np 1 "$RB_BIN" --args "$simDir" "$outDir" "$model" "$NPPS" 0 rbScripts/PPS/ppsample.Rev \
     >> "logs/ppsample_${SCENARIO}_${MODEL}_detail.log" 2>&1
 done < /tmp/ppsample_combos_$$.txt
 
