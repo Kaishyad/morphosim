@@ -90,13 +90,17 @@ cat "$COMBO_FILE"
 # other models' combos further down the file. (Previously this script
 # unconditionally skipped model11/model12 as "already run" -- that's no
 # longer true for model12 given current pass rates, so that skip is gone.)
+# Prioritize model9 first, then model12 -- so Infer.R's self-imposed
+# 70-concurrent-job cap fills with model9's combos first, model12 next,
+# ahead of other models' combos further down the file.
 PRIORITY_FILE=$(mktemp)
-grep -P '\tmodel(9|12)$' "$COMBO_FILE" > "$PRIORITY_FILE" || true
+grep -P '\tmodel9$' "$COMBO_FILE" > "$PRIORITY_FILE" || true
+grep -P '\tmodel12$' "$COMBO_FILE" >> "$PRIORITY_FILE" || true
 grep -v -P '\tmodel(9|12)$' "$COMBO_FILE" >> "$PRIORITY_FILE" || true
 mv "$PRIORITY_FILE" "$COMBO_FILE"
 
 echo ""
-echo "Combos reordered (model9/model12 first):"
+echo "Combos reordered (model9 first, model12 second):"
 cat "$COMBO_FILE"
 
 # --- Step 3: submit every combo up front, back-to-back, no waiting --------
