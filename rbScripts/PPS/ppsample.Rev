@@ -50,8 +50,15 @@ treeFile2  = filePrefix + "_run_2.trees"
 
 ppsDir = outDir + "/pps"
 
+# --- Debug: print each component separately so we can see exactly what
+#     got built, rather than guessing at string-concat behaviour
+print("DEBUG outDir      = [" + outDir + "]")
+print("DEBUG script       = [" + script + "]")
+print("DEBUG filePrefix   = [" + filePrefix + "]")
+print("DEBUG paramFile1   = [" + paramFile1 + "]")
+
 if (!fileExists(paramFile1)) {
-  print("ERROR: no parameter log found at " + paramFile1 + " -- run sim-mc3.Rev first")
+  print("ERROR: no parameter log found at [" + paramFile1 + "] -- run sim-mc3.Rev first")
   q()
 }
 
