@@ -85,6 +85,20 @@ echo ""
 echo "Affected scenario/model combos (from requeue_list.txt + requeue_from_audit.txt):"
 cat "$COMBO_FILE"
 
+# Skip model11/model12 -- already run successfully, no need to requeue.
+grep -v -P '\tmodel(11|12)$' "$COMBO_FILE" > "$COMBO_FILE.tmp" && mv "$COMBO_FILE.tmp" "$COMBO_FILE"
+
+if [ ! -s "$COMBO_FILE" ]; then
+  echo ""
+  echo "All affected combos were model11/model12 (already run) -- nothing left to do."
+  rm -f "$COMBO_FILE"
+  exit 0
+fi
+
+echo ""
+echo "Combos after skipping model11/model12:"
+cat "$COMBO_FILE"
+
 # --- Steps 3-6: process each combo end-to-end, sequentially ---------------
 while IFS=$'\t' read -r SCENARIO MODEL; do
   echo ""
