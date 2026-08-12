@@ -85,18 +85,18 @@ echo ""
 echo "Affected scenario/model combos (from requeue_list.txt + requeue_from_audit.txt):"
 cat "$COMBO_FILE"
 
-# Skip model11/model12 -- already run successfully, no need to requeue.
-grep -v -P '\tmodel(11|12)$' "$COMBO_FILE" > "$COMBO_FILE.tmp" && mv "$COMBO_FILE.tmp" "$COMBO_FILE"
-
-if [ ! -s "$COMBO_FILE" ]; then
-  echo ""
-  echo "All affected combos were model11/model12 (already run) -- nothing left to do."
-  rm -f "$COMBO_FILE"
-  exit 0
-fi
+# Prioritize model9 and model12 -- put their combos first so Infer.R's
+# self-imposed 70-concurrent-job cap fills with these first, ahead of
+# other models' combos further down the file. (Previously this script
+# unconditionally skipped model11/model12 as "already run" -- that's no
+# longer true for model12 given current pass rates, so that skip is gone.)
+PRIORITY_FILE=$(mktemp)
+grep -P '\tmodel(9|12)$' "$COMBO_FILE" > "$PRIORITY_FILE" || true
+grep -v -P '\tmodel(9|12)$' "$COMBO_FILE" >> "$PRIORITY_FILE" || true
+mv "$PRIORITY_FILE" "$COMBO_FILE"
 
 echo ""
-echo "Combos after skipping model11/model12:"
+echo "Combos reordered (model9/model12 first):"
 cat "$COMBO_FILE"
 
 # --- Step 3: submit every combo up front, back-to-back, no waiting --------
