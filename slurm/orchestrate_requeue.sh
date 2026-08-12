@@ -99,33 +99,47 @@ echo ""
 echo "Combos after skipping model11/model12:"
 cat "$COMBO_FILE"
 
-# --- Steps 3-6: process each combo end-to-end, sequentially ---------------
+# --- Step 3: submit every combo up front, back-to-back, no waiting --------
 while IFS=$'\t' read -r SCENARIO MODEL; do
   echo ""
-  echo "=== $(date '+%Y-%m-%d %H:%M:%S') : processing $SCENARIO/$MODEL ==="
-
+  echo "=== $(date '+%Y-%m-%d %H:%M:%S') : submitting $SCENARIO/$MODEL ==="
   echo "--- Submitting via Infer.R (self-capped at 70 concurrent jobs) ---"
   Rscript slurm/Infer.R --run --scenario "$SCENARIO" --model "$MODEL"
+done < "$COMBO_FILE"
 
-  echo "--- Waiting for $SCENARIO/$MODEL inference jobs to clear the queue ---"
-  while true; do
-    N=$(squeue -u "$USER" -h -o '%j' 2>/dev/null | grep -c "^inf_${SCENARIO}_.*_${MODEL}\$")
-    echo "$(date '+%Y-%m-%d %H:%M:%S'): $N job(s) still queued/running for $SCENARIO/$MODEL"
-    [ "$N" -eq 0 ] && break
-    sleep "$POLL_INTERVAL"
-  done
-  echo "$SCENARIO/$MODEL inference jobs finished."
+# --- Steps 4-6: wait/push/converge per combo, running concurrently --------
+# Each combo's wait-then-push-then-converge chain runs in its own background
+# subshell so combos don't block each other -- only the actual squeue wait
+# for THAT combo delays ITS OWN push, not the next combo's submission (which
+# already happened above) or any other combo's push.
+PIDS=()
+while IFS=$'\t' read -r SCENARIO MODEL; do
+  (
+    echo ""
+    echo "--- Waiting for $SCENARIO/$MODEL inference jobs to clear the queue ---"
+    while true; do
+      N=$(squeue -u "$USER" -h -o '%j' 2>/dev/null | grep -c "^inf_${SCENARIO}_.*_${MODEL}\$")
+      echo "$(date '+%Y-%m-%d %H:%M:%S'): $N job(s) still queued/running for $SCENARIO/$MODEL"
+      [ "$N" -eq 0 ] && break
+      sleep "$POLL_INTERVAL"
+    done
+    echo "$SCENARIO/$MODEL inference jobs finished."
 
-  echo "--- Pushing $SCENARIO/$MODEL results to GitHub ---"
-  bash slurm/push_when_done.sh "$SCENARIO" "$MODEL"
+    echo "--- Pushing $SCENARIO/$MODEL results to GitHub ---"
+    bash slurm/push_when_done.sh "$SCENARIO" "$MODEL"
 
-  echo "--- Resubmitting convergence check for $SCENARIO/$MODEL ---"
-  CONV_JID=$(sbatch --parsable slurm/run_convergence.sh 300 "$SCENARIO" "$MODEL")
-  MERGE_JID=$(sbatch --parsable --dependency=afterany:"$CONV_JID" slurm/merge_and_push.sh "$SCENARIO")
-  echo "Convergence job: $CONV_JID | merge+push job: $MERGE_JID (will push convergence_summary.rds + requeue_list.txt when done)"
-
+    echo "--- Resubmitting convergence check for $SCENARIO/$MODEL ---"
+    CONV_JID=$(sbatch --parsable slurm/run_convergence.sh 300 "$SCENARIO" "$MODEL")
+    MERGE_JID=$(sbatch --parsable --dependency=afterany:"$CONV_JID" slurm/merge_and_push.sh "$SCENARIO")
+    echo "Convergence job: $CONV_JID | merge+push job: $MERGE_JID (will push convergence_summary.rds + requeue_list.txt when done)"
+  ) &
+  PIDS+=($!)
 done < "$COMBO_FILE"
 
 rm -f "$COMBO_FILE"
+
+echo ""
+echo "=== $(date '+%Y-%m-%d %H:%M:%S') : all combos submitted; waiting for ${#PIDS[@]} background wait/push/converge chains to finish ==="
+wait "${PIDS[@]}"
 echo ""
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') : all combos processed. Final merge+push jobs are queued and will finish/push on their own. ==="
