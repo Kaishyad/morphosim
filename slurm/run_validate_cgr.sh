@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --ntasks=1
-#SBATCH --mem=8G
+#SBATCH --mem=6G
 #SBATCH --time=04:00:00
 #SBATCH -p shared
 #SBATCH --job-name=validate_cgr

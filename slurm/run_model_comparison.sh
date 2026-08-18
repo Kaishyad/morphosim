@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --ntasks=1
-#SBATCH --mem=8G
+#SBATCH --mem=2G
 #SBATCH --time=02:00:00
 #SBATCH -p shared
 #SBATCH --job-name=model_comparison

@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --ntasks=1
-#SBATCH --mem=16G
+#SBATCH --mem=4G
 #SBATCH --time=6:00:00
 #SBATCH -p shared
 #SBATCH --job-name=tree_acc

@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --ntasks=1
-#SBATCH --mem=8G
+#SBATCH --mem=4G
 #SBATCH --time=00:30:00
 #SBATCH -p shared
 #SBATCH --job-name=viz

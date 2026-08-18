@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --ntasks=1
-#SBATCH --mem=8G
+#SBATCH --mem=4G
 #SBATCH --time=2:00:00
 #SBATCH -p shared
 #SBATCH --job-name=known_answer
