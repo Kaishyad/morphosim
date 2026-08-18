@@ -1,6 +1,19 @@
 #applies imputation accuracy scoring across the full
 #parameter grid and inference models, then performs pairwise Wilcoxon
 #signed-rank tests versus the Mk baseline (Model 1).
+#
+# Usage:
+#   Rscript run/imputation/imputation_analysis.R              # assumes N_REP (10) reps were run
+#   Rscript run/imputation/imputation_analysis.R --nrep 2      # only 2 reps were run --
+#     pass the SAME --nrep used for mask_replicates.R / Infer.R --imputation,
+#     otherwise WilcoxonImputation() below will try to score reps that were
+#     never masked/inferred and every test will come back NA.
+#
+# NOTE: WilcoxonImputation() requires at least 5 non-NA paired replicates
+# before it will report a result (see R/validation/Imputation.R) -- with
+# --nrep 2 every Wilcoxon test in this script will return NA by design.
+# That's expected for a small pilot run to check the pipeline runs end to
+# end; it is not enough replicates to draw a significance conclusion from.
 
 source("R/core/_setup.R")
 # FIX: R/validation/ is not in _setup.R's auto-source loop, so
@@ -9,6 +22,13 @@ source("R/core/_setup.R")
 source("R/validation/Imputation.R")
 
 # --- Configuration ---
+
+args_cli   <- commandArgs(trailingOnly = TRUE)
+nrep_flag  <- args_cli[which(args_cli == "--nrep") + 1]
+nRepRun    <- if (!is.na(nrep_flag[1])) as.integer(nrep_flag) else N_REP
+if (nRepRun != N_REP) {
+  message(sprintf("Reps: %d (overriding N_REP=%d)", nRepRun, N_REP))
+}
 
 SCENARIOS    <- c("nt", "mk")
 PARTITIONS   <- c("neo", "trans")
@@ -128,7 +148,7 @@ for (scenario in SCENARIOS) {
       res <- tryCatch(
         WilcoxonImputation(scenario, gt, mid,
                            baselineID = baseline_id,
-                           nRep       = N_REP),
+                           nRep       = nRepRun),
         error = function(e) {
           warning("WilcoxonImputation failed for ", mid, " ", gt, ": ",
                   conditionMessage(e))

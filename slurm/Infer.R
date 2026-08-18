@@ -7,6 +7,11 @@
 # Rscript slurm/Infer.R --run --imputation   # imputation runs instead of
 #   standard inference -- requires imp_neo.nex/imp_trans.nex to already
 #   exist (run/imputation/mask_replicates.R first)
+# Rscript slurm/Infer.R --run --imputation --nrep 2   # imputation, first
+#   2 replicates per grid cell only, instead of the full N_REP (10).
+#   Only affects how many reps THIS invocation submits/skips -- doesn't
+#   touch the global N_REP used elsewhere, so a normal (non-imputation)
+#   run without --nrep still covers all 10 reps as before.
 
 source("R/core/_setup.R")
 
@@ -21,15 +26,19 @@ dry_run       <- !("--run" %in% args_cli)
 imputation    <- "--imputation" %in% args_cli
 scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
 model_flag    <- args_cli[which(args_cli == "--model")    + 1]
+nrep_flag     <- args_cli[which(args_cli == "--nrep")     + 1]
 
 scenarios <- if (!is.na(scenario_flag[1])) scenario_flag else c("nt", "mk")
 models    <- if (!is.na(model_flag[1]))    model_flag    else paste0("model", 1:12)
+nRepRun   <- if (!is.na(nrep_flag[1]))     as.integer(nrep_flag) else N_REP
 
 if (dry_run) message("Dry run — pass --run to submit jobs")
-message(sprintf("Scenarios: %s | Models: %s%s",
+message(sprintf("Scenarios: %s | Models: %s%s | Reps: %d%s",
                 paste(scenarios, collapse = ", "),
                 paste(models,    collapse = ", "),
-                if (imputation) " | IMPUTATION run" else ""))
+                if (imputation) " | IMPUTATION run" else "",
+                nRepRun,
+                if (nRepRun != N_REP) sprintf(" (overriding N_REP=%d)", N_REP) else ""))
 
 # --- Paths 
 remote_dir <- getOption("ntRemoteDir")          
@@ -85,7 +94,7 @@ for (scenario in scenarios) {
     row     <- grid[gi, ]
     gridTag <- GridTag(row)
 
-    for (rep in seq_len(N_REP)) {
+    for (rep in seq_len(nRepRun)) {
       repID     <- SimID(rep)
       simDirAbs <- SimDirAbs(scenario, gridTag, repID)
 
@@ -150,7 +159,7 @@ for (scenario in scenarios) {
           "sbatch",
           "--ntasks=16",      
           "--nodes=1",        
-          paste0("--mem=", if (scenario == "nt") "64G" else "8G"),
+          "--mem=8G",
           "--time=23:45:00",
           "--gres=tmp:16G",
           "-p shared",

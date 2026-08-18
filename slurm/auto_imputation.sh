@@ -7,6 +7,11 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
 #
 # Usage:
 #   bash slurm/auto_imputation.sh
+#   NREP=2 bash slurm/auto_imputation.sh   # only mask/run/score 2 reps per
+#     grid cell instead of the full N_REP (10) -- cuts total imputation
+#     job count (and Hamilton core-hours) to 1/5th. Threaded through to
+#     mask_replicates.R, Infer.R --imputation, and imputation_analysis.R
+#     so the rep counts stay consistent across all three steps.
 #
 # What it does, in order:
 #   1. Masks 10% of observed characters in every replicate (both scenarios),
@@ -50,23 +55,26 @@ module load r
 MODELS=(model1 model2 model3 model4 model5 model6 model7 model8 model9 model10 model11 model12)
 SCENARIOS=(mk nt)
 POLL_INTERVAL=300  # 5 min
+NREP="${NREP:-}"   # optional override, e.g. NREP=2 bash slurm/auto_imputation.sh
+NREP_ARGS=()
+[ -n "$NREP" ] && NREP_ARGS=(--nrep "$NREP")
 
 LOG="logs/auto_imputation_$(date +%Y%m%d_%H%M%S).log"
 mkdir -p logs
 exec > >(tee -a "$LOG") 2>&1
 
-echo "=== $(date '+%Y-%m-%d %H:%M:%S') : starting auto_imputation (all 12 models, both scenarios) ==="
+echo "=== $(date '+%Y-%m-%d %H:%M:%S') : starting auto_imputation (all 12 models, both scenarios${NREP:+, ${NREP} reps/cell}) ==="
 echo "Log: $LOG"
 
 # --- Step 1: mask the data (no dependency, runs immediately) -----------
 echo ""
 echo "--- Masking observed characters (10% default) ---"
-Rscript run/imputation/mask_replicates.R --run
+Rscript run/imputation/mask_replicates.R --run "${NREP_ARGS[@]}"
 
 # --- Step 2: submit imputation inference, all models, both scenarios ---
 echo ""
 echo "--- Submitting imputation inference via Infer.R --imputation ---"
-Rscript slurm/Infer.R --run --imputation
+Rscript slurm/Infer.R --run --imputation "${NREP_ARGS[@]}"
 
 # --- Step 3: poll until every imputation job has cleared ---------------
 echo ""
@@ -127,7 +135,7 @@ score_jid=$(sbatch --parsable --job-name=imputation_score \
     cd \"\$MORPHOSIM_DIR\"
     module load r
     set -e
-    Rscript run/imputation/imputation_analysis.R
+    Rscript run/imputation/imputation_analysis.R ${NREP:+--nrep $NREP}
     Rscript run/correlation/correlation_analysis.R --scenario mk
     Rscript run/correlation/correlation_analysis.R --scenario nt
     Rscript run/imputation/imputation_accuracy_plots.R
