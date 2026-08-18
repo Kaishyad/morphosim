@@ -89,7 +89,7 @@ per_rep_df <- do.call(rbind, per_rep_rows)
 
 if (SINGLE_MODEL_MODE) {
   saveRDS(per_rep_df, .RepFile(SCENARIOS[1]))
-  cli::cli_alert_success("Per-model per-rep CID saved to: {.RepFile(SCENARIOS[1])}")
+  cli::cli_alert_success("Per-model per-rep CID saved to: {(.RepFile(SCENARIOS[1]))}")
   cli::cli_alert_info("Run merge_tree_accuracy.R after all model jobs finish.")
   quit(save = "no", status = 0)
 } else {
