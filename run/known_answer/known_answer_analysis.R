@@ -38,7 +38,17 @@ if (all(is.na(ka$cov_rate_loss)) && all(is.na(ka$mse_rate_loss))) {
           "issue; rerun known_answer + merge_known_answer for real numbers.")
 }
 
-ka <- ka %>% label_models()
+ka <- ka %>%
+  mutate(modelID_label = factor(
+    modelID,
+    levels = intersect(MODEL_IDS, unique(modelID)),
+    labels = MODEL_LABELS[intersect(MODEL_IDS, unique(modelID))]
+  ))
+# NOTE: label_models() (config_theme.R) overwrites modelID in place instead of
+# adding modelID_label alongside it -- fine for scripts that only use the
+# relabeled modelID afterward, but this script needs both columns to coexist
+# (group_by(modelID, modelID_label) throughout), so build modelID_label
+# directly here instead, matching the pattern in run/model_comparison/model_deep_dive.R.
 
 # TABLE 1 - Model ranking (avg coverage, avg MSE, both parameters)
 table1_model_ranking <- ka %>%
