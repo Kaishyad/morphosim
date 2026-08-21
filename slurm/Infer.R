@@ -17,7 +17,7 @@ source("R/core/_setup.R")
 
 # --- Safety parameters 
 MAX_QUEUE_DEPTH  <- 10L    
-POLL_INTERVAL_SEC <- 120L
+POLL_INTERVAL_SEC <- 300L
 SUBMIT_PAUSE_SEC  <- 0.5
 
 # --- Argument parsing
