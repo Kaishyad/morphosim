@@ -1,8 +1,13 @@
 #!/bin/bash
-# Explicit push commands, no loops. Run block by block, or run the whole
-# file with: bash push_remaining.sh
-# It will NOT stop automatically on a failed push (no set -e), so watch
-# the output as it runs and check `git status` if anything looks off.
+#SBATCH --ntasks=1
+#SBATCH --mem=2G
+#SBATCH --time=06:00:00
+#SBATCH -p shared
+#SBATCH --job-name=push_remaining
+#SBATCH --output=logs/push_remaining_%j.out
+#SBATCH --error=logs/push_remaining_%j.err
+
+set -x  # echo each command as it runs, so the log shows progress per block
 
 cd /nobackup/djfb16/the-matrix
 
@@ -153,7 +158,7 @@ git add results/nt/tl5.00_gl1.00_pr5.00_*
 git commit -m "results nt tl5.00 gl1.00 pr5.00"
 git push origin clean-rebuild
 
-### simulations/mk — one tl block per push (smaller than results, no model dirs) ###
+### simulations/mk — one tl block per push ###
 git add simulations/mk/tl1.00_*
 git commit -m "simulations mk tl1.00"
 git push origin clean-rebuild
@@ -187,4 +192,4 @@ git add simulations/nt/tl5.00_*
 git commit -m "simulations nt tl5.00"
 git push origin clean-rebuild
 
-echo "DONE. Run 'git status' now to confirm everything is clean and pushed."
+echo "DONE. Check 'git status' to confirm everything is clean and pushed."
