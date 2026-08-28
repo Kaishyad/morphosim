@@ -25,7 +25,6 @@
 
 suppressPackageStartupMessages({
   library(tidyverse)
-  library(ggrepel)
 })
 
 source("run/shared/config_theme.R")
@@ -56,7 +55,8 @@ if (!is.null(cross_metric_model)) {
   p1 <- ggplot(df, aes(avg_mean_asdsf, avg_median_cid, color = scenario)) +
     geom_point(size = 2.5, alpha = 0.85) +
     geom_smooth(method = "lm", se = TRUE, linewidth = 0.8) +
-    geom_text_repel(aes(label = modelID), size = 3, show.legend = FALSE, max.overlaps = 20) +
+    geom_text(aes(label = modelID), size = 3, show.legend = FALSE,
+              vjust = -0.7, check_overlap = TRUE) +
     geom_text(data = ann, aes(x = x, y = y, label = label), inherit.aes = FALSE,
               hjust = 1, size = 3.3, fontface = "italic") +
     scale_color_manual(values = SCENARIO_COLORS) +
@@ -172,7 +172,8 @@ if (!is.null(table10) && all(c("mean_mse", "mean_cov", "sd_cov", "modelID") %in%
   p4 <- ggplot(df, aes(mean_mse, coverage_failure_rate)) +
     { if (!is.na(group_col)) geom_point(aes(size = sd_cov, color = .data[[group_col]]), alpha = 0.8)
       else geom_point(aes(size = sd_cov), alpha = 0.8) } +
-    geom_text_repel(aes(label = modelID), size = 3, max.overlaps = 20) +
+    geom_text(aes(label = modelID), size = 3,
+              vjust = -0.8, check_overlap = TRUE) +
     scale_x_log10() +
     labs(title = "Miscalibration typology: overconfident vs. erratic",
          subtitle = "Bubble size = sd(coverage) across cells -- small bubbles at high failure rate indicate consistent overconfidence, not erratic behaviour",
