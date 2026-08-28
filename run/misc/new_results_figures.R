@@ -1,4 +1,12 @@
 #!/usr/bin/env Rscript
+#SBATCH --ntasks=1
+#SBATCH --mem=4G
+#SBATCH --time=01:00:00
+#SBATCH -p shared
+#SBATCH --job-name=new_results_figures
+#SBATCH --output=logs/new_results_figures_%j.out
+#SBATCH --error=logs/new_results_figures_%j.err
+#
 # run/misc/new_results_figures.R
 #
 # Standalone script for the 8 recommended-but-missing figures from the
@@ -47,7 +55,7 @@ if (!is.null(cross_metric_model)) {
     left_join(
       df %>% group_by(scenario) %>%
         summarise(x = max(avg_mean_asdsf, na.rm = TRUE) * 0.98,
-                  y = max(avg_median_cid, na.rm = TRUE) * c(1, 0.9)[match(scenario, c("mk","nt"))],
+                  y = max(avg_median_cid, na.rm = TRUE) * c(1, 0.9)[match(first(scenario), c("mk","nt"))],
                   .groups = "drop"),
       by = "scenario"
     )
