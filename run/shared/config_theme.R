@@ -70,7 +70,7 @@ theme_matrix <- function(base_size = 12) {
 }
 theme_set(theme_matrix())
 
-save_fig <- function(plot, name, subdir = "", width = 8, height = 5.5, dpi = 300, formats = c("png", "pdf")) {
+save_fig <- function(plot, name, subdir = "", width = 8, height = 5.5, dpi = 300, formats = c("png")) {
   out_dir <- if (nzchar(subdir)) file.path(PATHS$fig_dir, subdir) else PATHS$fig_dir
   dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
   for (fmt in formats) {
