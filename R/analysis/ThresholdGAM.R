@@ -1,4 +1,4 @@
-#Fits Generalised Additive Models (GAMs) to identify parameter thresholds at which each model outperforms the SCENARIO baseline in topological accuracy.
+#Fits Generalised Additive Models (GAMs(Wood 2017)) to identify parameter thresholds at which each model outperforms the SCENARIO baseline in topological accuracy.
 
 #' Compute per-replicate CID improvement of a model over its scenario baseline
 #' delta_CID = CID_baseline - CID_model. Positive values mean the evaluatedmodel is more accurate (lower distance to true tree) than the baseline

@@ -1,5 +1,5 @@
 #Computes Clustering Information Distance (CID) between posterior tree samples and the known true simulated tree for each replicate and model.
-#Adapted from TreeAnalysis.R (neotrans).
+#adapted from TreeAnalysis.R in neotrans (Smith, 2026)
 
 # Tree accuracy
 #' Compute CID between posterior tree samples and the true tree

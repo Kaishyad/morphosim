@@ -105,9 +105,10 @@ AsHMS <- function(secs) {
   )
 }
 
-
 #
-#' Has an analysis converged? (from neotrans interface)
+#' Has an analysis converged?
+#' Adapted from neotrans (Smith, 2026) 
+#' directly instead of the newer CheckConvergence() in Convergence.R.
 #' @param pt Gelman-Rubin statistic threshold
 #' @param et Estimated sample size threshold
 #' @export
