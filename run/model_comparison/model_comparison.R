@@ -6,14 +6,16 @@
 source("R/core/_setup.R")
 source("R/analysis/ModelComparison.R")
 
-cid_rds <- file.path(OutputDir(), "results", "tree_accuracy_per_rep.rds")
+# Read: this is tree_accuracy's output, so it lives in that script's subfolder,
+# not this script's own output folder.
+cid_rds <- file.path(OutputDir(), "results", "tree_accuracy", "tree_accuracy_per_rep.rds")
 if (!file.exists(cid_rds)) {
   stop("Tree accuracy data not found: ", cid_rds,
        "\nRun run/tree_accuracy.R (and merge_tree_accuracy.R) first.")
 }
 cid_data <- readRDS(cid_rds)
 
-out_dir <- file.path(OutputDir(), "results")
+out_dir <- file.path(OutputDir(), "results", "model_comparison")
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
 # --- Safety: work only with models that actually have data ----------------

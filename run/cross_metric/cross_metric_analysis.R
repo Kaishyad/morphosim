@@ -5,12 +5,28 @@ source("R/core/_setup.R")
 source("R/analysis/Correlation.R")   # for SpearmanCorrelation(), reused by CrossMetric.R
 source("R/analysis/CrossMetric.R")
 
-results_dir <- file.path(OutputDir(), "results")
+results_dir <- file.path(OutputDir(), "results", "cross_metric")
 dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
+
+# Each input file below is owned/written by a different upstream script, so it
+# lives in that script's own results subfolder -- NOT in cross_metric's own
+# output folder. Map each filename to the folder that actually owns it.
+.INPUT_DIR <- function(name) {
+  owner <- switch(name,
+    "tree_accuracy_summary.rds" = "tree_accuracy",
+    "convergence_summary.rds"   = NULL,  # shared top-level file, no subfolder
+    "known_answer_summary.rds"  = "known_answer",
+    "cgr_coverage.rds"          = "cgr",
+    "pps_adequacy.rds"          = "pps_adequacy",
+    stop("Unknown input file, add it to .INPUT_DIR(): ", name)
+  )
+  if (is.null(owner)) file.path(OutputDir(), "results")
+  else file.path(OutputDir(), "results", owner)
+}
 
 #Load inputs
 .Load <- function(name, required = TRUE) {
-  path <- file.path(results_dir, name)
+  path <- file.path(.INPUT_DIR(name), name)
   if (!file.exists(path)) {
     if (required) {
       stop("Required file not found: ", path,

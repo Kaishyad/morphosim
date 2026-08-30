@@ -16,7 +16,7 @@ message(sprintf("Scenarios: %s | Models: %s",
 #Per-model-job output paths
 SINGLE_MODEL_MODE <- !is.na(model_flag[1])
 
-results_dir <- file.path(OutputDir(), "results")
+results_dir <- file.path(OutputDir(), "results", "known_answer")
 dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
 
 .KaFile <- function(scenario) {

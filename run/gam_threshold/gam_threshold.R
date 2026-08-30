@@ -11,7 +11,9 @@ GAM_K<- 10L
 RUN_SENSITIVITY <- TRUE
 
 predictors <- c("tree_length", "rate_ratio", "chars_per_taxon")
-cid_rep_rds <- file.path(OutputDir(), "results", "tree_accuracy_per_rep.rds")
+# Read: this is tree_accuracy's output, so it lives in that script's subfolder,
+# not this script's own output folder.
+cid_rep_rds <- file.path(OutputDir(), "results", "tree_accuracy", "tree_accuracy_per_rep.rds")
 
 if (!file.exists(cid_rep_rds)) {
   stop("CID per-replicate data not found: ", cid_rep_rds,
@@ -21,8 +23,8 @@ if (!file.exists(cid_rep_rds)) {
 cid_data <- readRDS(cid_rep_rds)
 cli::cli_alert_info("Loaded CID data: {nrow(cid_data)} rows.")
 
-dir.create(file.path(OutputDir(), "results"), showWarnings = FALSE,
-           recursive = TRUE)
+results_dir <- file.path(OutputDir(), "results", "gam_threshold")
+dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
 
 # Main loop over scenarios
 
@@ -36,11 +38,11 @@ for (scenario in SCENARIOS) {
   }
   cli::cli_alert_info("Baseline for {scenario}: {BASELINE_ID}")
 
-  thresh_rds <- file.path(OutputDir(), "results",
+  thresh_rds <- file.path(results_dir,
                           paste0("threshold_summary_", scenario, ".rds"))
-  thresh_csv <- file.path(OutputDir(), "results",
+  thresh_csv <- file.path(results_dir,
                           paste0("threshold_summary_", scenario, ".csv"))
-  gam_rds<- file.path(OutputDir(), "results",
+  gam_rds<- file.path(results_dir,
                           paste0("gam_objects_", scenario, ".rds"))
 
   eval_models<- setdiff(MODEL_IDS, BASELINE_ID)

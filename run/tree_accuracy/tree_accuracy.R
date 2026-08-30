@@ -16,7 +16,7 @@ message(sprintf("Scenarios: %s | Models: %s",
 # model output paths
 SINGLE_MODEL_MODE <- !is.na(model_flag[1])
 
-results_dir <- file.path(OutputDir(), "results")
+results_dir <- file.path(OutputDir(), "results", "tree_accuracy")
 dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
 
 .RepFile <- function(scenario) {

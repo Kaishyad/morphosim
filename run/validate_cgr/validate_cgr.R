@@ -5,8 +5,8 @@ source("R/core/_setup.R")
 EVAL_MODELS <- MODEL_IDS        
 SCENARIOS   <- c("mk", "nt")     
 
-cgr_rds <- file.path(OutputDir(), "results", "cgr_coverage.rds")
-cgr_csv <- file.path(OutputDir(), "results", "cgr_coverage.csv")
+cgr_rds <- file.path(OutputDir(), "results", "cgr", "cgr_coverage.rds")
+cgr_csv <- file.path(OutputDir(), "results", "cgr", "cgr_coverage.csv")
 dir.create(dirname(cgr_rds), showWarnings = FALSE, recursive = TRUE)
 
 conv_rds <- file.path(OutputDir(), "results", "convergence_summary.rds")
