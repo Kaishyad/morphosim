@@ -20,7 +20,20 @@
 #   sbatch slurm/ppsample.sh mk model1
 #   sbatch slurm/ppsample.sh nt model1 200
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/config.sh"
+# Under sbatch, SLURM copies this script into a job-specific spool directory
+# before executing it, so ${BASH_SOURCE[0]} no longer points at its real
+# location in the repo -- config.sh would silently fail to source (MATRIX_DIR/
+# MORPHOSIM_DIR/BRANCH stay unset) and any $MATRIX_DIR-based cd/git command
+# later in this script would then operate on the wrong directory. SLURM sets
+# SLURM_SUBMIT_DIR to the directory `sbatch` was run from, which is what we
+# actually want. Fall back to BASH_SOURCE-based resolution for the case where
+# this script is run directly (not via sbatch).
+if [ -n "$SLURM_SUBMIT_DIR" ]; then
+  SCRIPT_DIR="$SLURM_SUBMIT_DIR/slurm"
+else
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
+source "$SCRIPT_DIR/config.sh"
 
 # Fallback in case config.sh failed to source (known issue under sbatch's
 # spool dir -- BASH_SOURCE resolves to /var/spool/slurmd/jobNNNN/, not the
