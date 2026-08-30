@@ -20,20 +20,20 @@ suppressPackageStartupMessages({
 
 PATHS <- list(
   results_dir       = .results_dir,
-  convergence       = file.path(.results_dir, "convergence_summary.rds"),        # run/check_convergence.R (+ merge_convergence.R)
-  tree_accuracy_rep = file.path(.results_dir, "tree_accuracy_per_rep.rds"),      # run/tree_accuracy.R (+ merge_tree_accuracy.R)
-  tree_accuracy_sum = file.path(.results_dir, "tree_accuracy_summary.rds"),      # grid-cell summary, includes PARAM_GRID columns
-  threshold_mk      = file.path(.results_dir, "threshold_summary_mk.rds"),      # run/gam_threshold.R
-  threshold_nt      = file.path(.results_dir, "threshold_summary_nt.rds"),      # run/gam_threshold.R
+  convergence       = file.path(.results_dir, "convergence_summary.rds"),        # run/check_convergence.R (+ merge_convergence.R) -- shared top-level file, no subfolder
+  tree_accuracy_rep = file.path(.results_dir, "tree_accuracy", "tree_accuracy_per_rep.rds"),      # run/tree_accuracy.R (+ merge_tree_accuracy.R)
+  tree_accuracy_sum = file.path(.results_dir, "tree_accuracy", "tree_accuracy_summary.rds"),      # grid-cell summary, includes PARAM_GRID columns
+  threshold_mk      = file.path(.results_dir, "gam_threshold", "threshold_summary_mk.rds"),      # run/gam_threshold.R
+  threshold_nt      = file.path(.results_dir, "gam_threshold", "threshold_summary_nt.rds"),      # run/gam_threshold.R
   imputation_sum    = file.path(.results_dir, "imputation_accuracy.rds"),       # run/imputation/imputation_analysis.R
   imputation_rep    = file.path(.results_dir, "imputation_accuracy_per_rep.rds"),
   imputation_wilcox = file.path(.results_dir, "imputation_wilcoxon.rds"),
-  known_answer      = file.path(.results_dir, "known_answer_summary.rds"),      # run/known_answer.R
-  cgr_coverage      = file.path(.results_dir, "cgr_coverage.rds"),              # run/validate_cgr.R
-  cross_metric_cell = file.path(.results_dir, "cross_metric_gridcell.rds"),     # run/cross_metric_analysis.R
-  cross_metric_model = file.path(.results_dir, "cross_metric_model_scorecard.rds"),
-  cross_metric_rank_corr = file.path(.results_dir, "cross_metric_rank_correlations.rds"),
-  cross_metric_cell_corr = file.path(.results_dir, "cross_metric_gridcell_correlations.rds"),
+  known_answer      = file.path(.results_dir, "known_answer", "known_answer_summary.rds"),      # run/known_answer.R
+  cgr_coverage      = file.path(.results_dir, "cgr", "cgr_coverage.rds"),              # run/validate_cgr.R
+  cross_metric_cell = file.path(.results_dir, "cross_metric", "cross_metric_gridcell.rds"),     # run/cross_metric_analysis.R
+  cross_metric_model = file.path(.results_dir, "cross_metric", "cross_metric_model_scorecard.rds"),
+  cross_metric_rank_corr = file.path(.results_dir, "cross_metric", "cross_metric_rank_correlations.rds"),
+  cross_metric_cell_corr = file.path(.results_dir, "cross_metric", "cross_metric_gridcell_correlations.rds"),
   fig_dir           = file.path(OutputDir(), "figures")
 )
 

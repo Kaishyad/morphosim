@@ -127,7 +127,7 @@ export_cols <- intersect(c("scenario", "modelID", "gridTag", "tree_length", "gai
                          colnames(sum_df))
 long_out <- sum_df
 long_out$modelID <- as.character(long_out$modelID)
-readr::write_csv(long_out[, export_cols], file.path(PATHS$results_dir, "tree_similarity_table_long.csv"))
+readr::write_csv(long_out[, export_cols], file.path(PATHS$results_dir, "tree_accuracy", "tree_similarity_table_long.csv"))
 
 .WideTable <- function(df, param_cols) {
   df %>%
@@ -139,13 +139,13 @@ readr::write_csv(long_out[, export_cols], file.path(PATHS$results_dir, "tree_sim
 
 if (nrow(mk_df) > 0L) {
   wide_mk <- .WideTable(mk_df, c("tree_length", "gain_loss", "n_char"))
-  readr::write_csv(wide_mk, file.path(PATHS$results_dir, "tree_similarity_table_wide_mk.csv"))
+  readr::write_csv(wide_mk, file.path(PATHS$results_dir, "tree_accuracy", "tree_similarity_table_wide_mk.csv"))
 }
 
 if (nrow(nt_df) > 0L) {
   wide_nt <- .WideTable(nt_df, c("tree_length", "gain_loss", "n_char", "part_rate"))
-  readr::write_csv(wide_nt, file.path(PATHS$results_dir, "tree_similarity_table_wide_nt.csv"))
+  readr::write_csv(wide_nt, file.path(PATHS$results_dir, "tree_accuracy", "tree_similarity_table_wide_nt.csv"))
 }
 
-message("Saved tree_similarity_table_long.csv and tree_similarity_table_wide_{mk,nt}.csv to ", PATHS$results_dir)
+message("Saved tree_similarity_table_long.csv and tree_similarity_table_wide_{mk,nt}.csv to ", file.path(PATHS$results_dir, "tree_accuracy"))
 message("tree_similarity_grid.R complete -- figures written to ", PATHS$fig_dir)

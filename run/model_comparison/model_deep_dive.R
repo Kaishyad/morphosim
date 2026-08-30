@@ -145,7 +145,7 @@ save_fig(p_best_combo, "38_best_combo_per_model", subdir = "model_comparison", w
 readr::write_csv(
   best_combo_per_model %>%
     select(scenario, model = modelID_label, tree_length, gain_loss, n_char, any_of("part_rate"), median_cid, combo_label),
-  file.path(PATHS$results_dir, "best_combo_per_model.csv")
+  file.path(PATHS$results_dir, "model_comparison", "best_combo_per_model.csv")
 )
 
 # 5. READABLE TABLES -- numbers overlaid on a heatmap (sorted,
@@ -194,7 +194,7 @@ readr::write_csv(
     mutate(median_cid = round(median_cid, 3)) %>%
     pivot_wider(names_from = modelID_label, values_from = median_cid) %>%
     arrange(match(cell_label, row_order))
-  readr::write_csv(wide_clean, file.path(PATHS$results_dir, paste0(filename, ".csv")))
+  readr::write_csv(wide_clean, file.path(PATHS$results_dir, "model_comparison", paste0(filename, ".csv")))
 }
 
 if (nrow(mk_df) > 0L) {
