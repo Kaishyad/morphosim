@@ -17,10 +17,10 @@ ASDSF_MAX  <- 0.05
 
 conv <- conv %>%
   mutate(
-    rhat_pass_v2     = rhat_max <= RHAT_MAX,
-    ess_pass_v2      = ess_min > ESS_MIN,
+    rhat_pass_v2     = !is.na(rhat_max) & rhat_max <= RHAT_MAX,
+    ess_pass_v2      = !is.na(ess_min) & ess_min > ESS_MIN,
     tree_ess_pass_v2 = !is.na(tree_ess) & tree_ess > TREE_ESS_MIN,
-    asdsf_pass_v2    = asdsf < ASDSF_MAX,
+    asdsf_pass_v2    = !is.na(asdsf) & asdsf < ASDSF_MAX,
     pass_v2          = rhat_pass_v2 & ess_pass_v2 & tree_ess_pass_v2 & asdsf_pass_v2
   )
 
