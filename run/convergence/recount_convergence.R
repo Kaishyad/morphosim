@@ -3,9 +3,12 @@
 # New rule: rhat < 1.02 (unchanged), ess_min > 200 (was 256), tree_ess > 100
 # (new, previously unused), asdsf < 0.05 (unchanged).
 
+source("R/core/_setup.R")
+source("run/shared/config_theme.R")
+
 library(dplyr)
 
-conv <- readRDS(file.path(PATHS$results_dir, "..", "convergence_summary.rds"))
+conv <- readRDS(PATHS$convergence)
 
 RHAT_MAX   <- 1.02
 ESS_MIN    <- 200     # relaxed from 256

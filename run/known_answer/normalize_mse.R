@@ -16,7 +16,10 @@
 library(dplyr)
 library(readr)
 
-ka <- readRDS(file.path(PATHS$results_dir, "known_answer", "known_answer_summary.rds"))
+source("R/core/_setup.R")
+source("run/shared/config_theme.R")
+
+ka <- readRDS(PATHS$known_answer)
 
 ka <- ka %>%
   mutate(
