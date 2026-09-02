@@ -2,6 +2,8 @@
 # Matches the visual style of the existing tree_accuracy/ figures (ggplot2, clean theme).
 # Reads from the already-merged tree_accuracy_summary / model_comparison_ranking outputs.
 
+source("R/core/_setup.R")
+source("run/shared/config_theme.R")
 library(dplyr)
 library(ggplot2)
 library(readr)
