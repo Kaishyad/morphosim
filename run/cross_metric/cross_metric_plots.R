@@ -10,9 +10,9 @@ if (is.null(scorecard) || is.null(cell_df)) {
   quit(save = "no")
 }
 
-# PLOT 1: Bump chart - rank concordance across metrics
+# plot 1: bump chart, rank concordance across metrics
 rank_cols <- grep("^rank_", colnames(scorecard), value = TRUE)
-#labels for whichever metrics happen to be present
+# labels for whichever metrics happen to be present
 metric_labels <- c(
   rank_median_cid          = "Tree accuracy\n(CID)",
   rank_mse_tree_len         = "Known-answer\nMSE (tree length)",
@@ -21,10 +21,9 @@ metric_labels <- c(
   rank_cov_error_rate_loss     = "Known-answer\ncoverage error (rate)",
   rank_pass_rate= "Convergence\npass rate",
   rank_mean_rhat_max= "Convergence\n(R-hat)",
-  rank_cov_error_cgr= "CGR\ncoverage error",
-  rank_prop_adequate= "PPS\nadequacy"
+  rank_cov_error_cgr= "CGR\ncoverage error"
 )
-#Keep tree accuracy first, then whatever else is present in a stable order
+# keep tree accuracy first, then whatever else is present in a stable order
 present_cols <- c("rank_median_cid",
                   setdiff(rank_cols, "rank_median_cid"))
 present_cols <- present_cols[present_cols %in% rank_cols]
@@ -58,7 +57,7 @@ if (length(present_cols) >= 2L) {
   message("Fewer than 2 rank_* columns available - skipping bump chart (plot 1).")
 }
 
-# PLOT 2: Composite scorecard heatmap - models x metrics, colored by rank
+# plot 2: composite scorecard heatmap, models x metrics, colored by rank
 if (length(present_cols) >= 2L) {
   heat_df <- scorecard %>%
     select(scenario, modelID, all_of(present_cols)) %>%
@@ -83,7 +82,7 @@ if (length(present_cols) >= 2L) {
   save_fig(p2, "17_composite_scorecard_heatmap", subdir = "cross_metric", width = 11, height = 7)
 }
 
-# PLOT 3: Model-level scatter - mean CID vs mean known-answer MSE,
+# plot 3: model-level scatter, mean cid vs mean known-answer mse
 if ("avg_mse_tree_len" %in% colnames(scorecard)) {
   scat_df <- scorecard %>% label_models()
 
@@ -120,7 +119,7 @@ if ("avg_mse_tree_len" %in% colnames(scorecard)) {
   message("avg_mse_tree_len not in scorecard - skipping plot 3 (need known_answer_summary.rds).")
 }
 
-# PLOT 4: Grid-cell-level - within each model, does CID track
+# plot 4: grid-cell-level, within each model does cid track known-answer mse
 if ("mse_tree_len" %in% colnames(cell_df)) {
   cell_plot_df <- cell_df %>%
     filter(!is.na(median_cid), !is.na(mse_tree_len)) %>%

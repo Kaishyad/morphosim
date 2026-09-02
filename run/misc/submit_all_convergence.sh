@@ -1,8 +1,5 @@
 #!/bin/bash
-
-
 # ./submit_all_convergence.sh [scenario] [max_trees]
-
 
 SCENARIO="${1:-mk}"
 MAX_TREES="${2:-}"

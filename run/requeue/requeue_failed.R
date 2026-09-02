@@ -1,9 +1,11 @@
-# Prepares the runs listed in results/requeue_list.txt (written bycheck_convergence.R / merge_convergence.R) for resubmission via slurm/Infer.R.
-
-# So a convergence-failed cell looks identical to a finished one and gets
-# skipped forever unless its existing output is moved out of the way first.
-#Rscript run/requeue_failed.R        dry run
-#Rscript run/requeue_failed.R --run    actual 
+# prepares the runs listed in results/requeue_list.txt (written by
+# check_convergence.R / merge_convergence.R) for resubmission via
+# slurm/Infer.R. a convergence-failed cell looks identical to a finished one
+# and gets skipped forever unless its existing output is moved out of the
+# way first.
+#
+# Rscript run/requeue_failed.R        dry run
+# Rscript run/requeue_failed.R --run  actual
 
 source("R/core/_setup.R")
 
@@ -66,7 +68,7 @@ cli::cli_alert_success(sprintf(
   if (do_move) paste(" to", archive_root) else "", missing
 ))
 
-# Print the Infer.R commands needed to pick these back up
+# print the Infer.R commands needed to pick these back up
 combos <- unique(run_df[, c("scenario", "modelID")])
 cli::cli_h2("Next: resubmit with Infer.R, scoped to the affected scenario/model combos")
 for (i in seq_len(nrow(combos))) {

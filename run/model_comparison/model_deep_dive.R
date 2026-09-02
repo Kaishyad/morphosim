@@ -1,5 +1,3 @@
-# model_deep_dive.R
-
 source("run/shared/config_theme.R")
 
 sum_df <- safe_read_rds(PATHS$tree_accuracy_sum)
@@ -7,7 +5,7 @@ if (is.null(sum_df)) quit(save = "no")
 
 sum_df <- sum_df %>% filter(!is.na(median_cid))
 
-# Sanity check: which models are actually present. This is printed
+# sanity check: which models are actually present
 present <- sum_df %>%
   distinct(scenario, modelID) %>%
   arrange(scenario, modelID)
@@ -19,7 +17,7 @@ for (s in unique(present$scenario)) {
 message("If a model you expect is missing above, this script cannot show it -- ",
        "re-run the upstream summarisation step for that model first.")
 
-# Best-to-worst model order, pooled across scenarios (same convention as 08)
+# best-to-worst model order, pooled across scenarios
 model_order <- sum_df %>%
   group_by(modelID) %>%
   summarise(mean_cid = mean(median_cid, na.rm = TRUE), .groups = "drop") %>%
@@ -34,7 +32,7 @@ model_colors <- setNames(model_palette(length(model_order)), MODEL_LABELS[model_
 mk_df <- sum_df %>% filter(scenario == "mk")
 nt_df <- sum_df %>% filter(scenario == "nt")
 
-# 1. OVERALL RANKING -- every model, both scenarios, full spread
+# 1. overall ranking -- every model, both scenarios, full spread
 p_rank <- ggplot(sum_df, aes(x = modelID_label, y = median_cid, fill = modelID_label)) +
   geom_boxplot(outlier.size = 0.8, alpha = 0.85) +
   stat_summary(fun = mean, geom = "point", shape = 23, size = 2, fill = "white") +
@@ -46,7 +44,7 @@ p_rank <- ggplot(sum_df, aes(x = modelID_label, y = median_cid, fill = modelID_l
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 save_fig(p_rank, "31_overall_model_ranking", subdir = "model_comparison", width = 12, height = 9)
 
-# 2. PARAMETER MAIN EFFECTS -- what actually differentiates models.
+# 2. parameter main effects -- what actually differentiates models
 .MainEffectPlot <- function(param, param_label) {
   df <- sum_df %>%
     group_by(scenario, modelID_label, .data[[param]]) %>%
@@ -83,7 +81,7 @@ if ("part_rate" %in% colnames(nt_df) && nrow(nt_df) > 0L) {
   save_fig(p_pr, "35_main_effect_part_rate_nt", subdir = "model_comparison", width = 11, height = 7)
 }
 
-# 3. MK vs NT -- does going NT actually help, model by model?
+# 3. mk vs nt -- does going nt actually help, model by model?
 nt_avg <- nt_df %>%
   group_by(modelID, modelID_label, tree_length, gain_loss, n_char) %>%
   summarise(median_cid_nt = mean(median_cid, na.rm = TRUE), .groups = "drop")
@@ -121,7 +119,7 @@ if (nrow(mk_vs_nt) > 0L) {
   save_fig(p_summary, "37_mk_vs_nt_win_rate", subdir = "model_comparison", width = 10, height = 7)
 }
 
-# 4. BEST PARAMETER COMBINATION PER MODEL -- one row per model,
+# 4. best parameter combination per model -- one row per model
 best_combo_per_model <- sum_df %>%
   group_by(scenario, modelID_label) %>%
   slice_min(median_cid, n = 1, with_ties = FALSE) %>%
@@ -148,25 +146,23 @@ readr::write_csv(
   file.path(PATHS$results_dir, "model_comparison", "best_combo_per_model.csv")
 )
 
-# 5. READABLE TABLES -- numbers overlaid on a heatmap (sorted,
+# 5. readable tables -- numbers overlaid on a heatmap (sorted, rounded)
 .ReadableTable <- function(df, param_cols, title, filename, width, height, subdir = "model_comparison") {
   df <- df %>%
     mutate(cell_label = do.call(paste, c(lapply(param_cols, function(p) sprintf("%s=%s", p, df[[p]])), sep = ", ")))
 
-  # Row order: FIX -- best (lowest mean CID = most accurate) at top, worst at
-  # bottom, matching the subtitle below. (ggplot puts factor level 1 at the
-  # bottom of a discrete y-axis, so "best first" needs a DESCENDING sort here
-  # to land best at the top.)
+  # row order: best (lowest mean cid) at top, worst at bottom, matching the
+  # subtitle below. ggplot puts factor level 1 at the bottom of a discrete
+  # y-axis, so "best first" needs a descending sort to land best at the top.
   row_order <- df %>%
     group_by(cell_label) %>%
     summarise(row_mean = mean(median_cid, na.rm = TRUE), .groups = "drop") %>%
     arrange(desc(row_mean)) %>%
     pull(cell_label)
 
-  # Column order: FIX -- computed from THIS table's own data only, not the
-  # single pooled ranking shared across every table (which was why every
-  # mk/nt/part_rate table showed the same model order regardless of what its
-  # own numbers said).
+  # column order: computed from this table's own data only, not a single
+  # pooled ranking shared across every table (which made every mk/nt/part_rate
+  # table show the same model order regardless of its own numbers)
   col_order <- df %>%
     group_by(modelID_label) %>%
     summarise(model_mean = mean(median_cid, na.rm = TRUE), .groups = "drop") %>%
@@ -188,7 +184,7 @@ readr::write_csv(
          panel.grid = element_blank())
   save_fig(p, filename, subdir = subdir, width = width, height = height)
 
-# Clean, sorted, rounded CSV to accompany the figure
+  # clean, sorted, rounded csv to accompany the figure
   wide_clean <- df %>%
     select(cell_label, modelID_label, median_cid) %>%
     mutate(median_cid = round(median_cid, 3)) %>%
@@ -214,9 +210,9 @@ if (nrow(nt_df) > 0L) {
   }
 }
 
-# 6. FINER READABLE TABLES -- same idea but split further by n_char too, so
+# 6. finer readable tables -- same idea but split further by n_char too, so
 # each table only has tree_length x gain_loss as rows (16 rows instead of
-# ~60). Saved in their own subfolder since there are a lot of them.
+# ~60). saved in their own subfolder since there are a lot of them.
 if (nrow(mk_df) > 0L) {
   for (nc in sort(unique(mk_df$n_char))) {
     sub <- mk_df %>% filter(n_char == nc)

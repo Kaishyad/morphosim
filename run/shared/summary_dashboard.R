@@ -1,4 +1,3 @@
-
 source("run/shared/config_theme.R")
 suppressPackageStartupMessages(library(patchwork))
 
@@ -13,7 +12,7 @@ if (is.null(acc) || is.null(conv)) {
 acc  <- acc  %>% rename(cid = median_cid) %>% label_models()
 conv <- conv %>% label_models()
 
-# CID by model/scenario (condensed)
+# panel a: cid by model/scenario (condensed)
 panelA <- ggplot(acc, aes(x = modelID, y = cid, fill = scenario)) +
   geom_boxplot(outlier.alpha = 0.25, width = 0.6, position = position_dodge(0.7)) +
   scale_fill_manual(values = SCENARIO_COLORS, name = NULL) +
@@ -21,7 +20,7 @@ panelA <- ggplot(acc, aes(x = modelID, y = cid, fill = scenario)) +
   labs(title = "A. Tree accuracy (CID)", x = NULL, y = "CID") +
   theme(legend.position = "top")
 
-#convergence pass-rate heatmap (condensed)
+# panel b: convergence pass-rate heatmap (condensed)
 pass_df <- conv %>%
   group_by(modelID, scenario) %>%
   summarise(pass_rate = mean(as.numeric(pass), na.rm = TRUE), .groups = "drop")
@@ -34,7 +33,7 @@ panelB <- ggplot(pass_df, aes(x = scenario, y = fct_rev(modelID), fill = pass_ra
   labs(title = "B. Convergence pass rate", x = NULL, y = NULL) +
   theme(panel.grid = element_blank(), legend.position = "top")
 
-# model ranking summary (mean CID) - absolute, no baseline
+# panel c: model ranking summary (mean cid), absolute, no baseline
 rank_df <- acc %>%
   group_by(modelID, scenario) %>%
   summarise(mean_cid = mean(cid), .groups = "drop")
@@ -46,7 +45,7 @@ panelC <- ggplot(rank_df, aes(x = fct_reorder(modelID, mean_cid, .fun = mean), y
   labs(title = "C. Mean accuracy ranking", x = NULL, y = "Mean CID") +
   theme(legend.position = "none")
 
-# grid-cell win counts - who's best, and how often, with
+# panel d: grid-cell win counts, who's best and how often
 sum_df <- safe_read_rds(PATHS$tree_accuracy_sum)
 
 if (!is.null(sum_df)) {

@@ -1,5 +1,3 @@
-# convergence_diagnostics.R
-
 source("run/shared/config_theme.R")
 
 df <- safe_read_rds(PATHS$convergence)
@@ -7,7 +5,7 @@ if (is.null(df)) quit(save = "no")
 
 df <- df %>% label_models()
 
-#PLOT 1: Convergence pass-rate heatmap (the "can we trust this" gate)
+# plot 1: convergence pass-rate heatmap (the "can we trust this" gate)
 pass_df <- df %>%
   group_by(modelID, scenario) %>%
   summarise(pass_rate = mean(as.numeric(pass), na.rm = TRUE), n = n(), .groups = "drop")
@@ -25,7 +23,7 @@ p1 <- ggplot(pass_df, aes(x = scenario, y = fct_rev(modelID), fill = pass_rate))
   theme(panel.grid = element_blank())
 save_fig(p1, "06_convergence_pass_rate_heatmap", subdir = "convergence", width = 6, height = 7)
 
-#PLOT 2: R-hat distribution with the pipeline's own threshold line
+# plot 2: r-hat distribution with the pipeline's own threshold line
 p2 <- ggplot(df, aes(x = modelID, y = rhat_max, color = scenario)) +
   geom_hline(yintercept = RHAT_MAX, linetype = "dashed", color = "grey40") +
   geom_jitter(width = 0.15, alpha = 0.35, size = 0.8) +
@@ -40,7 +38,7 @@ p2 <- ggplot(df, aes(x = modelID, y = rhat_max, color = scenario)) +
   )
 save_fig(p2, "07_rhat_by_model", subdir = "convergence", height = 7)
 
-#PLOT 3: ESS distribution (log scale, pipeline's ESS_MIN reference)
+# plot 3: ess distribution (log scale, pipeline's ess_min reference)
 p3 <- ggplot(df, aes(x = modelID, y = ess_min, color = scenario)) +
   geom_hline(yintercept = ESS_MIN, linetype = "dashed", color = "grey40") +
   geom_jitter(width = 0.15, alpha = 0.35, size = 0.8) +
@@ -56,7 +54,7 @@ p3 <- ggplot(df, aes(x = modelID, y = ess_min, color = scenario)) +
   )
 save_fig(p3, "08_ess_by_model", subdir = "convergence", height = 7)
 
-#PLOT 4: ASDSF distribution (MC^3 chain agreement)
+# plot 4: asdsf distribution (mc3 chain agreement)
 p4 <- ggplot(df, aes(x = modelID, y = asdsf, color = scenario)) +
   geom_hline(yintercept = ASDSF_MAX, linetype = "dashed", color = "grey40") +
   geom_jitter(width = 0.15, alpha = 0.35, size = 0.8) +
@@ -71,7 +69,7 @@ p4 <- ggplot(df, aes(x = modelID, y = asdsf, color = scenario)) +
   )
 save_fig(p4, "09_asdsf_by_model", subdir = "convergence", height = 7)
 
-#PLOT 5: Tree ESS vs scalar ESS -- move-schedule diagnostic already
+# plot 5: tree ess vs scalar ess (move-schedule diagnostic)
 has_tree_ess <- df %>% filter(!is.na(tree_ess), !is.na(ess_min))
 if (nrow(has_tree_ess) > 0L) {
   p5 <- ggplot(has_tree_ess, aes(x = ess_min, y = tree_ess, color = scenario)) +
@@ -88,7 +86,7 @@ if (nrow(has_tree_ess) > 0L) {
   save_fig(p5, "10_tree_ess_vs_scalar_ess", subdir = "convergence", height = 5.5)
 }
 
-#PLOT 6: Does poor convergence predict poor tree accuracy?
+# plot 6: does poor convergence predict poor tree accuracy?
 acc <- safe_read_rds(PATHS$tree_accuracy_rep)
 if (!is.null(acc)) {
   acc <- acc %>% rename(cid = median_cid)

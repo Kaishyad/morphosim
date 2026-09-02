@@ -1,5 +1,4 @@
-# Computes Spearman's rank correlation between imputation accuracy and
-# topological accuracy (CID) across the model space, with bootstrap CIs.
+# Computes Spearman's rank correlation between imputation accuracy and topological accuracy (CID) across the model space, with bootstrap CIs.
 
 source("R/core/_setup.R")
 source("R/analysis/Correlation.R")
@@ -8,7 +7,7 @@ source("R/analysis/Correlation.R")
 args_cli      <- commandArgs(trailingOnly = TRUE)
 scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
 
-# FIX: accept --scenario flag instead of hardcoding "nt"
+# accept --scenario flag instead of hardcoding "nt"
 SCENARIO    <- if (!is.na(scenario_flag[1])) scenario_flag else "nt"
 BOOTSTRAP_B <- 1000L
 
@@ -40,7 +39,7 @@ cli::cli_alert_info(
   "Loaded CID data: {nrow(cid_data)} rows; imputation data: {nrow(acc_data)} rows."
 )
 
-# --- Compute correlations ---
+#Compute correlations
 
 cli::cli_h1("Computing Spearman correlations (B = {BOOTSTRAP_B} bootstrap resamples)")
 
@@ -62,7 +61,6 @@ if (is.null(corr_df) || nrow(corr_df) == 0L) {
 }
 
 # --- Join grid parameters ---
-# FIX: use ScenarioGrid(SCENARIO) not PARAM_GRID
 grid            <- ScenarioGrid(SCENARIO)
 grid$gridTag    <- apply(grid, 1, function(r) GridTag(as.list(r)))
 corr_df         <- merge(corr_df, grid, by = "gridTag", all.x = TRUE)

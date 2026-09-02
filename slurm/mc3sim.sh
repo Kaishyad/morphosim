@@ -1,5 +1,5 @@
 #!/bin/bash
-#SLURM for inference
+# slurm template for inference
 
 #SBATCH -n 16
 #SBATCH --mem=4G
@@ -11,14 +11,11 @@
 #SBATCH -p shared
 #SBATCH --export=ALL
 
-# Under sbatch, SLURM copies this script into a job-specific spool directory
-# before executing it, so ${BASH_SOURCE[0]} no longer points at its real
-# location in the repo -- config.sh would silently fail to source (MATRIX_DIR/
-# MORPHOSIM_DIR/BRANCH stay unset) and any $MATRIX_DIR-based cd/git command
-# later in this script would then operate on the wrong directory. SLURM sets
-# SLURM_SUBMIT_DIR to the directory `sbatch` was run from, which is what we
-# actually want. Fall back to BASH_SOURCE-based resolution for the case where
-# this script is run directly (not via sbatch).
+# under sbatch, slurm copies this script into a job-specific spool directory
+# before running it, so BASH_SOURCE no longer points at its real repo
+# location and config.sh would fail to source. SLURM_SUBMIT_DIR is the
+# directory sbatch was run from, which is what we want; fall back to
+# BASH_SOURCE resolution when this script is run directly (not via sbatch).
 if [ -n "$SLURM_SUBMIT_DIR" ]; then
   SCRIPT_DIR="$SLURM_SUBMIT_DIR/slurm"
 else
@@ -26,12 +23,12 @@ else
 fi
 source "$SCRIPT_DIR/config.sh"
 
-# --- Paths
+# paths
 RB=~/diss/revbayes/projects/cmake/build-mpi/rb-mpi
 MORPHOSIM="$MORPHOSIM_DIR"
 MATRIX="$MATRIX_DIR"
 
-# Simulation directory: scenario / grid tag / replicate
+# simulation directory: scenario / grid tag / replicate
 SIM_SUBDIR=simulations/%SIMSCENARIO%/%GRID_TAG%/%SIMREP%
 
 module load gcc/11.2
@@ -56,7 +53,7 @@ mpirun $RB \
 
 echo "Inference complete at $(date)"
 
-#--- Compress tree files
+# compress tree files
 cd $MATRIX/$SIM_SUBDIR
 for file in %SCRIPTID%_run_*.trees; do
   [ -f "$file" ] && \
@@ -64,10 +61,10 @@ for file in %SCRIPTID%_run_*.trees; do
     rm "$file"
 done
 
-#Record temp disk usage
+# record temp disk usage
 du -hs $TMPDIR > mc3-tmpdir_usage_%SCRIPTID%.log 2>/dev/null || true
 
-# --- Push outputs to the-matrix
+# push outputs to the-matrix
 cd $MATRIX
 git add $SIM_SUBDIR/
 git commit -m "Inference: %SIMSCENARIO%/%GRID_TAG%/%SIMREP%/%SCRIPTID%" || true

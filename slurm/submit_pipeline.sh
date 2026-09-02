@@ -1,30 +1,28 @@
 #!/bin/bash
-# Under sbatch, SLURM copies this script into a job-specific spool directory
-# before executing it, so ${BASH_SOURCE[0]} no longer points at its real
-# location in the repo -- config.sh would silently fail to source (MATRIX_DIR/
-# MORPHOSIM_DIR/BRANCH stay unset) and any $MATRIX_DIR-based cd/git command
-# later in this script would then operate on the wrong directory. SLURM sets
-# SLURM_SUBMIT_DIR to the directory `sbatch` was run from, which is what we
-# actually want. Fall back to BASH_SOURCE-based resolution for the case where
-# this script is run directly (not via sbatch).
+# under sbatch, slurm copies this script into a job-specific spool directory
+# before running it, so BASH_SOURCE no longer points at its real repo
+# location and config.sh would fail to source. SLURM_SUBMIT_DIR is the
+# directory sbatch was run from, which is what we want; fall back to
+# BASH_SOURCE resolution when this script is run directly (not via sbatch).
 if [ -n "$SLURM_SUBMIT_DIR" ]; then
   SCRIPT_DIR="$SLURM_SUBMIT_DIR/slurm"
 else
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 source "$SCRIPT_DIR/config.sh"
-#bash submit_pipeline.sh   # uses CONV_JOB=17872509 below
-#bash submit_pipeline.sh 17872509   # or pass the convergence job ID explicitly
+# bash submit_pipeline.sh                  # uses CONV_JOB=17872509 below
+# bash submit_pipeline.sh 17872509         # or pass the convergence job ID explicitly
 set -e
 cd "$MORPHOSIM_DIR"
 CONV_JOB="${1:-18237359}"
-# model12 excluded -- its final jobs keep cancelling on submit. Add it back
+# model12 excluded -- its final jobs keep cancelling on submit. add it back
 # once a full run actually completes (640/640 mk, 1920/1920 nt).
 MODELS=(model1 model2 model3 model4 model5 model6 model7 model8 model9 model10 model11 model12)
 SCENARIOS=(mk nt)
 echo "Chaining everything after convergence job $CONV_JOB"
 echo ""
-#merge + push convergence results.
+
+# [0] merge + push convergence results
 if squeue -h -j "$CONV_JOB" 2>/dev/null | grep -q .; then
   echo "Job $CONV_JOB is still live in the scheduler -- will wait for it."
   merge_conv_jid=$(sbatch --parsable --dependency=afterok:$CONV_JOB slurm/merge_and_push.sh)
@@ -33,7 +31,8 @@ else
   merge_conv_jid=$(sbatch --parsable slurm/merge_and_push.sh)
 fi
 echo "[0] merge_convergence (merge_and_push.sh): $merge_conv_jid"
-# tree accuracy 
+
+# [1] tree accuracy
 tree_all_ids=""
 for scenario in "${SCENARIOS[@]}"; do
   for model in "${MODELS[@]}"; do
@@ -43,11 +42,11 @@ for scenario in "${SCENARIOS[@]}"; do
   done
 done
 tree_all_ids="${tree_all_ids#:}"
-# if one or two models fail
-merge_tree_jid=$(sbatch --parsable --dependency=afterany:$tree_all_ids slurm/merge_tree_accuracy.sh)
+merge_tree_jid=$(sbatch --parsable --dependency=afterany:$tree_all_ids slurm/merge_tree_accuracy.sh)   # afterany: still merges if one or two models fail
 echo "[1] merge_tree_accuracy: $merge_tree_jid"
 echo ""
-# known-answer coverage 
+
+# [2] known-answer coverage
 ka_all_ids=""
 for scenario in "${SCENARIOS[@]}"; do
   for model in "${MODELS[@]}"; do
@@ -60,24 +59,29 @@ ka_all_ids="${ka_all_ids#:}"
 merge_ka_jid=$(sbatch --parsable --dependency=afterany:$ka_all_ids slurm/merge_known_answer.sh)
 echo "[2] merge_known_answer: $merge_ka_jid"
 echo ""
-# CGR/SBC calibration 
+
+# [3] cgr/sbc calibration
 cgr_jid=$(sbatch --parsable --dependency=afterok:$merge_conv_jid slurm/run_validate_cgr.sh)
 echo "[3] validate_cgr: $cgr_jid"
 echo ""
-# GAM thresholds 
+
+# [4] gam thresholds
 gam_mk_jid=$(sbatch --parsable --dependency=afterok:$merge_tree_jid slurm/run_gam_threshold.sh mk)
 gam_nt_jid=$(sbatch --parsable --dependency=afterok:$merge_tree_jid slurm/run_gam_threshold.sh nt)
 echo "[4] gam_threshold mk: $gam_mk_jid"
 echo "[4] gam_threshold nt: $gam_nt_jid"
-# model comparison
+
+# [5] model comparison
 mc_jid=$(sbatch --parsable --dependency=afterok:$merge_tree_jid slurm/run_model_comparison.sh)
 echo "[5] model_comparison: $mc_jid"
 echo ""
-#cross-metric analysis 
+
+# [6] cross-metric analysis
 cross_jid=$(sbatch --parsable --dependency=afterok:$merge_tree_jid:$merge_ka_jid:$cgr_jid slurm/run_cross_metric_analysis.sh)
 echo "[6] cross_metric_analysis: $cross_jid"
 echo ""
-#figures
+
+# [7] figures
 viz_jid=$(sbatch --parsable --dependency=afterok:$cross_jid:$gam_mk_jid:$gam_nt_jid:$mc_jid slurm/run_viz.sh)
 echo "[7] viz: $viz_jid"
 echo ""

@@ -1,32 +1,17 @@
-#Simulation-based calibration (Cook, Gelman & Rubin 2006).
+# simulation-based calibration (cook, gelman & rubin 2006)
 
-#' Map a model ID to its logged gain/loss rate parameter column
-#' No model logs a column literally called "rate_loss" 
-#' @param modelID 
-#' @return Character vector of column name
-#' @export
+# maps a model id to its logged gain/loss rate parameter column(s)
 RateLossParams <- function(modelID) {
   switch(modelID,
     model1  = character(0),
     model2  = "gain_loss_ratio",
     model3  = "gain_loss_ratio",
-    c("gain_loss_neo", "gain_loss_trans")  #default: all two-partition models
+    c("gain_loss_neo", "gain_loss_trans")  # default: all two-partition models
   )
 }
 
-#' Extract posterior credible interval for a named parameter
-#'
-#' Reads the stochastic-only .p.log file for a replicate, pools both runs, and returns the 2.5th and 97.5th percentiles.
-#'
-#' @param scenario 
-#' @param gridTag   
-#' @param repID    
-#' @param modelID  
-#' @param parameter 
-#' @param nRuns     
-#' @param burnFrac  
-#' @return Numeric vector of length 2: c(lower, upper) credible interval bounds,  or NULL if the log file does not exist.
-#' @export
+# reads the stochastic-only .p.log file for a replicate, pools both runs,
+# and returns the 2.5th/97.5th percentiles as the credible interval
 CredibleInterval <- function(scenario, gridTag, repID, modelID,
                              parameter, nRuns = 2, burnFrac = 0.1) {
   samples <- unlist(lapply(seq_len(nRuns), function(run) {
@@ -45,26 +30,13 @@ CredibleInterval <- function(scenario, gridTag, repID, modelID,
   quantile(samples, c(0.025, 0.975), na.rm = TRUE)
 }
 
-#' Test whether a credible interval contains the true value
-#' @param ci    Numeric vector of length 2 from CredibleInterval()
-#' @param trueValue Known true parameter value from the simulation design
-#' @return Logical TRUE if trueValue falls within ci, FALSE otherwise, NA if ci is NULL
-#' @export
+# does a credible interval contain the true value?
 CoversTrue <- function(ci, trueValue) {
   if (is.null(ci)) return(NA)
   ci[[1]] <= trueValue && trueValue <= ci[[2]]
 }
 
-#' Empirical coverage rate across replicates in one grid cell
-#'
-#' @param scenario  
-#' @param gridTag   
-#' @param modelID   
-#' @param parameter 
-#' @param trueValue
-#' @param nRep  
-#' @return Scalar proportion of replicates where CI covers trueValue
-#' @export
+# empirical coverage rate across replicates in one grid cell
 CoverageRate <- function(scenario, gridTag, modelID,
                          parameter, trueValue,
                          nRep = N_REP) {
@@ -77,22 +49,13 @@ CoverageRate <- function(scenario, gridTag, modelID,
   mean(covers, na.rm = TRUE)
 }
 
-#' Known-answer summary across all grid cells
-#' True values come from the simulation design:
-#' tree_length = grid row value
-#' rate_loss   = 1 / gain_loss
-#'
-#' @param modelID  
-#' @param scenario 
-#' @param grid     
-#' @param nRep     
-#' @return Data frame with coverage rates and MSE for both focal parameters across all grid cells.
-#' @export
-KnownAnswerSummary <- function(modelID  = "model1", scenario = "mk",grid= ScenarioGrid(scenario), nRep= N_REP) {
+# known-answer summary across all grid cells. true values come from the
+# simulation design: tree_length = grid row value, rate_loss = 1 / gain_loss
+KnownAnswerSummary <- function(modelID = "model1", scenario = "mk", grid = ScenarioGrid(scenario), nRep = N_REP) {
   rows <- vector("list", nrow(grid))
   rateLossCols <- RateLossParams(modelID)
 
-  #Mean squared error of posterior mean vs true value
+  # mean squared error of posterior mean vs true value
   .MSE <- function(scenario, gridTag, modelID, parameter, trueVal, nRep) {
     postMeans <- vapply(seq_len(nRep), function(rep) {
       repID <- SimID(rep)
@@ -112,7 +75,7 @@ KnownAnswerSummary <- function(modelID  = "model1", scenario = "mk",grid= Scenar
     gridTag <- GridTag(row)
 
     trueTreeLen  <- row$tree_length
-    trueRateLoss <- 1 / row$gain_loss  #rate_loss = 1 / gain_loss in sim scripts
+    trueRateLoss <- 1 / row$gain_loss  # rate_loss = 1 / gain_loss in sim scripts
 
     covTreeLen <- CoverageRate(scenario, gridTag, modelID,
                                "tree_length", trueTreeLen, nRep)
@@ -130,13 +93,14 @@ KnownAnswerSummary <- function(modelID  = "model1", scenario = "mk",grid= Scenar
     )
 
     if (length(rateLossCols) == 0L) {
-      #model1: no free rate parameter to test (fixed fnJC symmetric Q)
+      # model1: no free rate parameter to test (fixed fnJC symmetric Q)
       baseRow$rate_param    <- NA_character_
       baseRow$cov_rate_loss <- NA_real_
       baseRow$mse_rate_loss <- NA_real_
       rows[[gi]] <- baseRow
     } else {
-      # One row per logged rate-parameter column (1 for single-partition asymmetric models, 2 for two-partition models)
+      # one row per logged rate-parameter column (1 for single-partition
+      # asymmetric models, 2 for two-partition models)
       perParam <- lapply(rateLossCols, function(col) {
         r <- baseRow
         r$rate_param    <- col
@@ -153,15 +117,7 @@ KnownAnswerSummary <- function(modelID  = "model1", scenario = "mk",grid= Scenar
   do.call(rbind, rows)
 }
 
-#' Prior vs posterior visualisation for a single replicate
-#' @param scenario  
-#' @param gridTag  
-#' @param repID     
-#' @param modelID   
-#' @param parameter 
-#' @param priorMean Mean of lognormal prior on the log scale (default 0)
-#' @param priorSD   SD of lognormal prior on the log scale (default 2)
-#' @export
+# prior vs posterior visualisation for a single replicate
 PriorVsPost <- function(scenario, gridTag, repID, modelID,
                         parameter  = "rate_loss",
                         priorMean  = 0,

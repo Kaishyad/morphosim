@@ -1,23 +1,18 @@
-# Five extra results figures for the dissertation write-up.
-# Run from the morphosim repo root:
+# five extra results figures for the dissertation write-up. reuses existing
+# pipeline outputs under $MATRIX_DIR/results/ (see run/shared/config_theme.R
+# for PATHS) and the ComputeImprovement / FitThresholdGAM / ExtractThreshold
+# helpers already used by run/gam_threshold/gam_threshold.R - no new
+# data-generating logic here, only plotting.
+#
+# run from the morphosim repo root:
 #   Rscript run/misc/results_figures_extra.R
 #
-# Reuses the existing pipeline outputs under $MATRIX_DIR/results/ (see
-# run/shared/config_theme.R for PATHS) and the ComputeImprovement /
-# FitThresholdGAM / ExtractThreshold helpers already used by
-# run/gam_threshold/gam_threshold.R -- no new data-generating logic here,
-# only plotting.
+# writes png + pdf to both $MATRIX_DIR/figures/misc/ and
+# <morphosim repo root>/figures/misc/.
 #
-# Output: PNG + PDF saved to TWO places so they're available in both repos:
-#   1. $MATRIX_DIR/figures/misc/            (the-matrix, data repo)
-#   2. <morphosim repo root>/figures/misc/  (this repo, for the write-up)
-#
-# Figures produced:
-#   1. convergence_pass_rate_heatmap_<mk|nt>.png  -- model x grid-axis pass rate
-#   2. cid_boxplots_by_model.png                  -- CID distributions by model x scenario
-#   3. gam_threshold_curves_<mk|nt>.png           -- per-model marginal smooths + zero-crossing
-#   4. calibration_plot.png                       -- nominal vs observed coverage, MSE as size
-#   5. convergence_diagnostic_scatter_<mk|nt>.png -- ASDSF vs rank-normalised R-hat by grid cell
+# figures: convergence_pass_rate_heatmap_<mk|nt>, cid_boxplots_by_model,
+# gam_threshold_curves_<mk|nt>, calibration_plot,
+# convergence_diagnostic_scatter_<mk|nt>
 
 source("run/shared/config_theme.R")
 suppressPackageStartupMessages({
@@ -30,7 +25,6 @@ FIG_DIR_LOCAL  <- file.path("figures", "misc")   # relative to morphosim repo ro
 dir.create(FIG_DIR_MATRIX, showWarnings = FALSE, recursive = TRUE)
 dir.create(FIG_DIR_LOCAL,  showWarnings = FALSE, recursive = TRUE)
 
-# Saves to both output locations in one call.
 save_fig_both <- function(plot, name, width = 9, height = 6, dpi = 300) {
   for (dir in c(FIG_DIR_MATRIX, FIG_DIR_LOCAL)) {
     for (fmt in c("png", "pdf")) {
@@ -41,10 +35,10 @@ save_fig_both <- function(plot, name, width = 9, height = 6, dpi = 300) {
   message("Saved: ", name, " -> ", FIG_DIR_MATRIX, " and ", FIG_DIR_LOCAL)
 }
 
-# gridTag looks like "tl1.00_gl0.10_c25" (mk) or "tl1.00_gl0.10_pr1.00_c25" (nt).
-# Convergence data only carries gridTag as a string, so parse the axes out of
-# it directly rather than re-deriving via ScenarioGrid() (keeps this script
-# self-contained and robust to partial/incomplete grids).
+# gridTag looks like "tl1.00_gl0.10_c25" (mk) or "tl1.00_gl0.10_pr1.00_c25"
+# (nt). convergence data only carries gridTag as a string, so the axes are
+# parsed out directly rather than re-derived via ScenarioGrid() - keeps this
+# script self-contained and robust to partial/incomplete grids.
 parse_grid_tag <- function(df) {
   df$tree_length <- as.numeric(sub(".*tl([0-9.]+)_.*", "\\1", df$gridTag))
   df$gain_loss   <- as.numeric(sub(".*gl([0-9.]+)_.*", "\\1", df$gridTag))
@@ -53,9 +47,7 @@ parse_grid_tag <- function(df) {
   df
 }
 
-# ---------------------------------------------------------------------------
-# 1. Convergence pass-rate heatmap (model x characters-per-taxon, per scenario)
-# ---------------------------------------------------------------------------
+# 1. convergence pass-rate heatmap (model x characters-per-taxon, per scenario)
 conv <- safe_read_rds(PATHS$convergence)
 
 if (is.null(conv)) {
@@ -84,9 +76,7 @@ if (is.null(conv)) {
     save_fig_both(p1, sprintf("convergence_pass_rate_heatmap_%s", scen))
   }
 
-  # -------------------------------------------------------------------------
-  # 5. ASDSF vs rank-normalised R-hat diagnostic scatter, per scenario
-  # -------------------------------------------------------------------------
+  # 5. asdsf vs rank-normalised r-hat diagnostic scatter, per scenario
   for (scen in unique(conv$scenario)) {
     d <- conv[conv$scenario == scen, ]
     d <- label_models(d, "modelID")
@@ -108,9 +98,7 @@ if (is.null(conv)) {
   }
 }
 
-# ---------------------------------------------------------------------------
-# 2. CID boxplots by model, faceted by generative scenario
-# ---------------------------------------------------------------------------
+# 2. cid boxplots by model, faceted by generative scenario
 cid_rep <- safe_read_rds(PATHS$tree_accuracy_rep)
 
 if (is.null(cid_rep)) {
@@ -132,9 +120,7 @@ if (is.null(cid_rep)) {
   save_fig_both(p2, "cid_boxplots_by_model", height = 8)
 }
 
-# ---------------------------------------------------------------------------
-# 3. GAM threshold curves: one panel per model, per scenario, per predictor
-# ---------------------------------------------------------------------------
+# 3. gam threshold curves: one panel per model, per scenario, per predictor
 if (is.null(cid_rep)) {
   message("Skipping figure 3 (needs tree_accuracy_per_rep.rds).")
 } else {
@@ -204,9 +190,7 @@ if (is.null(cid_rep)) {
   }
 }
 
-# ---------------------------------------------------------------------------
-# 4. Calibration plot: nominal vs observed coverage, MSE as point size
-# ---------------------------------------------------------------------------
+# 4. calibration plot: nominal vs observed coverage, mse as point size
 ka <- safe_read_rds(PATHS$known_answer)
 
 if (is.null(ka)) {

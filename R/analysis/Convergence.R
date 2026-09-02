@@ -1,22 +1,11 @@
-# MCMC convergence diagnostics for inference runs
+#mcmc convergence diagnostics for inference runs:
+#rank-normalised r-hat < RHAT_MAX, ess > ESS_MIN for all continuous
+#parameters, asdsf < ASDSF_MAX across paired tree files
 
-#Rank-normalised R-hat < RHAT_MAX
-# ESS > ESS_MIN for all continuous parameters
-#ASDSF < ASDSF_MAX across paired tree files
-
-
-#' Rank-normalised split R-hat (Vehtari et al. 2021)
-#'
-#' Reads the .p.log file for each run, splits each chain's samples in half, rank-normalises all splits, then computes the standard Gelman-Rubin
-#' variance ratio. Sensitive to convergence failures in heavy-tailed posteriors that standard PSRF can miss.
-#'
-#' @param scenario  
-#' @param gridTag   
-#' @param repID     
-#' @param modelID   
-#' @param nRuns    
-#' @return Named numeric vector of R-hat values, one per parameter.
-#' @export
+# rank-normalised split r-hat (vehtari et al. 2021). reads the .p.log file
+# for each run, splits each chain's samples in half, rank-normalises all
+# splits, then computes the standard gelman-rubin variance ratio - catches
+# convergence failures in heavy-tailed posteriors that plain psrf can miss.
 ComputeRhat <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   logs <- lapply(seq_len(nRuns), function(run) {
     f <- ParamLogFile(scenario, gridTag, repID, modelID, run)
@@ -29,17 +18,17 @@ ComputeRhat <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
     return(NULL)
   }
 
-  #Drop iteration column; keep only numeric parameters
+  # drop iteration column; keep only numeric parameters
   params <- intersect(colnames(logs[[1]]), colnames(logs[[2]]))
   params <- params[params != "Iteration"]
 
-  #Rank-normalise: convert each chain's samples to normal scores
+  # rank-normalise: convert each chain's samples to normal scores
   .RankNorm <- function(x) {
     r <- rank(x, ties.method = "average")
     qnorm((r - 0.375) / (length(r) + 0.25))
   }
 
-  #Split each run in half to create 2*nRuns chains
+  # split each run in half to create 2*nRuns chains
   chains <- unlist(lapply(logs, function(log) {
     n   <- nrow(log)
     mid <- floor(n / 2)
@@ -57,15 +46,8 @@ ComputeRhat <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   }, numeric(1))
 }
 
-
-
-#' Effective Sample Size per parameter
-#' Uses the autocorrelation-based ESS estimate. Flags parameters below ESS_MIN
-#'
-#'
-#' @inheritParams ComputeRhat
-#' @return Named numeric vector of ESS values.
-#' @export
+# effective sample size per parameter, via the autocorrelation-based
+# estimator; flags parameters below ESS_MIN
 ComputeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   logs <- lapply(seq_len(nRuns), function(run) {
     f <- ParamLogFile(scenario, gridTag, repID, modelID, run)
@@ -83,7 +65,7 @@ ComputeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   .ESS1 <- function(x) {
     n  <- length(x)
     ac <- acf(x, lag.max = n - 1, plot = FALSE)$acf[-1]
-    #Geyer's initial positive sequence estimator
+    # geyer's initial positive sequence estimator
     pairs   <- ac[seq(1, length(ac) - 1, 2)] + ac[seq(2, length(ac), 2)]
     cutoff  <- which(pairs < 0)[1]
     if (is.na(cutoff)) cutoff <- length(pairs)
@@ -91,23 +73,15 @@ ComputeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
     max(1, n / rho_sum)
   }
 
-  #Pool ESS across runs (sum of independent ESS values)
+  # pool ess across runs (sum of independent ess values)
   vapply(params, function(p) {
     ess_per_run <- vapply(logs, function(log) .ESS1(log[[p]]), numeric(1))
     sum(ess_per_run)
   }, numeric(1))
 }
 
-
-
-#' Load and parse posterior tree samples for one run, with cleanup
-#'
-#'works tree-file extraction so it happens once per run regardless of how many downstream diagnostics need the trees. Extracted tempfiles under TmpDir() are always removed on exit via on.exit().
-#'
-#' @inheritParams ComputeRhat
-#' @param run Integer run index (1 or 2).
-#' @return A `multiPhylo` object, or NULL if no tree file exists or parsing failed.
-#' @keywords internal
+# loads posterior tree samples for one run. extracted tempfiles under
+# TmpDir() are always removed on exit.
 .LoadTrees <- function(scenario, gridTag, repID, modelID, run) {
   gz <- TreeGzFile(scenario, gridTag, repID, modelID, run)
   tr <- sub("\\.tar\\.gz$", ".trees", gz)
@@ -124,18 +98,11 @@ ComputeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   }
 }
 
-#' Average Standard Deviation of Split Frequencies
-#'
-#' Computes the mean absolute difference in clade posterior probabilities between two independent runs (Lakner et al. 2008). Values < ASDSF_MAX
-#' indicate topological convergence.
-#'
-#' Takes pre-loaded tree lists via `treesList` through .LoadTrees(), called once per run from CheckConvergence()), or loads trees itself if `treesList` is NULL.
-#'
-#' @inheritParams ComputeRhat
-#' @param treesList Optional list of length nRuns of pre-loaded
-#'   `multiPhylo` 
-#' @return Scalar ASDSF value
-#' @export
+# average standard deviation of split frequencies (lakner et al. 2008): mean
+# absolute difference in clade posterior probabilities between two
+# independent runs. values < ASDSF_MAX indicate topological convergence.
+# takes pre-loaded tree lists via treesList (shared with ComputeTreeESS from
+# CheckConvergence()), or loads trees itself if treesList is NULL.
 ComputeASDSF <- function(scenario, gridTag, repID, modelID, nRuns = 2,
                           treesList = NULL) {
   if (nRuns != 2) stop("ASDSF requires exactly 2 runs")
@@ -172,22 +139,14 @@ ComputeASDSF <- function(scenario, gridTag, repID, modelID, nRuns = 2,
   mean(abs(f1 - f2))
 }
 
-
-
-#Distance-based tree topology ESS
-
-#' Run an expression with a wall-clock timeout
-#' @param expr  Expression to evaluate.
-#' @param seconds     Wall-clock timeout in seconds.
-#' @param on_timeout  Value to return if the timeout is hit.
-#' @keywords internal
+# runs an expression with a wall-clock timeout
 .WithTimeout <- function(expr, seconds, on_timeout = NA_real_) {
   result <- on_timeout
   withCallingHandlers(
     tryCatch({
       setTimeLimit(elapsed = seconds, transient = TRUE)
       result <- expr
-      setTimeLimit() #reset
+      setTimeLimit() # reset
       result
     }, error = function(e) {
       setTimeLimit() # always reset, even on error
@@ -204,20 +163,12 @@ ComputeASDSF <- function(scenario, gridTag, repID, modelID, nRuns = 2,
   )
 }
 
-#' Distance-based tree topology ESS
-#'
-#' Estimates ESS for tree topology by computing pairwise CID distances across
-#' the posterior sample, then applying Geyer's autocorrelation ESS estimator
-#' to the mean distance series. Pools across runs by summing independent ESS
-#' values, consistent with ComputeESS().
-#'
-#' Pairwise distance computation is O(n^2), so each run is wrapped in a wall-clock timeout 
-#' @inheritParams ComputeRhat
-#' @param timeoutSec Per-run wall-clock timeout in seconds 
-#' @param treesList Optional list of length nRuns of pre-loaded
-#'   `multiPhylo` 
-#' @return Scalar tree topology ESS , or NA if tree files are missing or the computation timed out on all runs.
-#' @export
+# distance-based tree topology ess. estimates ess for tree topology by
+# computing pairwise cid distances across the posterior sample, then
+# applying geyer's autocorrelation ess estimator to the mean distance
+# series; pools across runs by summing independent ess values, consistent
+# with ComputeESS(). pairwise distance computation is O(n^2), so each run is
+# wrapped in a wall-clock timeout.
 ComputeTreeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2,
                             timeoutSec = if (exists("TREE_ESS_TIMEOUT_SEC")) TREE_ESS_TIMEOUT_SEC else 60,
                             treesList = NULL) {
@@ -237,14 +188,14 @@ ComputeTreeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2,
 
     if (is.null(trees) || length(trees) < 4) return(NA_real_)
 
-    #cap trees used for the O(n^2) distance matrix, evenly spaced
+    # cap trees used for the O(n^2) distance matrix, evenly spaced
     MAX_TREES_FOR_DIST <- if (exists("TREE_ESS_MAX_TREES")) TREE_ESS_MAX_TREES else 1000L
     if (length(trees) > MAX_TREES_FOR_DIST) {
       idx   <- round(seq(1, length(trees), length.out = MAX_TREES_FOR_DIST))
       trees <- trees[idx]
     }
 
-    #mean CID distance from each tree to all others 
+    # mean cid distance from each tree to all others
     dmat    <- TreeDist::ClusteringInfoDistance(trees)
     mn_dist <- rowMeans(as.matrix(dmat))
     .ESS1(mn_dist)
@@ -258,29 +209,14 @@ ComputeTreeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2,
   sum(ess_per_run, na.rm = TRUE)
 }
 
-
-
-
-#' Check convergence for one inference run
-#'
-#' Combines R-hat, ESS, ASDSF, and tree topology ESS into a single pass/failwith a summary list.  file to the-matrix/diagnostics/
-#'
-#' @inheritParams ComputeRhat
-#' @return Named list with elements:
-#'   \item{pass}{Logical: TRUE if all three criteria met.}
-#'   \item{rhat}{Named vector of R-hat values.}
-#'   \item{ess}{Named vector of scalar parameter ESS values.}
-#'   \item{tree_ess}{Scalar tree topology ESS (pooled across runs).}
-#'   \item{asdsf}{Scalar ASDSF.}
-#'   \item{rhat_pass}{Logical: max R-hat < RHAT_MAX.}
-#'   \item{ess_pass}{Logical: min ESS > ESS_MIN.}
-#'   \item{asdsf_pass}{Logical: ASDSF < ASDSF_MAX.}
-#' @export
+# checks convergence for one inference run: combines r-hat, ess, asdsf, and
+# tree topology ess into a single pass/fail with a summary list, and writes
+# a diagnostic file to the-matrix/diagnostics/
 CheckConvergence <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   rhat <- ComputeRhat(scenario, gridTag, repID, modelID, nRuns)
   ess  <- ComputeESS( scenario, gridTag, repID, modelID, nRuns)
 
-  #load tree files once, shared across ASDSF and TreeESS
+  # load tree files once, shared across asdsf and tree ess
   treesList <- lapply(seq_len(nRuns), function(run) {
     .LoadTrees(scenario, gridTag, repID, modelID, run)
   })
@@ -304,7 +240,6 @@ CheckConvergence <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
     asdsf_pass = asdsf_pass
   )
 
-  
   diagPath <- DiagFile(scenario, gridTag, repID, modelID)
   writeLines(c(
     paste("model:   ", modelID),
@@ -320,13 +255,8 @@ CheckConvergence <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   result
 }
 
-#' Check convergence across all grid cells for one model
-#' @param scenario 
-#' @param modelID 
-#' @param grid     
-#' @param nRep    
-#' @return Data frame with one row per replicate and convergence columns.
-#' @export
+# checks convergence across all grid cells for one model; one row per
+# replicate with convergence columns
 ConvergenceSummary <- function(scenario, modelID,
                                grid = PARAM_GRID,
                                nRep = N_REP) {

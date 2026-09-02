@@ -1,9 +1,9 @@
-# For every (model x scenario x grid cell), checks whether each parameter's  95% posterior credible interval contains its known true simulated value at ~95% of replicates. 
+# for every (model x scenario x grid cell), checks whether each parameter's  95% posterior credible interval contains its known true simulated value at ~95% of replicates
 source("R/core/_setup.R")
 
-# Configuration
-EVAL_MODELS <- MODEL_IDS        
-SCENARIOS   <- c("mk", "nt")     
+# configuration
+EVAL_MODELS <- MODEL_IDS
+SCENARIOS  <- c("mk", "nt")
 
 cgr_rds <- file.path(OutputDir(), "results", "cgr", "cgr_coverage.rds")
 cgr_csv <- file.path(OutputDir(), "results", "cgr", "cgr_coverage.csv")
@@ -16,8 +16,7 @@ if (!file.exists(conv_rds)) {
 }
 conv_df <- readRDS(conv_rds)
 
-#Per-model, per-scenario coverage check
-
+# per-model, per-scenario coverage check
 cli::cli_h1("CGR / simulation-based calibration")
 
 MISSING_ANY <- setdiff(EVAL_MODELS, unique(conv_df$modelID[conv_df$pass]))
@@ -67,17 +66,17 @@ for (scen in SCENARIOS) {
         }, logical(1))
 
         all_rows[[length(all_rows) + 1L]] <- data.frame(
-          scenario      = scen,
-          modelID       = mid,
-          gridTag       = gridTag,
-          parameter     = param,
-          true_value    = true_vals[[param]],
+          scenario  = scen,
+          modelID    = mid,
+          gridTag    = gridTag,
+          parameter    = param,
+          true_value   = true_vals[[param]],
           coverage_rate = mean(covers, na.rm = TRUE),
-          n_covers      = sum(covers %in% TRUE),
-          n_total       = sum(!is.na(covers)),
+          n_covers  = sum(covers %in% TRUE),
+          n_total   = sum(!is.na(covers)),
           tree_length   = row$tree_length,
-          gain_loss     = row$gain_loss,
-          n_char        = row$n_char,
+          gain_loss  = row$gain_loss,
+          n_char    = row$n_char,
           stringsAsFactors = FALSE
         )
       }
@@ -93,8 +92,7 @@ utils::write.csv(cgr_df, cgr_csv, row.names = FALSE)
 cli::cli_alert_success("Saved: {cgr_rds}")
 cli::cli_alert_success("Saved: {cgr_csv}")
 
-#Report
-
+# report
 cli::cli_h2("Coverage rates by scenario x model (target: 0.95 +/- 0.05)")
 
 target <- 0.95; tol <- 0.05

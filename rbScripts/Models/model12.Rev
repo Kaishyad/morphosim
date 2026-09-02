@@ -1,13 +1,10 @@
-#Model 12
-
-# Partitioning : Single (neo + trans combined)
-# Q  : Symmetric Mk, 9 states (fnJC(9))
-# APRV  : Absent
-# ACRV  : Present (lognormal, 6 discrete categories)
-# Root freq : Stationary
-
-
-
+# model 12
+#
+# partitioning : single (neo + trans combined)
+# q            : symmetric mk, 9 states (fnJC(9))
+# aprv         : absent
+# acrv         : present (lognormal, 6 discrete categories)
+# root freq    : stationary
 
 allChars <- concatenate(neo, trans)
 taxa  <- allChars.names()
@@ -16,12 +13,12 @@ nEdge <- 2 * nTaxa - 3
 
 moves = VectorMoves()
 
-#--- Tree topology
+# tree topology
 topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-#--- Branch lengths (compound Dirichlet)
+# branch lengths (compound dirichlet)
 gamma_shape <- 2
 exp_steps   <- 1
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
@@ -34,15 +31,15 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-#--- ACRV: lognormal, 6 discretized rate categories
+# acrv: lognormal, 6 discretised rate categories
 rate_log_sd ~ dnExponential(1.0)
 moves.append( mvScale(rate_log_sd, weight = 1.0) )
 site_rates := fnDiscretizeDistribution( dnLognormal(0, rate_log_sd), 6 )
 
-#--- Model: single partition, 9-state symmetric Mk with ACRV
-#fnJC(9) produces a 9x9 equal-rates matrix with stationary
-#frequencies fixed at 1/9 each. Applied to binary data, only
-#the 0 and 1 rows/columns will have non-zero data likelihood.
+# model: single partition, 9-state symmetric mk with acrv. fnJC(9) produces
+# a 9x9 equal-rates matrix with stationary frequencies fixed at 1/9 each;
+# applied to binary data, only the 0 and 1 rows/columns will have non-zero
+# data likelihood.
 m_morph ~ dnPhyloCTMC(
   tree      = phylogeny,
   Q         = fnJC(9),
@@ -52,7 +49,7 @@ m_morph ~ dnPhyloCTMC(
 )
 m_morph.clamp(allChars)
 
-#--- Monitors
+# monitors
 mymodel = model(phylogeny)
 monitors = VectorMonitors()
 monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )

@@ -1,6 +1,5 @@
 # "do models that produce better trees also have better results?"
 
-
 source("R/core/_setup.R")
 source("R/analysis/Correlation.R")   # for SpearmanCorrelation(), reused by CrossMetric.R
 source("R/analysis/CrossMetric.R")
@@ -8,23 +7,20 @@ source("R/analysis/CrossMetric.R")
 results_dir <- file.path(OutputDir(), "results", "cross_metric")
 dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
 
-# Each input file below is owned/written by a different upstream script, so it
-# lives in that script's own results subfolder -- NOT in cross_metric's own
-# output folder. Map each filename to the folder that actually owns it.
+# each input file below is owned/written by a different upstream script, so it lives in that script's own results subfolder, not in cross_metric's own output folder
 .INPUT_DIR <- function(name) {
   owner <- switch(name,
     "tree_accuracy_summary.rds" = "tree_accuracy",
     "convergence_summary.rds"   = NULL,  # shared top-level file, no subfolder
     "known_answer_summary.rds"  = "known_answer",
     "cgr_coverage.rds"          = "cgr",
-    "pps_adequacy.rds"          = "pps_adequacy",
     stop("Unknown input file, add it to .INPUT_DIR(): ", name)
   )
   if (is.null(owner)) file.path(OutputDir(), "results")
   else file.path(OutputDir(), "results", owner)
 }
 
-#Load inputs
+# load inputs
 .Load <- function(name, required = TRUE) {
   path <- file.path(.INPUT_DIR(name), name)
   if (!file.exists(path)) {
@@ -42,30 +38,25 @@ tree_acc_summary <- .Load("tree_accuracy_summary.rds",  required = TRUE)
 conv_df<- .Load("convergence_summary.rds",    required = TRUE)
 ka_df<- .Load("known_answer_summary.rds",   required = TRUE)
 cgr_df<- .Load("cgr_coverage.rds",            required = FALSE)
-pps_df<- .Load("pps_adequacy.rds",             required = FALSE)
 
 cli::cli_h1("Building cross-metric table")
 cross_df <- BuildCrossMetricTable(
   tree_acc_summary = tree_acc_summary,
   conv_df= conv_df,
   ka_df= ka_df,
-  cgr_df= cgr_df,
-  pps_df= pps_df
+  cgr_df= cgr_df
 )
 cli::cli_alert_info("Cross-metric table: {nrow(cross_df)} rows (scenario x gridTag x modelID)")
 
 if (is.null(cgr_df)) {
   cli::cli_alert_info("cgr_coverage.rds not found -- run run/validate_cgr.R for a third calibration axis alongside known-answer coverage.")
 }
-if (is.null(pps_df)) {
-  cli::cli_alert_info("pps_adequacy.rds not found -- PPS adequacy generation is currently blocked upstream per your notes; skipped for now.")
-}
 
 saveRDS(cross_df, file.path(results_dir, "cross_metric_gridcell.rds"))
 utils::write.csv(cross_df, file.path(results_dir, "cross_metric_gridcell.csv"), row.names = FALSE)
 cli::cli_alert_success("Saved: cross_metric_gridcell.rds / .csv")
 
-# Model-level scorecard
+# model-level scorecard
 cli::cli_h1("Model-level scorecard")
 scorecard <- ModelLevelScorecard(cross_df)
 saveRDS(scorecard, file.path(results_dir, "cross_metric_model_scorecard.rds"))
@@ -81,7 +72,7 @@ for (scen in unique(scorecard$scenario)) {
   print(sub[, print_cols], row.names = FALSE)
 }
 
-# Model-level rank correlations (the headline result
+# model-level rank correlations (the headline result)
 cli::cli_h1("Does tree-accuracy rank predict rank on other metrics? (model-level)")
 rank_corr <- ModelRankCorrelations(scorecard, B = 1000L)
 saveRDS(rank_corr, file.path(results_dir, "cross_metric_rank_correlations.rds"))
@@ -110,7 +101,7 @@ for (scen in unique(rank_corr$scenario)) {
   }
 }
 
-# Grid-cell-level correlations (within-model, higher-powered)
+# grid-cell-level correlations (within-model, higher-powered)
 cli::cli_h1("Within-model grid-cell correlations (CID vs other metrics)")
 cell_corr <- GridCellCorrelations(cross_df, B = 1000L)
 saveRDS(cell_corr, file.path(results_dir, "cross_metric_gridcell_correlations.rds"))

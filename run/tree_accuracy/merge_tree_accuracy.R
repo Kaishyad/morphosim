@@ -1,7 +1,7 @@
-# Merges per-model/scenario tree_accuracy_per_rep_<scenario>_<model>.rds files
+# merges per-model/scenario tree_accuracy_per_rep_<scenario>_<model>.rds files
 
-#Rscript run/merge_tree_accuracy.R
-#Rscript run/merge_tree_accuracy.R --scenario nt
+# Rscript run/merge_tree_accuracy.R
+# Rscript run/merge_tree_accuracy.R --scenario nt
 
 source("R/core/_setup.R")
 
@@ -13,7 +13,7 @@ results_dir <- file.path(OutputDir(), "results")
 rep_rds    <- file.path(results_dir, "tree_accuracy_per_rep.rds")
 sum_rds  <- file.path(results_dir, "tree_accuracy_summary.rds")
 
-#Merge per-rep files
+# merge per-rep files
 per_model_files <- list.files(
   results_dir,
   pattern = sprintf("^tree_accuracy_per_rep_(%s)_model[0-9]+\\.rds$",
@@ -31,7 +31,6 @@ cli::cli_ul(basename(per_model_files))
 
 new_rep_df <- do.call(rbind, lapply(per_model_files, readRDS))
 
-
 existing_rep <- if (file.exists(rep_rds)) readRDS(rep_rds) else NULL
 combined_rep <- if (!is.null(existing_rep)) rbind(existing_rep, new_rep_df) else new_rep_df
 key <- with(combined_rep, paste(scenario, gridTag, repID, modelID, sep = "|"))
@@ -42,7 +41,7 @@ cli::cli_alert_success(
   "Merged per-rep CID saved: {rep_rds} ({nrow(combined_rep)} rows)"
 )
 
-#Rebuild grid-cell summary from the full combined per-rep data
+# rebuild grid-cell summary from the full combined per-rep data
 cli::cli_h1("Rebuilding grid-cell summary")
 
 all_scenarios <- unique(combined_rep$scenario)
@@ -74,7 +73,6 @@ scenario_summaries <- lapply(all_scenarios, function(sc) {
   sc_summary <- do.call(rbind, rows)
   merge(sc_summary, sc_grid, by = "gridTag", all.x = TRUE)
 })
-
 
 all_cols <- unique(unlist(lapply(scenario_summaries, names)))
 scenario_summaries <- lapply(scenario_summaries, function(df) {

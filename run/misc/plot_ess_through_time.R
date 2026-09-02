@@ -1,11 +1,11 @@
-#Plot ESS through time for a single run
-#Distinguishes slow-climb vs trapped-in-local-optimum failure modes
-#Usage: Rscript run/plot_ess_through_time.R --scenario mk --gridtag tl1.0_gl0.1_pr1.0_nc25 --rep sim001 --model model1
+# plots ess through time for a single run, to distinguish slow-climb vs
+# trapped-in-local-optimum failure modes
+# usage: Rscript run/misc/plot_ess_through_time.R --scenario mk --gridtag tl1.0_gl0.1_pr1.0_nc25 --rep sim001 --model model1
 
 source("R/core/_setup.R")
 
-args_cli    <- commandArgs(trailingOnly = TRUE)
-.flag       <- function(f) args_cli[which(args_cli == f) + 1]
+args_cli <- commandArgs(trailingOnly = TRUE)
+.flag    <- function(f) args_cli[which(args_cli == f) + 1]
 
 SCENARIO <- .flag("--scenario"); if (is.na(SCENARIO)) SCENARIO <- "mk"
 GRID_TAG <- .flag("--gridtag");  if (is.na(GRID_TAG)) stop("--gridtag required")
@@ -35,8 +35,7 @@ for (run in seq_len(N_RUNS)) {
   trace  <- read.table(f, header = TRUE, comment.char = "#")
   params <- setdiff(colnames(trace), "Iteration")
 
-  # Drop burnin (10%)
-  trace <- tail(trace, round(nrow(trace) * 0.9))
+  trace <- tail(trace, round(nrow(trace) * 0.9))   # drop 10% burnin
 
   step    <- max(1L, floor(nrow(trace) / 50L))   # ~50 points per run
   windows <- seq(10L, nrow(trace), by = step)

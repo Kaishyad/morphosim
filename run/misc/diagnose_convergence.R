@@ -1,4 +1,4 @@
-#Diagnostic: compare tree counts and per-stage timing across models
+# diagnostic: compares tree counts and per-stage timing across models
 
 source("R/core/_setup.R")
 scenario <- "nt"
@@ -9,7 +9,6 @@ for (m in models) {
   trees <- tryCatch(.LoadTrees(scenario, gridTag, "sim001", m, 1), error = function(e) NULL)
   cat(sprintf("%-8s trees=%s\n", m, if(is.null(trees)) "NA" else length(trees)))
 }
-
 
 cat("\n=== Per-stage timing per model ===\n")
 for (m in models) {

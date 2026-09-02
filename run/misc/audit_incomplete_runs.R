@@ -1,5 +1,5 @@
-#Audits every (scenario x grid cell x replicate x model) combination and
-#classifies it as complete / partial (crashed) / not started
+# audits every (scenario x grid cell x replicate x model) combination and
+# classifies it as complete / partial (crashed) / not started
 
 source("R/core/_setup.R")
 
@@ -20,10 +20,9 @@ cli::cli_alert_info(sprintf("Scenarios: %s | Models: %s",
                             paste(SCENARIOS, collapse = ", "),
                             paste(MODELS,    collapse = ", ")))
 
-# --- Per-run status for one job -------------------------------------------
-# Returns a one-row data frame describing exactly which run(s) are missing,
-# so "partial" rows in the audit are actionable at a glance rather than a
-# bare TRUE/FALSE.
+# per-run status for one job: returns which run(s) are missing, so a
+# "partial" row in the audit is actionable at a glance rather than a bare
+# true/false
 .JobStatus <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   simExists <- file.exists(file.path(
     SimDirAbs(scenario, gridTag, repID), "neo.nex"
@@ -58,7 +57,7 @@ cli::cli_alert_info(sprintf("Scenarios: %s | Models: %s",
   )
 }
 
-# --- Main sweep -------------------------------------------------------------
+# main sweep
 all_rows <- vector("list", 0L)
 
 for (scenario in SCENARIOS) {
@@ -92,7 +91,6 @@ if (is.null(audit_df) || nrow(audit_df) == 0L) {
 utils::write.csv(audit_df, audit_csv, row.names = FALSE)
 cli::cli_alert_success("Full audit written to: {audit_csv} ({nrow(audit_df)} incomplete rows)")
 
-# --- Console breakdown ------------------------------------------------------
 cli::cli_h2("Breakdown by status")
 print(table(audit_df$scenario, audit_df$status))
 
@@ -102,11 +100,10 @@ names(by_model)[names(by_model) == "gridTag"] <- "n"
 by_model <- by_model[order(by_model$scenario, by_model$modelID, by_model$status), ]
 print(by_model, row.names = FALSE)
 
-# --- Requeue list -----------------------------------------------------------
-# Only rows where simulated data exists are actionable for resubmission --
-# "not_started_no_sim_data" means the simulation step itself hasn't produced
-# neo.nex yet, which is a different (upstream) problem for Simulate.R, not
-# something slurm/Infer.R can fix by resubmitting inference.
+# requeue list: only rows where simulated data exists are actionable for
+# resubmission - "not_started_no_sim_data" means the simulation step itself
+# hasn't produced neo.nex yet, an upstream problem for Simulate.R, not
+# something slurm/Infer.R can fix by resubmitting inference
 requeueable <- audit_df[audit_df$status %in% c("partial_crashed", "not_started"), ]
 
 if (nrow(requeueable) == 0L) {

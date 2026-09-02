@@ -1,14 +1,15 @@
-#Model 7
-
-# Partitioning : Two (neo | trans)
-# Neo Q : Asymmetric fnFreeBinary
-# Trans Q : Symmetric fnJC(2) -- matches the nt simulation's trans generative process
-# APRV : Present (partition rate scalar)
-# ACRV: Present (Gamma, 4 categories)
-# Root freq : Stationary
-
-#full NT model using Gamma-distributed ACRV. Comparing M7 vs M8 (lognormal) vs M9 (free rates) directly tests whether the ACRV distributional
-#assumption affects inference accuracy. M7 is the Gamma baseline in comparison.
+# model 7
+#
+# partitioning : two (neo | trans)
+# neo q        : asymmetric fnFreeBinary
+# trans q      : symmetric fnJC(2) - matches the nt simulation's trans generative process
+# aprv         : present (partition rate scalar)
+# acrv         : present (gamma, 4 categories)
+# root freq    : stationary
+#
+# full nt model with gamma-distributed acrv. comparing m7 vs m8 (lognormal)
+# vs m9 (free rates) tests whether the acrv distributional assumption
+# affects inference accuracy - m7 is the gamma baseline.
 
 taxa  <- neo.names()
 nTaxa <- neo.size()
@@ -16,12 +17,12 @@ nEdge <- 2 * nTaxa - 3
 
 moves = VectorMoves()
 
-#--- Tree topology
+# tree topology
 topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-#--- Branch lengths (compound Dirichlet)
+# branch lengths (compound dirichlet)
 gamma_shape <- 2
 exp_steps   <- 1
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
@@ -34,21 +35,20 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-#--- APRV: partition rate scalar
+# aprv: partition rate scalar
 part_rate_neo   <- 1.0
 part_rate_trans ~ dnExponential(1.0)
 moves.append( mvScale(part_rate_trans, weight = 1.0) )
 
-#--- Asymmetric Q matrices
+# asymmetric q matrices
 gain_loss_neo ~ dnLognormal(0, 1)
 moves.append( mvScale(gain_loss_neo, weight = 1.0) )
 Q_neo := fnFreeBinary( simplex(1, gain_loss_neo), rescaled = TRUE )
 
 Q_trans <- fnJC(2)
 
-#--- ACRV: Gamma discretised into 4 rate categories
-#Shape parameter alpha controls variance: small alpha = high variance.
-#Mean is fixed to 1 by setting rate = alpha (i.e. mean = alpha/alpha = 1).
+# acrv: gamma, 4 discretised rate categories. shape alpha controls variance
+# (small alpha = high variance); mean fixed to 1 by setting rate = alpha.
 NUM_RATE_CATS  <- 4
 alpha ~ dnExponential(1.0)
 moves.append( mvScale(alpha, weight = 1.0) )
@@ -56,7 +56,7 @@ site_rates := fnDiscretizeDistribution(
   dnGamma(alpha, alpha), NUM_RATE_CATS
 )
 
-#--- Model: two partitions, asymmetric Q, Gamma ACRV
+# model: two partitions, asymmetric q, gamma acrv
 m_neo ~ dnPhyloCTMC(
   tree        = phylogeny,
   Q           = Q_neo,
@@ -77,7 +77,7 @@ m_trans ~ dnPhyloCTMC(
 )
 m_trans.clamp(trans)
 
-#--- Monitors
+# monitors
 mymodel = model(phylogeny)
 monitors = VectorMonitors()
 monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )

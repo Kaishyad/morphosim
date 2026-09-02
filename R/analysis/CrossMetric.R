@@ -1,9 +1,4 @@
-
-#' Aggregate per-replicate convergence diagnostics to grid-cell level
-#' @param conv_df Data frame from convergence_summary.rds 
-#' @return Data frame with one row per scenario/gridTag/modelID: pass_rate,
-#'   mean_rhat_max, mean_ess_min, mean_asdsf, mean_tree_ess.
-#' @export
+# aggregates per-replicate convergence diagnostics to grid-cell level
 AggregateConvergence <- function(conv_df) {
   keys <- unique(conv_df[, c("scenario", "gridTag", "modelID")])
   rows <- lapply(seq_len(nrow(keys)), function(i) {
@@ -27,10 +22,7 @@ AggregateConvergence <- function(conv_df) {
   do.call(rbind, rows)
 }
 
-#' Aggregate known-answer coverage/MSE to grid-cell level
-#' @param ka_df Data frame from known_answer_summary.rds.
-#' @return Data frame with one row per scenario/gridTag/modelID.
-#' @export
+# aggregates known-answer coverage/mse to grid-cell level
 AggregateKnownAnswer <- function(ka_df) {
   keys <- unique(ka_df[, c("scenario", "gridTag", "modelID")])
   rows <- lapply(seq_len(nrow(keys)), function(i) {
@@ -42,7 +34,7 @@ AggregateKnownAnswer <- function(ka_df) {
       scenario= k$scenario,
       gridTag= k$gridTag,
       modelID= k$modelID,
-      cov_tree_len= sub$cov_tree_len[1],   #identical across rate_param rows
+      cov_tree_len= sub$cov_tree_len[1],   # identical across rate_param rows
       mse_tree_len= sub$mse_tree_len[1],
       cov_error_tree_len  = abs(sub$cov_tree_len[1] - 0.95),
       mean_cov_rate_loss  = mean(sub$cov_rate_loss, na.rm = TRUE),
@@ -54,10 +46,7 @@ AggregateKnownAnswer <- function(ka_df) {
   do.call(rbind, rows)
 }
 
-#' Aggregate CGR/SBC coverage to grid-cell level
-#' @param cgr_df Data frame from cgr_coverage.rds.
-#' @return Data frame with one row per scenario/gridTag/modelID.
-#' @export
+# aggregates cgr/sbc coverage to grid-cell level
 AggregateCGR <- function(cgr_df) {
   keys <- unique(cgr_df[, c("scenario", "gridTag", "modelID")])
   rows <- lapply(seq_len(nrow(keys)), function(i) {
@@ -77,22 +66,12 @@ AggregateCGR <- function(cgr_df) {
   do.call(rbind, rows)
 }
 
-#' Build the combined cross-metric table at (scenario, gridTag, modelID) grain
-#' @param tree_acc_summary tree_accuracy_summary.rds 
-#' @param conv_df    convergence_summary.rds 
-#' @param ka_df       known_answer_summary.rds. NULL to skip.
-#' @param cgr_df      cgr_coverage.rds. NULL to skip.
-#' @param pps_df      pps_adequacy rds/data frame with columns scenario,
-#'   gridTag, modelID, prop_adequate (already grid-cell level). NULL to skip.
-#' @return Data frame, one row per (scenario, gridTag, modelID) present in
-#'   tree_acc_summary, with whatever other-metric columns were available
-#'   joined on (NA where a source was NULL or had no matching row).
-#' @export
+# builds the combined cross-metric table at (scenario, gridTag, modelID)
+# grain; ka_df/cgr_df pass NULL to skip a source
 BuildCrossMetricTable <- function(tree_acc_summary,
                                   conv_df = NULL,
                                   ka_df   = NULL,
-                                  cgr_df  = NULL,
-                                  pps_df  = NULL) {
+                                  cgr_df  = NULL) {
   out <- tree_acc_summary[, intersect(
     c("scenario", "gridTag", "modelID", "median_cid", "iqr_cid", "n_reps",
       "tree_length", "gain_loss", "n_char", "n_taxa", "part_rate"),
@@ -107,28 +86,20 @@ BuildCrossMetricTable <- function(tree_acc_summary,
   if (!is.null(conv_df)) out <- .LeftJoin(out, AggregateConvergence(conv_df))
   if (!is.null(ka_df))   out <- .LeftJoin(out, AggregateKnownAnswer(ka_df))
   if (!is.null(cgr_df))  out <- .LeftJoin(out, AggregateCGR(cgr_df))
-  if (!is.null(pps_df))  out <- .LeftJoin(out, pps_df[, intersect(
-    c("scenario", "gridTag", "modelID", "prop_adequate"), colnames(pps_df)
-  )])
 
   out
 }
 
-#' Model-level scorecard: one row per (scenario, modelID) with every metric
-#' averaged across grid cells, plus a within-scenario rank for each metric.
-#' @param cross_df Output of BuildCrossMetricTable().
-#' @return Data frame, one row per scenario/modelID, with mean_* columns and
-#'   matching rank_* columns for every metric present.
-#' @export
+# model-level scorecard: one row per (scenario, modelID) with every metric
+# averaged across grid cells, plus a within-scenario rank for each metric
 ModelLevelScorecard <- function(cross_df) {
   metric_cols <- intersect(c(
     "median_cid", "mean_rhat_max", "mean_ess_min", "mean_asdsf",
     "pass_rate", "mse_tree_len", "cov_error_tree_len",
-    "mean_mse_rate_loss", "cov_error_rate_loss", "cov_error_cgr",
-    "prop_adequate"
+    "mean_mse_rate_loss", "cov_error_rate_loss", "cov_error_cgr"
   ), colnames(cross_df))
 
-  #Direction: TRUE = lower is better (rank ascending), FALSE = higher is better (rank descending).
+  # direction: TRUE = lower is better (rank ascending), FALSE = higher is better (rank descending)
   lower_is_better <- c(
     median_cid= TRUE,
     mean_rhat_max= TRUE,
@@ -139,11 +110,10 @@ ModelLevelScorecard <- function(cross_df) {
     cov_error_tree_len= TRUE,
     mean_mse_rate_loss= TRUE,
     cov_error_rate_loss= TRUE,
-    cov_error_cgr= TRUE,
-    prop_adequate= FALSE
+    cov_error_cgr= TRUE
   )
 
-  #each metric m gets an averaged column "avg_<m>"
+  # each metric m gets an averaged column "avg_<m>"
   keys <- unique(cross_df[, c("scenario", "modelID")])
   rows <- lapply(seq_len(nrow(keys)), function(i) {
     k   <- keys[i, ]
@@ -157,7 +127,7 @@ ModelLevelScorecard <- function(cross_df) {
   })
   scorecard <- do.call(rbind, rows)
 
-  #Rank within scenario for each avg_* column. Rank 1 = best.
+  # rank within scenario for each avg_* column, rank 1 = best
   for (m in metric_cols) {
     avg_col  <- paste0("avg_",  m)
     rank_col <- paste0("rank_", m)
@@ -171,14 +141,9 @@ ModelLevelScorecard <- function(cross_df) {
   scorecard[order(scorecard$scenario, scorecard$rank_median_cid), ]
 }
 
-#' Spearman rank correlation between tree-accuracy rank and every other
-#' metric's rank, across models, within each scenario.
-#'"do models that produce better trees alsohave better results?" 
-#'
-#' @param scorecard Output of ModelLevelScorecard().
-#' @param B Bootstrap resamples for the CI (default 1000).
-#' @return Data frame: scenario, metric, rho, lower, upper, p.value, n.
-#' @export
+# spearman rank correlation between tree-accuracy rank and every other
+# metric's rank, across models, within each scenario
+# ("do models that produce better trees also have better results?")
 ModelRankCorrelations <- function(scorecard, B = 1000L) {
   rank_cols <- grep("^rank_", colnames(scorecard), value = TRUE)
   rank_cols <- setdiff(rank_cols, "rank_median_cid")
@@ -203,17 +168,13 @@ ModelRankCorrelations <- function(scorecard, B = 1000L) {
   do.call(rbind, rows)
 }
 
-#' Grid-cell-level Spearman correlations between CID and every other metric, computed separately for each model.
-#' @param cross_df Output of BuildCrossMetricTable().
-#' @param B Bootstrap resamples for the CI (default 1000).
-#' @return Data frame: scenario, modelID, metric, rho, lower, upper,
-#'   p.value, n.
-#' @export
+# grid-cell-level spearman correlations between cid and every other metric,
+# computed separately for each model
 GridCellCorrelations <- function(cross_df, B = 1000L) {
   metric_cols <- intersect(c(
     "mean_rhat_max", "mean_ess_min", "mean_asdsf", "pass_rate",
     "mse_tree_len", "cov_error_tree_len", "mean_mse_rate_loss",
-    "cov_error_rate_loss", "cov_error_cgr", "prop_adequate"
+    "cov_error_rate_loss", "cov_error_cgr"
   ), colnames(cross_df))
 
   combos <- unique(cross_df[, c("scenario", "modelID")])

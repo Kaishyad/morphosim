@@ -1,28 +1,20 @@
-#Generates simulated character matrices across the parameter grid.
-#Loops over PARAM_GRID, builds RevBayes argument vectors, creates output
-#directories in the-matrix, and submits simulation jobs to Hamilton
-
-#Rscript slurm/Simulate.R    # dry-run: prints args only
-#Rscript slurm/Simulate.R --run   # submits all grid cells (both scenarios)
-#Rscript slurm/Simulate.R --run --scenario nt   # NT only
-#Rscript slurm/Simulate.R --run --scenario mk   # Mk only
+# generates simulated character matrices across the parameter grid: loops
+# over PARAM_GRID, builds revbayes argument vectors, creates output
+# directories in the-matrix, and submits simulation jobs to hamilton
+#
+# Rscript slurm/Simulate.R                       # dry-run: prints args only
+# Rscript slurm/Simulate.R --run                 # submits all grid cells (both scenarios)
+# Rscript slurm/Simulate.R --run --scenario nt   # nt only
+# Rscript slurm/Simulate.R --run --scenario mk   # mk only
 
 source("R/core/_setup.R")
 
+# hamilton8 safety parameters
+MAX_QUEUE_DEPTH   <- 200L   # throttle via queue depth
+POLL_INTERVAL_SEC <- 30L    # pause between queue-depth checks when the queue is full
+SUBMIT_PAUSE_SEC  <- 0.25   # pause between individual sbatch calls, to avoid hammering the slurm daemon
 
-# Hamilton8 safety parameters
-# throttle via MAX_QUEUE_DEPTH.
-MAX_QUEUE_DEPTH <- 200L
-
-# Pause (seconds) between queue-depth checks when the queue is full.
-POLL_INTERVAL_SEC <- 30L
-
-# Pause (seconds) between individual sbatch calls within a batch.
-# A small gap avoids hammering the SLURM daemon.
-SUBMIT_PAUSE_SEC <- 0.25
-
-
-# Argument parsing
+# argument parsing
 args_cli      <- commandArgs(trailingOnly = TRUE)
 dry_run       <- !("--run"      %in% args_cli)
 scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
@@ -37,8 +29,7 @@ message(sprintf(
   nrow(grid), N_REP, length(scenarios), nrow(grid) * N_REP * length(scenarios)
 ))
 
-
-# Helper: current number of jobs in queue belonging to this user
+# current number of jobs in queue belonging to this user
 .queue_depth <- function() {
   out <- tryCatch(
     system("squeue -u \"$USER\" -h -o '%i' 2>/dev/null | wc -l",
@@ -48,8 +39,7 @@ message(sprintf(
   as.integer(trimws(out[length(out)]))
 }
 
-
-# Helper: wait until there is room in the queue
+# waits until there is room in the queue
 .wait_for_slot <- function(max_depth = MAX_QUEUE_DEPTH,
                            poll_sec  = POLL_INTERVAL_SEC) {
   repeat {
@@ -63,11 +53,9 @@ message(sprintf(
   }
 }
 
+# simulation loop
 
-# Simulation loop
-
-
-# Paths resolved once (Hamilton remote layout)
+# paths resolved once (hamilton remote layout)
 remote_dir  <- getOption("ntRemoteDir")            # /nobackup/<user>
 rb_bin      <- "rb"
 log_dir     <- file.path(remote_dir, "morphosim", "logs")
@@ -79,13 +67,13 @@ failed    <- 0L
 
 for (scenario in scenarios) {
 
-  # Mk doesn't use part_rate — collapse to unique combinations
+  # mk doesn't use part_rate -- collapse to unique combinations
   grid <- if (scenario == "mk") {
     unique(PARAM_GRID[, c("tree_length", "gain_loss", "n_char", "n_taxa", "n_neo", "n_trans")])
   } else {
     PARAM_GRID
   }
-  
+
   argsFn    <- SimArgsFn(scenario)
   simScript <- if (scenario == "nt") "Sims/sim-by_nt_kv" else "Sims/sim-by_mk_kv"
 
@@ -97,7 +85,7 @@ for (scenario in scenarios) {
       repID     <- SimID(rep)
       simDirAbs <- SimDirAbs(scenario, gridTag, repID)
 
-      # Skip if all three output files already exist
+      # skip if all three output files already exist
       if (file.exists(file.path(simDirAbs, "neo.nex"))  &&
           file.exists(file.path(simDirAbs, "trans.nex")) &&
           file.exists(file.path(simDirAbs, "tree.nwk"))) {
@@ -105,7 +93,7 @@ for (scenario in scenarios) {
         next
       }
 
-      # Build positional argument vector for RevBayes
+      # build positional argument vector for revbayes
       rb_args <- argsFn(row, simDirAbs, seed = rep)
 
       job_name <- paste0("sim_", scenario, "_", gridTag, "_", repID)
@@ -118,12 +106,9 @@ for (scenario in scenarios) {
         next
       }
 
-      # Create output directory
       if (!dir.exists(simDirAbs)) dir.create(simDirAbs, recursive = TRUE)
 
-      # Wait until there is a free slot in the queue
       .wait_for_slot()
-
 
       slurmCmd <- paste(
         "sbatch",

@@ -9,7 +9,7 @@
 
 cd "$SLURM_SUBMIT_DIR"
 source "slurm/config.sh"
-#Runs the viz and pushes the resulting figures to the-matrix
+# runs the viz suite and pushes the resulting figures to the-matrix
 
 module load r
 

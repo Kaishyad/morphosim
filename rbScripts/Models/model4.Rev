@@ -1,14 +1,15 @@
-#Model 4
-
-#Partitioning : Two (neo | trans)
-#Neo Q    : Symmetric fnJC(2)
-#Trans Q  : Symmetric fnJC(2)
-#APRV  : Present (partition rate scalar)
-#ACRV  : Absent
-#Root freq : Stationary
-
-#isolates the effect of informed partitioning and APRV against the model1. Both partitions use symmetric Mk,
-#so any improvement over M1 is attributable to the partition structure and rate scaling alone, not to asymmetry or ACRV.
+# model 4
+#
+# partitioning : two (neo | trans)
+# neo q        : symmetric fnJC(2)
+# trans q      : symmetric fnJC(2)
+# aprv         : present (partition rate scalar)
+# acrv         : absent
+# root freq    : stationary
+#
+# isolates partitioning + aprv against m1: both partitions are symmetric mk,
+# so any improvement is attributable to partition structure and rate scaling
+# alone, not to asymmetry or acrv.
 
 taxa  <- neo.names()
 nTaxa <- neo.size()
@@ -16,12 +17,12 @@ nEdge <- 2 * nTaxa - 3
 
 moves = VectorMoves()
 
-#--- Tree topology
+# tree topology
 topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-#--- Branch lengths (compound Dirichlet)
+# branch lengths (compound dirichlet)
 gamma_shape <- 2
 exp_steps   <- 1
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
@@ -34,14 +35,12 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-#--- APRV: partition rate scalar
-#part_rate_neo is 1, part_rate_trans is estimated relative to it.
-#trans characters are allowed to evolve at a different absolute rate than neo characters.
+# aprv: partition rate scalar - neo fixed at 1, trans estimated relative to it
 part_rate_neo   <- 1.0
 part_rate_trans ~ dnExponential(1.0)
 moves.append( mvScale(part_rate_trans, weight = 1.0) )
 
-#--- Model: two partitions, both symmetric Mk
+# model: two partitions, both symmetric mk
 m_neo ~ dnPhyloCTMC(
   tree        = phylogeny,
   Q           = fnJC(2),
@@ -60,7 +59,7 @@ m_trans ~ dnPhyloCTMC(
 )
 m_trans.clamp(trans)
 
-#--- Monitors
+# monitors
 mymodel = model(phylogeny)
 monitors = VectorMonitors()
 monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )

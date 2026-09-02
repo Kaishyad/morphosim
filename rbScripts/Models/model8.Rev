@@ -1,14 +1,16 @@
-#Model 8(target model)
-
-# Partitioning : Two (neo | trans)
-# Neo Q : Asymmetric fnFreeBinary
-# Trans Q  : Symmetric fnJC(2) -- matches the nt simulation's trans generative process
-# APRV : Present (partition rate scalar)
-# ACRV  : Present (shared lognormal, 4 categories)
-# Root freq : Stationary
-
-#It matches the simulation model in both partition structure and ACRV distribution. It is the primary comparator against which all other models are evaluated.
-#M7 and M9 differ only in ACRV distribution, enabling a direct three-way comparison of Gamma vs Lognormal vs Free rates.
+# model 8 (target model)
+#
+# partitioning : two (neo | trans)
+# neo q        : asymmetric fnFreeBinary
+# trans q      : symmetric fnJC(2) - matches the nt simulation's trans generative process
+# aprv         : present (partition rate scalar)
+# acrv         : present (shared lognormal, 4 categories)
+# root freq    : stationary
+#
+# matches the simulation model in both partition structure and acrv
+# distribution - the primary comparator against which all other models are
+# evaluated. m7 and m9 differ only in acrv distribution (gamma vs free
+# rates), enabling a direct three-way comparison.
 
 taxa  <- neo.names()
 nTaxa <- neo.size()
@@ -16,12 +18,12 @@ nEdge <- 2 * nTaxa - 3
 
 moves = VectorMoves()
 
-#--- Tree topology
+# tree topology
 topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-#--- Branch lengths (compound Dirichlet)
+# branch lengths (compound dirichlet)
 gamma_shape <- 2
 exp_steps   <- 1
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
@@ -34,22 +36,22 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-#--- APRV: partition rate scalar
+# aprv: partition rate scalar
 part_rate_neo   <- 1.0
 part_rate_trans ~ dnExponential(1.0)
 moves.append( mvScale(part_rate_trans, weight = 1.0) )
 
-#--- Asymmetric Q matrices
+# asymmetric q matrices
 gain_loss_neo ~ dnLognormal(0, 1)
 moves.append( mvScale(gain_loss_neo, weight = 1.0) )
 Q_neo := fnFreeBinary( simplex(1, gain_loss_neo), rescaled = TRUE )
 
 Q_trans <- fnJC(2)
 
-#--- ACRV: shared lognormal discretised into 4 rate categories
-#Mean-one parameterisation: mu = -sd^2/2 so E[rate] = 1.
-#One acrv_sd shared across both partitions — the assumption is that
-#among-character rate variance is a global property of the data.
+# acrv: shared lognormal, 4 discretised rate categories. mean-one
+# parameterisation (mu = -sd^2/2) keeps acrv from confounding with tree
+# length; one acrv_sd shared across both partitions, treating rate variance
+# as a global property of the data.
 NUM_RATE_CATS <- 4
 acrv_sd ~ dnExponential(1.0)
 moves.append( mvScale(acrv_sd, weight = 1.0) )
@@ -57,7 +59,7 @@ site_rates := fnDiscretizeDistribution(
   dnLognormal(-acrv_sd^2 / 2, acrv_sd), NUM_RATE_CATS
 )
 
-#--- Model: two partitions, asymmetric Q, lognormal ACRV
+# model: two partitions, asymmetric q, lognormal acrv
 m_neo ~ dnPhyloCTMC(
   tree        = phylogeny,
   Q           = Q_neo,
@@ -78,7 +80,7 @@ m_trans ~ dnPhyloCTMC(
 )
 m_trans.clamp(trans)
 
-#--- Monitors
+# monitors
 mymodel = model(phylogeny)
 monitors = VectorMonitors()
 monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )

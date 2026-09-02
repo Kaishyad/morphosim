@@ -1,15 +1,16 @@
-#Model 6
-
-# Partitioning : Two (neo | trans)
-# Neo Q  : Symmetric fnJC(2)
-# Trans Q  : Symmetric fnJC(2)
-# APRV : Present (partition rate scalar)
-# ACRV  : Present (shared lognormal, 4 categories)
-# Root freq  : Stationary
-
-# adds ACRV to the 2-partition symmetric model (M4), while keeping Q symmetric. 
-#A single shared lognormal rate distribution is applied across both partitions
-#the assumption is that among-character rate variance is a property of the data as a whole, not of each partition separately.
+# model 6
+#
+# partitioning : two (neo | trans)
+# neo q        : symmetric fnJC(2)
+# trans q      : symmetric fnJC(2)
+# aprv         : present (partition rate scalar)
+# acrv         : present (shared lognormal, 4 categories)
+# root freq    : stationary
+#
+# adds acrv to m4's symmetric two-partition model, keeping q symmetric. a
+# single shared lognormal rate distribution applies across both partitions,
+# treating among-character rate variance as a property of the data as a
+# whole rather than of each partition separately.
 
 taxa  <- neo.names()
 nTaxa <- neo.size()
@@ -17,12 +18,12 @@ nEdge <- 2 * nTaxa - 3
 
 moves = VectorMoves()
 
-#--- Tree topology
+# tree topology
 topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-#--- Branch lengths (compound Dirichlet)
+# branch lengths (compound dirichlet)
 gamma_shape <- 2
 exp_steps   <- 1
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
@@ -35,15 +36,14 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-#--- APRV: partition rate scalar
+# aprv: partition rate scalar
 part_rate_neo   <- 1.0
 part_rate_trans ~ dnExponential(1.0)
 moves.append( mvScale(part_rate_trans, weight = 1.0) )
 
-#--- ACRV: shared lognormal discretised into 4 rate categories
-# Mean-one parameterisation: mu = -sd^2/2 ensures E[rate] = 1
-# so ACRV does not confound with the overall tree length.
-# One acrv_sd shared across both partitions.
+# acrv: shared lognormal, 4 discretised rate categories, one acrv_sd shared
+# across both partitions. mean-one parameterisation (mu = -sd^2/2) keeps
+# acrv from confounding with the overall tree length.
 NUM_RATE_CATS <- 4
 acrv_sd ~ dnExponential(1.0)
 moves.append( mvScale(acrv_sd, weight = 1.0) )
@@ -51,7 +51,7 @@ site_rates := fnDiscretizeDistribution(
   dnLognormal(-acrv_sd^2 / 2, acrv_sd), NUM_RATE_CATS
 )
 
-#--- Model: two partitions, symmetric Mk, shared ACRV
+# model: two partitions, symmetric mk, shared acrv
 m_neo ~ dnPhyloCTMC(
   tree        = phylogeny,
   Q           = fnJC(2),
@@ -72,7 +72,7 @@ m_trans ~ dnPhyloCTMC(
 )
 m_trans.clamp(trans)
 
-#--- Monitors
+# monitors
 mymodel = model(phylogeny)
 monitors = VectorMonitors()
 monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )

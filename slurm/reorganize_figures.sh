@@ -1,18 +1,16 @@
 #!/bin/bash
-# Run this from the ROOT of your local the-matrix clone:
+# run this from the root of your local the-matrix clone:
 #   bash reorganize_figures.sh
 #
-# Moves every existing flat figures/*.png / *.pdf into figures/<topic>/,
-# matching the subfolders morphosim's save_fig() now writes into. Uses
-# `git mv` so history is preserved. Safe to re-run -- files already in the
-# right place are skipped (mv error is ignored).
+# moves every existing flat figures/*.png / *.pdf into figures/<topic>/,
+# matching the subfolders morphosim's save_fig() now writes into. uses
+# git mv so history is preserved. safe to re-run -- files already in the
+# right place are skipped.
 #
-# NOTE on the two dynamic-filename groups (tree_accuracy's "20_marginal_*"
-# and model_comparison's "40_readable_table_nt_part_rate_*"): the exact set
-# depends on your actual parameter grid values. The list below covers the
-# standard grid (part_rate 1.00/2.50/5.00). If you have others, just
-# `git mv figures/<name>.<ext> figures/<topic>/` for anything this script
-# doesn't catch -- it prints anything left over in figures/ at the end.
+# the two dynamic-filename groups (tree_accuracy's "20_marginal_*" and
+# model_comparison's "40_readable_table_nt_part_rate_*") assume the
+# standard grid (part_rate 1.00/2.50/5.00) -- for other values, git mv
+# anything this script doesn't catch; it lists leftovers at the end.
 
 set -e
 
@@ -92,6 +90,6 @@ find figures -maxdepth 1 -type f \( -name "*.png" -o -name "*.pdf" \)
 echo ""
 echo "known_answer/ figures were already in their own subfolder -- untouched."
 echo ""
-echo "Review with 'git status', then:"
+echo "review with 'git status', then:"
 echo "  git commit -m \"Reorganize figures into topic subfolders\""
 echo "  git push origin <branch>"

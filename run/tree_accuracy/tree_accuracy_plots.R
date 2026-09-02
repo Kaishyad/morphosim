@@ -8,7 +8,7 @@ rep_df <- rep_df %>%
   rename(cid = median_cid) %>%
   label_models()
 
-# PLOT 1: CID distribution by model, faceted by scenario
+# plot 1: cid distribution by model, faceted by scenario
 p1 <- ggplot(rep_df, aes(x = modelID, y = cid, fill = scenario)) +
   geom_boxplot(outlier.alpha = 0.3, width = 0.6, position = position_dodge(0.7)) +
   scale_fill_manual(values = SCENARIO_COLORS, name = "Generative scenario") +
@@ -20,7 +20,7 @@ p1 <- ggplot(rep_df, aes(x = modelID, y = cid, fill = scenario)) +
   )
 save_fig(p1, "01_cid_by_model_scenario", subdir = "tree_accuracy", height = 7)
 
-# PLOT 2: Delta-CID relative to the scenario-appropriate baseline
+# plot 2: delta-cid relative to the scenario-appropriate baseline
 delta_list <- lapply(names(BASELINE_BY_SCENARIO), function(sc) {
   base_id  <- BASELINE_BY_SCENARIO[[sc]]
   sc_df    <- rep_df %>% filter(scenario == sc)
@@ -53,7 +53,7 @@ p2 <- ggplot(delta_df, aes(x = modelID, y = delta_cid, fill = scenario)) +
   )
 save_fig(p2, "02_delta_cid_vs_scenario_baseline", subdir = "tree_accuracy", height = 6.5)
 
-# PLOT 3: Model ranking heatmap - mean CID, model x scenario
+# plot 3: model ranking heatmap - mean cid, model x scenario
 rank_df <- rep_df %>%
   group_by(modelID, scenario) %>%
   summarise(mean_cid = mean(cid), .groups = "drop") %>%
@@ -73,7 +73,7 @@ p3 <- ggplot(rank_df, aes(x = scenario, y = fct_rev(modelID), fill = mean_cid)) 
   theme(panel.grid = element_blank())
 save_fig(p3, "03_model_ranking_heatmap", subdir = "tree_accuracy", width = 6, height = 7)
 
-# PLOT 4: Violin + jitter for full distributional shape
+# plot 4: violin + jitter for full distributional shape
 p4 <- ggplot(rep_df, aes(x = modelID, y = cid, color = scenario)) +
   geom_violin(aes(fill = scenario), alpha = 0.15, position = position_dodge(0.8), linewidth = 0.4) +
   geom_jitter(size = 0.6, alpha = 0.4, position = position_jitterdodge(dodge.width = 0.8, jitter.width = 0.15)) +
@@ -87,7 +87,7 @@ p4 <- ggplot(rep_df, aes(x = modelID, y = cid, color = scenario)) +
   )
 save_fig(p4, "04_cid_distribution_detail", subdir = "tree_accuracy", height = 7)
 
-# PLOT 5: Win-count - for every (scenario, grid cell) which model
+# plot 5: win-count - for every (scenario, grid cell), which model wins
 sum_df <- safe_read_rds(PATHS$tree_accuracy_sum)
 
 if (!is.null(sum_df)) {
@@ -99,7 +99,7 @@ if (!is.null(sum_df)) {
     label_models() %>%
     count(scenario, modelID, name = "n_wins")
 
-# keep every model in the plot even if it never wins, per scenario
+  # keep every model in the plot even if it never wins, per scenario
   all_combos <- expand_grid(
     scenario = names(BASELINE_BY_SCENARIO),
     modelID  = factor(MODEL_LABELS[MODEL_IDS], levels = MODEL_LABELS[MODEL_IDS])

@@ -2,7 +2,7 @@ source("run/shared/config_theme.R")
 
 predictors <- c("tree_length", "rate_ratio", "chars_per_taxon")
 
-# Pipeline's own threshold summaries (baseline = model1 always)
+# pipeline's own threshold summaries (baseline = model1 always)
 thresh_mk <- safe_read_rds(PATHS$threshold_mk)
 thresh_nt <- safe_read_rds(PATHS$threshold_nt)
 thresh_df <- bind_rows(thresh_mk, thresh_nt)
@@ -37,7 +37,7 @@ if (!is.null(thresh_df) && nrow(thresh_df) > 0L) {
           "(run run/gam_threshold.R first).")
 }
 
-#Scenario-correct baseline comparison, computed here directly:
+# scenario-correct baseline comparison, computed here directly
 cid_data <- safe_read_rds(PATHS$tree_accuracy_rep)
 
 if (!is.null(cid_data)) {
@@ -55,7 +55,7 @@ if (!is.null(cid_data)) {
 
     sub_eval %>%
       inner_join(sub_base, by = c("repID", "gridTag")) %>%
-      mutate(improvement = cid_base - median_cid) %>%   #positive = better than scenario baseline
+      mutate(improvement = cid_base - median_cid) %>%   # positive = better than scenario baseline
       left_join(grid_cols, by = "gridTag") %>%
       mutate(
         rate_ratio      = gain_loss,
@@ -90,7 +90,7 @@ if (!is.null(cid_data)) {
     )
   save_fig(p3, "14_improvement_vs_scenario_baseline", subdir = "gam_threshold", width = 11, height = 7)
 
-#Zero-crossing per model/predictor/scenario, linear interpolation
+  # zero-crossing per model/predictor/scenario, linear interpolation
   find_crossing <- function(x, y) {
     o <- order(x); x <- x[o]; y <- y[o]
     sign_change <- which(diff(sign(y)) != 0)

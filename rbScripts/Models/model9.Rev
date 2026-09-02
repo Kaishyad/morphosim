@@ -1,16 +1,18 @@
-#Model 9
-
-# Partitioning : Two (neo | trans)
-# Neo Q  : Asymmetric fnFreeBinary
-# Trans Q : Symmetric fnJC(2) -- matches the nt simulation's trans generative process
-# APRV : Present (partition rate scalar)
-# ACRV  : Present (free rates, 4 categories)
-# Root freq : Stationary
-
-#Free rates makes noparametric assumption about the shape of the rate distribution both the rate values and their weights are estimated from the data
-#It is the most flexible ACRV option and serves as the non-parametric upper bound. If M9 does not outperform
-#M8, the lognormal assumption in the NT generative model is adequate.
-#Free rates costs more parameters (2*NUM_RATE_CATS - 1 vs 1) so it is also an implicit over-parameterisation test at low character counts.
+# model 9
+#
+# partitioning : two (neo | trans)
+# neo q        : asymmetric fnFreeBinary
+# trans q      : symmetric fnJC(2) - matches the nt simulation's trans generative process
+# aprv         : present (partition rate scalar)
+# acrv         : present (free rates, 4 categories)
+# root freq    : stationary
+#
+# free rates makes no parametric assumption about the rate distribution -
+# both the rate values and their weights are estimated from the data. it's
+# the non-parametric upper bound: if m9 doesn't outperform m8, the lognormal
+# assumption in the nt generative model is adequate. it also costs more
+# parameters (2*NUM_RATE_CATS - 1 vs 1), so it's an implicit
+# over-parameterisation test at low character counts.
 
 taxa  <- neo.names()
 nTaxa <- neo.size()
@@ -18,12 +20,12 @@ nEdge <- 2 * nTaxa - 3
 
 moves = VectorMoves()
 
-#--- Tree topology
+# tree topology
 topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-#--- Branch lengths (compound Dirichlet)
+# branch lengths (compound dirichlet)
 gamma_shape <- 2
 exp_steps   <- 1
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
@@ -36,24 +38,22 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-#--- APRV: partition rate scalar
+# aprv: partition rate scalar
 part_rate_neo   <- 1.0
 part_rate_trans ~ dnExponential(1.0)
 moves.append( mvScale(part_rate_trans, weight = 1.0) )
 
-#--- Asymmetric Q matrices
+# asymmetric q matrices
 gain_loss_neo ~ dnLognormal(0, 1)
 moves.append( mvScale(gain_loss_neo, weight = 1.0) )
 Q_neo := fnFreeBinary( simplex(1, gain_loss_neo), rescaled = TRUE )
 
 Q_trans <- fnJC(2)
 
-#--- ACRV: free rates (non-parametric)
-#Rate values (site_rates_raw) are drawn i.i.d. from an unconstrained
-#Exponential prior (the standard "free rates" formulation), independent
-#of one another. Category weights (site_rate_weights) are drawn from a
-#Dirichlet so they sum to 1. Rates are rescaled so the weighted mean
-#equals 1, preserving identifiability with tree_length.
+# acrv: free rates (non-parametric). rate values are drawn i.i.d. from an
+# unconstrained exponential prior, independent of one another; category
+# weights are drawn from a dirichlet so they sum to 1. rates are rescaled
+# so the weighted mean equals 1, preserving identifiability with tree_length.
 NUM_RATE_CATS <- 4
 
 for (i in 1:NUM_RATE_CATS) {
@@ -65,17 +65,16 @@ site_rate_weights ~ dnDirichlet( rep(1.0, NUM_RATE_CATS) )
 moves.append( mvBetaSimplex(site_rate_weights,      weight = NUM_RATE_CATS / 3.0) )
 moves.append( mvDirichletSimplex(site_rate_weights, weight = 1.0) )
 
-# Weighted mean-normalised rates
-# site_rates_raw is a vector of independent RealPos scalars (not a Simplex),
-# so elementwise multiplication with the Simplex weights is unambiguous
-# once built via an explicit loop.
+# weighted mean-normalised rates; site_rates_raw is a vector of independent
+# RealPos scalars (not a Simplex), so elementwise multiplication with the
+# Simplex weights needs an explicit loop
 for (i in 1:NUM_RATE_CATS) {
   weighted_term[i] := site_rates_raw[i] * site_rate_weights[i]
 }
 mean_rate  := sum(weighted_term)
 site_rates := site_rates_raw / mean_rate
 
-#--- Model: two partitions, asymmetric Q, free rates ACRV
+# model: two partitions, asymmetric q, free rates acrv
 m_neo ~ dnPhyloCTMC(
   tree        = phylogeny,
   Q           = Q_neo,
@@ -96,7 +95,7 @@ m_trans ~ dnPhyloCTMC(
 )
 m_trans.clamp(trans)
 
-#--- Monitors
+# monitors
 mymodel = model(phylogeny)
 monitors = VectorMonitors()
 monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )

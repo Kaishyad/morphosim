@@ -1,29 +1,20 @@
-#Submits inference jobs 
-
-#Rscript slurm/Infer.R  # dry run, all models, both scenarios
+# submits inference jobs
+#
+# Rscript slurm/Infer.R  # dry run, all models, both scenarios
 # Rscript slurm/Infer.R --run   # submit all
-#Rscript slurm/Infer.R --run --scenario mk  # mk only
-#Rscript slurm/Infer.R --run --scenario mk --model model1   # mk + model1 only
-# Rscript slurm/Infer.R --run --imputation   # imputation runs instead of
-#   standard inference -- requires imp_neo.nex/imp_trans.nex to already
-#   exist (run/imputation/mask_replicates.R first)
-# Rscript slurm/Infer.R --run --imputation --nrep 2   # imputation, first
-#   2 replicates per grid cell only, instead of the full N_REP (10).
-#   Only affects how many reps THIS invocation submits/skips -- doesn't
-#   touch the global N_REP used elsewhere, so a normal (non-imputation)
-#   run without --nrep still covers all 10 reps as before.
+# Rscript slurm/Infer.R --run --scenario mk  # mk only
+# Rscript slurm/Infer.R --run --scenario mk --model model1   # mk + model1 only
 
 source("R/core/_setup.R")
 
-# --- Safety parameters 
-MAX_QUEUE_DEPTH  <- 10L    
+# safety parameters
+MAX_QUEUE_DEPTH  <- 10L
 POLL_INTERVAL_SEC <- 300L
 SUBMIT_PAUSE_SEC  <- 0.5
 
-# --- Argument parsing
+# argument parsing
 args_cli      <- commandArgs(trailingOnly = TRUE)
 dry_run       <- !("--run" %in% args_cli)
-imputation    <- "--imputation" %in% args_cli
 scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
 model_flag    <- args_cli[which(args_cli == "--model")    + 1]
 nrep_flag     <- args_cli[which(args_cli == "--nrep")     + 1]
@@ -33,29 +24,23 @@ models    <- if (!is.na(model_flag[1]))    model_flag    else paste0("model", 1:
 nRepRun   <- if (!is.na(nrep_flag[1]))     as.integer(nrep_flag) else N_REP
 
 if (dry_run) message("Dry run — pass --run to submit jobs")
-message(sprintf("Scenarios: %s | Models: %s%s | Reps: %d%s",
+message(sprintf("Scenarios: %s | Models: %s | Reps: %d%s",
                 paste(scenarios, collapse = ", "),
                 paste(models,    collapse = ", "),
-                if (imputation) " | IMPUTATION run" else "",
                 nRepRun,
                 if (nRepRun != N_REP) sprintf(" (overriding N_REP=%d)", N_REP) else ""))
 
-# --- Paths 
-remote_dir <- getOption("ntRemoteDir")          
+# paths
+remote_dir <- getOption("ntRemoteDir")
 rb_mpi     <- RbBinary()
 morphosim  <- file.path(remote_dir, "morphosim")
 matrix_dir <- file.path(remote_dir, "the-matrix")
 log_dir    <- file.path(morphosim, "logs")
-infer_script <- file.path(morphosim, "rbScripts", "Inference",
-                          if (imputation) "imp-mc3.Rev" else "sim-mc3.Rev")
-# imp-mc3.Rev reads imp_neo.nex/imp_trans.nex (produced by MaskReplicate())
-# instead of neo.nex/trans.nex, and every output file it writes gets an
-# imp_ prefix so it can coexist in the same results/ directory as a normal
-# inference run of the same model.
-data_file    <- if (imputation) "imp_neo.nex" else "neo.nex"
-out_prefix   <- if (imputation) "imp_" else ""
+infer_script <- file.path(morphosim, "rbScripts", "Inference", "sim-mc3.Rev")
+data_file    <- "neo.nex"
+out_prefix   <- ""
 
-# --- Queue helpers 
+# queue helpers
 .queue_depth <- function() {
   out <- tryCatch(
     system("squeue -u \"$USER\" -h -o '%i' 2>/dev/null | wc -l",
@@ -75,14 +60,14 @@ out_prefix   <- if (imputation) "imp_" else ""
   }
 }
 
-# --- Inference loop
+# inference loop
 submitted <- 0L
 skipped   <- 0L
 failed    <- 0L
 
 for (scenario in scenarios) {
 
-  # Mk ignores part_rate 
+  # mk ignores part_rate
   grid <- if (scenario == "mk") {
     unique(PARAM_GRID[, c("tree_length", "gain_loss", "n_char",
                           "n_taxa", "n_neo", "n_trans")])
@@ -98,7 +83,7 @@ for (scenario in scenarios) {
       repID     <- SimID(rep)
       simDirAbs <- SimDirAbs(scenario, gridTag, repID)
 
-      #Skip if simulated (or, for imputation, masked) data doesn't exist
+      # skip if simulated data doesn't exist
       if (!file.exists(file.path(simDirAbs, data_file))) {
         skipped <- skipped + 1L
         next
@@ -106,24 +91,22 @@ for (scenario in scenarios) {
 
       for (scriptID in models) {
 
-        job_name <- paste0(if (imputation) "impinf_" else "inf_",
-                           scenario, "_", gridTag, "_", repID,
+        job_name <- paste0("inf_", scenario, "_", gridTag, "_", repID,
                            "_", scriptID)
         out_log  <- file.path(log_dir, paste0(job_name, ".out"))
         err_log  <- file.path(log_dir, paste0(job_name, ".err"))
 
-        #Skip only if inference is actually complete for both runs.
-        
-        inferDirAbs <- InferDirAbs(scenario, gridTag, repID, scriptID, imputation = imputation)
-        if (JobLogsComplete(scenario, gridTag, repID, scriptID, prefix = out_prefix, imputation = imputation)) {
+        # skip only if inference is actually complete for both runs
+        inferDirAbs <- InferDirAbs(scenario, gridTag, repID, scriptID)
+        if (JobLogsComplete(scenario, gridTag, repID, scriptID, prefix = out_prefix)) {
           skipped <- skipped + 1L
           next
         }
 
-        #Create inference output directory
+        # create inference output directory
         if (!dir.exists(inferDirAbs)) dir.create(inferDirAbs, recursive = TRUE)
 
-        #Pass both simDirAbs (data) and inferDirAbs (outputs) to sim-mc3.Rev
+        # pass both simDirAbs (data) and inferDirAbs (outputs) to sim-mc3.Rev
         rb_args <- InferArgs(simDirAbs, inferDirAbs, scriptID, minEss = 333L, seed = rep)
 
         if (dry_run) {
@@ -135,9 +118,8 @@ for (scenario in scenarios) {
 
         .wait_for_slot()
 
-        #no git push done by push_when_done.sh actually
-        infer_subdir <- file.path(if (imputation) "results_imputation" else "results",
-                                  scenario, gridTag, repID, scriptID)
+        # no git push done by push_when_done.sh actually
+        infer_subdir <- file.path("results", scenario, gridTag, repID, scriptID)
 
         wrap_cmd <- paste(
           "module load gcc/11.2 boost/1.78.0 openmpi/4.1.1;",
@@ -157,8 +139,8 @@ for (scenario in scenarios) {
 
         slurmCmd <- paste(
           "sbatch",
-          "--ntasks=16",      
-          "--nodes=1",        
+          "--ntasks=16",
+          "--nodes=1",
           "--mem=8G",
           "--time=23:45:00",
           "--gres=tmp:16G",

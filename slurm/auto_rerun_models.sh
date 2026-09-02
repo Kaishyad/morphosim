@@ -1,52 +1,37 @@
 #!/bin/bash
-# Under sbatch, SLURM copies this script into a job-specific spool directory
-# before executing it, so ${BASH_SOURCE[0]} no longer points at its real
-# location in the repo -- config.sh would silently fail to source (MATRIX_DIR/
-# MORPHOSIM_DIR/BRANCH stay unset) and any $MATRIX_DIR-based cd/git command
-# later in this script would then operate on the wrong directory. SLURM sets
-# SLURM_SUBMIT_DIR to the directory `sbatch` was run from, which is what we
-# actually want. Fall back to BASH_SOURCE-based resolution for the case where
-# this script is run directly (not via sbatch).
+# under sbatch, slurm copies this script into a job-specific spool directory
+# before running it, so BASH_SOURCE no longer points at its real repo
+# location and config.sh would fail to source. SLURM_SUBMIT_DIR is the
+# directory sbatch was run from, which is what we want; fall back to
+# BASH_SOURCE resolution when this script is run directly (not via sbatch).
 if [ -n "$SLURM_SUBMIT_DIR" ]; then
   SCRIPT_DIR="$SLURM_SUBMIT_DIR/slurm"
 else
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 source "$SCRIPT_DIR/config.sh"
-# auto_rerun_models.sh
 #
-# Fully automates: rerun inference for a set of models (both scenarios) ->
-# push -> full downstream analysis pipeline -> push. No manual steps once
-# it's started.
+# fully automates: rerun inference for a set of models (both scenarios) ->
+# push -> full downstream analysis pipeline -> push. no manual steps once
+# started.
 #
-# Usage:
 #   bash slurm/auto_rerun_models.sh model7 model9 model10 model12
-#   bash slurm/auto_rerun_models.sh              # defaults to the 4 below
+#   bash slurm/auto_rerun_models.sh              # defaults to the 4 above
 #
-# What it does, in order:
-#   1. Deletes the old inference output dirs for these models (both
-#      scenarios) so JobLogsComplete() doesn't skip them as "already done".
-#   2. Submits inference via slurm/Infer.R --run (self-throttled at 70
-#      concurrent jobs -- nothing to change here).
-#   3. Polls squeue every 5 min until every submitted inference job for
-#      these models has cleared.
-#   4. Pushes inference results to GitHub, per scenario/model
-#      (slurm/push_when_done.sh).
-#   5. Submits convergence checks scoped to these models (both scenarios),
-#      then merges + pushes convergence_summary.rds.
-#   6. Submits tree_accuracy + known_answer scoped to these models, merges
-#      + pushes both.
-#   7. Submits validate_cgr, gam_threshold (mk + nt), model_comparison,
-#      cross_metric_analysis -- these don't support per-model scoping (they
-#      compare across all 12 models by design) so they run on the full,
-#      now-updated grid. Cheap: they read pre-computed summaries, not raw
-#      MCMC output.
-#   8. Submits run_viz.sh to refresh figures, after everything above.
+# in order: deletes old inference output dirs for these models (both
+# scenarios) so JobLogsComplete() doesn't skip them; submits inference via
+# Infer.R (self-throttled at 70 concurrent jobs); polls squeue until those
+# jobs clear; pushes results per scenario/model; submits convergence checks
+# scoped to these models then merges + pushes; submits tree_accuracy +
+# known_answer scoped to these models, merges + pushes both; submits
+# validate_cgr, gam_threshold, model_comparison, cross_metric_analysis on
+# the full grid (they compare across all 12 models by design, and are cheap
+# since they read pre-computed summaries, not raw mcmc output); finally
+# submits run_viz.sh to refresh figures. steps 5-8 mirror
+# submit_pipeline.sh's dependency graph, just built from a job-id chain here
+# instead of a hardcoded CONV_JOB.
 #
-# Steps 5-8 mirror slurm/submit_pipeline.sh's dependency graph exactly, just
-# starting from a job-ID chain built here instead of a hardcoded CONV_JOB.
-#
-# RUN THIS IN A screen/tmux SESSION ON THE LOGIN NODE -- step 3 alone can
+# run this in a screen/tmux session on the login node -- step 3 alone can
 # take hours, and the whole thing must survive you disconnecting:
 #
 #   cd "$MORPHOSIM_DIR"
@@ -55,7 +40,7 @@ source "$SCRIPT_DIR/config.sh"
 #   [Ctrl-A D to detach]
 #   screen -r rerun     # reattach later to check progress
 #
-# Progress is also written to logs/auto_rerun_<timestamp>.log.
+# progress is also written to logs/auto_rerun_<timestamp>.log.
 
 set -uo pipefail
 cd "$MORPHOSIM_DIR"
@@ -74,7 +59,7 @@ exec > >(tee -a "$LOG") 2>&1
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') : starting auto_rerun_models for: ${MODELS[*]} ==="
 echo "Log: $LOG"
 
-# --- Step 1: clear old outputs so Infer.R doesn't skip these models ------
+# step 1: clear old outputs so Infer.R doesn't skip these models
 echo ""
 echo "--- Removing old inference outputs for ${MODELS[*]} (both scenarios) ---"
 for scenario in "${SCENARIOS[@]}"; do
@@ -85,7 +70,7 @@ for scenario in "${SCENARIOS[@]}"; do
   done
 done
 
-# --- Step 2: submit inference (both scenarios, all listed models, one call)
+# step 2: submit inference (both scenarios, all listed models, one call)
 echo ""
 echo "--- Submitting inference via Infer.R (self-capped at 70 concurrent jobs) ---"
 MODEL_ARGS=()
@@ -94,7 +79,7 @@ for model in "${MODELS[@]}"; do
 done
 Rscript slurm/Infer.R --run "${MODEL_ARGS[@]}"
 
-# --- Step 3: poll until every inference job for these models has cleared -
+# step 3: poll until every inference job for these models has cleared
 echo ""
 echo "--- Waiting for inference jobs to clear the queue ---"
 PATTERN="^inf_($(IFS='|'; echo "${SCENARIOS[*]}"))_.*_($(IFS='|'; echo "${MODELS[*]}"))\$"
@@ -107,7 +92,7 @@ while true; do
 done
 echo "Inference finished for ${MODELS[*]}."
 
-# --- Step 4: push inference results -----------------------------------
+# step 4: push inference results
 echo ""
 echo "--- Pushing inference results to GitHub ---"
 for scenario in "${SCENARIOS[@]}"; do
@@ -116,7 +101,7 @@ for scenario in "${SCENARIOS[@]}"; do
   done
 done
 
-# --- Step 5: convergence, scoped to these models, both scenarios -------
+# step 5: convergence, scoped to these models, both scenarios
 echo ""
 echo "--- Submitting convergence checks ---"
 conv_ids=""
@@ -131,7 +116,7 @@ conv_ids="${conv_ids#:}"
 merge_conv_jid=$(sbatch --parsable --dependency=afterany:$conv_ids slurm/merge_and_push.sh)
 echo "merge_convergence (merge_and_push.sh): $merge_conv_jid"
 
-# --- Step 6: tree_accuracy + known_answer, scoped, both scenarios ------
+# step 6: tree_accuracy + known_answer, scoped, both scenarios
 echo ""
 echo "--- Submitting tree_accuracy ---"
 tree_ids=""
@@ -160,7 +145,7 @@ ka_ids="${ka_ids#:}"
 merge_ka_jid=$(sbatch --parsable --dependency=afterany:$ka_ids slurm/merge_known_answer.sh)
 echo "merge_known_answer: $merge_ka_jid"
 
-# --- Step 7: whole-grid comparisons (no per-model scoping available) ---
+# step 7: whole-grid comparisons (no per-model scoping available)
 echo ""
 echo "--- Submitting validate_cgr, gam_threshold, model_comparison, cross_metric ---"
 cgr_jid=$(sbatch --parsable --dependency=afterok:$merge_conv_jid slurm/run_validate_cgr.sh)
@@ -176,7 +161,7 @@ echo "model_comparison: $mc_jid"
 cross_jid=$(sbatch --parsable --dependency=afterok:$merge_tree_jid:$merge_ka_jid:$cgr_jid slurm/run_cross_metric_analysis.sh)
 echo "cross_metric_analysis: $cross_jid"
 
-# --- Step 8: figures, after everything else -----------------------------
+# step 8: figures, after everything else
 viz_jid=$(sbatch --parsable --dependency=afterok:$cross_jid:$gam_mk_jid:$gam_nt_jid:$mc_jid slurm/run_viz.sh)
 echo "viz: $viz_jid"
 

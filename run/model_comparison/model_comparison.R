@@ -1,13 +1,11 @@
-#"how do all models compare to each other" and "how does each model compare to itself across scenarios" analyses that ThresholdGAM.R doesn't answer on its own.
+# "how do all models compare to each other" and "how does each model compare  to itself across scenarios" - analyses ThresholdGAM.R doesn't answer on its own
 
 #   Rscript run/model_comparison.R
-
 
 source("R/core/_setup.R")
 source("R/analysis/ModelComparison.R")
 
-# Read: this is tree_accuracy's output, so it lives in that script's subfolder,
-# not this script's own output folder.
+# this is tree_accuracy's output, so it lives in that script's subfolder, not this script's own output folder
 cid_rds <- file.path(OutputDir(), "results", "tree_accuracy", "tree_accuracy_per_rep.rds")
 if (!file.exists(cid_rds)) {
   stop("Tree accuracy data not found: ", cid_rds,
@@ -18,7 +16,7 @@ cid_data <- readRDS(cid_rds)
 out_dir <- file.path(OutputDir(), "results", "model_comparison")
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
-# --- Safety: work only with models that actually have data ----------------
+#work only with models that actually have data
 PRESENT_MODELS <- sort(unique(cid_data$modelID))
 MISSING_MODELS <- setdiff(MODEL_IDS, PRESENT_MODELS)
 
@@ -32,8 +30,7 @@ if (length(PRESENT_MODELS) < 2L) {
        "Run run/tree_accuracy.R + merge_tree_accuracy.R first.")
 }
 
-# --- Table A: all models vs each other, within each scenario --------------
-
+# table a: all models vs each other, within each scenario
 cli::cli_h1("Table A: all-models comparison (within scenario)")
 
 ranking_rows  <- list()
@@ -79,8 +76,7 @@ for (scen in c("mk", "nt")) {
     n_dropped  = res$n_dropped
   )
 
-  # Save the full pairwise p-value matrix per scenario -- too big for one
-  # combined CSV, so one file each.
+  # save the full pairwise p-value matrix per scenario, too big for one combined csv, so one file each
   pw_path <- file.path(out_dir, sprintf("model_comparison_pairwise_%s.csv", scen))
   utils::write.csv(res$pairwise$p.value, pw_path)
   cli::cli_alert_success("Pairwise p-value matrix saved: {pw_path}")
@@ -91,8 +87,7 @@ friedman_df <- do.call(rbind, friedman_rows)
 utils::write.csv(ranking_df,  file.path(out_dir, "model_comparison_ranking.csv"),  row.names = FALSE)
 utils::write.csv(friedman_df, file.path(out_dir, "model_comparison_friedman.csv"), row.names = FALSE)
 
-# --- Table B: each model vs itself, nt-generated vs mk-generated ----------
-
+# table b: each model vs itself, nt-generated vs mk-generated
 cli::cli_h1("Table B: scenario contrast (nt-generated vs mk-generated, per model)")
 
 contrast_rows <- list()
@@ -109,8 +104,7 @@ print(contrast_df, row.names = FALSE)
 utils::write.csv(contrast_df, file.path(out_dir, "model_comparison_scenario_contrast.csv"), row.names = FALSE)
 cli::cli_alert_success("Saved: {file.path(out_dir, 'model_comparison_scenario_contrast.csv')}")
 
-# --- Interpretation notes ---------------------------------------------------
-
+# interpretation notes
 cli::cli_h2("How to read this")
 cli::cli_alert_info("Table A ranking: lower median_cid = more accurate. Check whether rank order differs between mk and nt.")
 cli::cli_alert_info("Table B median_diff = CID(nt) - CID(mk) for the SAME model. Negative = model is more accurate when data actually matches its assumptions (expected for NT models). Near-zero/positive for model1 is the expected null result (baseline shouldn't care which scenario generated the data).")

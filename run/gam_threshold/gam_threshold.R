@@ -1,7 +1,6 @@
-#Fits GAMs and extracts threshold estimates for each model across all parameter axes, for both generative scenarios.
+# fits gams and extracts threshold estimates for each model across all parameter axes, for both generative scenarios
 
 source("R/core/_setup.R")
-
 
 args_cli<- commandArgs(trailingOnly = TRUE)
 scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
@@ -11,8 +10,7 @@ GAM_K<- 10L
 RUN_SENSITIVITY <- TRUE
 
 predictors <- c("tree_length", "rate_ratio", "chars_per_taxon")
-# Read: this is tree_accuracy's output, so it lives in that script's subfolder,
-# not this script's own output folder.
+# this is tree_accuracy's output, so it lives in that script's subfolder,  not this script's own output folder
 cid_rep_rds <- file.path(OutputDir(), "results", "tree_accuracy", "tree_accuracy_per_rep.rds")
 
 if (!file.exists(cid_rep_rds)) {
@@ -26,8 +24,7 @@ cli::cli_alert_info("Loaded CID data: {nrow(cid_data)} rows.")
 results_dir <- file.path(OutputDir(), "results", "gam_threshold")
 dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
 
-# Main loop over scenarios
-
+# main loop over scenarios
 for (scenario in SCENARIOS) {
   cli::cli_h1("Scenario: {scenario}")
 
@@ -144,8 +141,7 @@ for (scenario in SCENARIOS) {
     )
   }
 
-  #Save results for this scenario
-
+  #save results for this scenario
   thresh_df <- do.call(rbind,
                        threshold_rows[!vapply(threshold_rows, is.null,
                                               logical(1))])

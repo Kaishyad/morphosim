@@ -1,14 +1,12 @@
-# Model 2: ACRV alone
+# model 2: acrv alone
+#
+# partitioning : single
+# neo q        : symmetric
+# trans q      : symmetric
+# aprv         : absent
+# acrv         : present
+# root freq    : stationary (equal frequencies, implied by symmetric fnJC(2))
 
-#Partitioning : Single
-#Neo Q : Symmetric 
-#Trans Q : Symmetric 
-#APRV : Absent
-#ACRV : Present
-#Root freq : Stationary (equal frequencies, implied by symmetric fnJC(2))
-
-
-#--- Single partition
 allChars <- concatenate(neo, trans)
 taxa  <- allChars.names()
 nTaxa <- allChars.size()
@@ -16,12 +14,12 @@ nEdge <- 2 * nTaxa - 3
 
 moves = VectorMoves()
 
-#--- Tree topology 
+# tree topology
 topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-#--- Branch lengths 
+# branch lengths
 gamma_shape <- 2
 exp_steps   <- 1
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
@@ -34,14 +32,13 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-#--- ACRV
+# acrv: shared lognormal, 4 discretised rate categories
 NUM_RATE_CATS <- 4
-acrv_sd ~ dnExponential(1.0)  #controls spread of rate categories across sites
+acrv_sd ~ dnExponential(1.0)  # controls spread of rate categories across sites
 moves.append( mvScale(acrv_sd, weight = 1.0) )
-# fixes the mean to 1 regardless of acrv_sd
-site_rates := fnDiscretizeDistribution( dnLognormal(-acrv_sd^2 / 2, acrv_sd), NUM_RATE_CATS )
+site_rates := fnDiscretizeDistribution( dnLognormal(-acrv_sd^2 / 2, acrv_sd), NUM_RATE_CATS )  # fixes mean to 1 regardless of acrv_sd
 
-#--- Model
+# model
 m_morph ~ dnPhyloCTMC(
   tree      = phylogeny,
   Q         = fnJC(2),
@@ -51,7 +48,7 @@ m_morph ~ dnPhyloCTMC(
 )
 m_morph.clamp(allChars)
 
-#--- Monitors
+# monitors
 mymodel = model(phylogeny)
 monitors = VectorMonitors()
 monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )

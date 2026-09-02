@@ -1,8 +1,4 @@
-#' Remove burnin
-#' @param values series of parameter estimates
-#' @param burnin fraction or number of samples to omit from start
-#' @return `BurnOff()` returns `values`, without the first `burnin` samples
-#' @export
+# removes the first `burnin` samples (fraction or count) from a series
 BurnOff <- function(values, burnin) {
   .Keep <- function(n, burnin) {
     (if (burnin < 1) n * burnin else burnin):n
@@ -14,10 +10,7 @@ BurnOff <- function(values, burnin) {
   }
 }
 
-#' Convert time to H:M:S format
-#' @param secs time period in seconds
-#' @return Time period formatted for SLURM
-#' @export
+# converts seconds to slurm's d-h:m:s format
 AsHMS <- function(secs) {
   d <- secs %/% (24 * 3600)
   h <- secs %% (24 * 3600) %/% 3600
@@ -33,7 +26,6 @@ AsHMS <- function(secs) {
   hcl.colors(n, palette = palette)[cut(x, n)]
 }
 
-#' @importFrom PlotTools SpectrumLegend
 .LegendBy <- function(x, palette = "inferno", where = "topleft", label = NULL) {
   SpectrumLegend(
     where,
@@ -68,9 +60,7 @@ AsHMS <- function(secs) {
   }
 }
 
-#' Number of characters with non-ambiguous state
-#' @param path Path to nexus file
-#' @export
+# number of characters with a non-ambiguous state
 .NCoded <- function(path) {
   if (file.exists(path)) {
     sum(ReadCharacters(path) %in% 0:9)
@@ -105,13 +95,8 @@ AsHMS <- function(secs) {
   )
 }
 
-#
-#' Has an analysis converged?
-#' Adapted from neotrans (Smith, 2026) 
-#' directly instead of the newer CheckConvergence() in Convergence.R.
-#' @param pt Gelman-Rubin statistic threshold
-#' @param et Estimated sample size threshold
-#' @export
+# has an analysis converged? adapted from neotrans (smith, 2026), used
+# directly instead of the newer checkconvergence() in convergence.r
 HasConverged <- function(pID, scriptID,
                          pt = .config$psrfThreshold,
                          et = .config$essThreshold) {

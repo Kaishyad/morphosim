@@ -7,29 +7,19 @@
 #SBATCH --output=logs/new_results_figures_%j.out
 #SBATCH --error=logs/new_results_figures_%j.err
 #
-# run/misc/new_results_figures.R
-#
-# Standalone script for the 8 recommended-but-missing figures from the
-# results-chapter figure review. Run separately from run_all.R / run_viz.sh
-# -- not wired into the main pipeline. Writes to figures/misc/.
-#
-# Run from the morphosim repo root:
+# standalone script for the 8 recommended-but-missing figures from the
+# results-chapter figure review. not wired into run_all.R / run_viz.sh.
+# writes to figures/misc/. run from the morphosim repo root:
 #   Rscript run/misc/new_results_figures.R
 #
-# Each block is independent and wrapped so one missing/malformed input
-# file skips only that figure, not the whole script (same safe_read_*
-# pattern as the rest of run/).
+# #8 (gam improvement-over-baseline plot) isn't built here - it's an
+# existing broken chart to debug: every panel renders empty, likely because
+# predict(gam_fit, newdata=...) is fed a grid whose scenario/model labels
+# don't match the fitted gam's labels, so the join silently returns zero
+# rows. check that before touching the plotting code.
 #
-# NOTE on #8 (GAM improvement-over-baseline plot): not included here.
-# That one isn't a new chart to build, it's an existing broken one to
-# debug -- every panel currently renders empty, most likely because the
-# predict(gam_fit, newdata=..., se.fit=TRUE) call is being fed a newdata
-# grid whose scenario/model labels don't match the fitted GAM object's
-# labels, so the join silently returns zero rows rather than an error.
-# Check that before touching the plotting code itself.
-#
-# NOTE on #9 (pass-rate table): not a chart, belongs in your write-up's
-# methods/limitations as a plain table, not generated here.
+# #9 (pass-rate table) isn't a chart - it belongs in the write-up as a
+# plain table, not generated here.
 
 suppressPackageStartupMessages({
   library(tidyverse)
@@ -39,15 +29,13 @@ source("run/shared/config_theme.R")
 
 MISC_SUBDIR <- "misc"
 
-# ---------------------------------------------------------------------------
-# 1. Convergence quality vs. accuracy -- the headline sign-flip scatter
-# ---------------------------------------------------------------------------
+# 1. convergence quality vs accuracy - the headline sign-flip scatter
 cross_metric_model <- safe_read_csv(file.path(PATHS$results_dir, "cross_metric", "cross_metric_model_scorecard.csv"))
 
 if (!is.null(cross_metric_model)) {
   df <- cross_metric_model %>% label_models()
 
-  # Fitted correlations, annotated manually per the write-up's reported values
+  # fitted correlations, annotated manually per the write-up's reported values
   ann <- tibble(
     scenario = c("mk", "nt"),
     label    = c("mk: \u03c1 = \u22120.64, p = .024", "nt: \u03c1 = +0.29, p = .35 (n.s.)")
@@ -79,9 +67,7 @@ if (!is.null(cross_metric_model)) {
   message("Skipping figure 1 (convergence vs accuracy): cross_metric_model_scorecard.csv not found")
 }
 
-# ---------------------------------------------------------------------------
-# 2. M11 vs M12, matched cell-by-cell
-# ---------------------------------------------------------------------------
+# 2. m11 vs m12, matched cell-by-cell
 plot_m11_vs_m12 <- function(path, scenario_label) {
   df <- safe_read_csv(path)
   if (is.null(df)) return(NULL)
@@ -90,7 +76,7 @@ plot_m11_vs_m12 <- function(path, scenario_label) {
     return(NULL)
   }
 
-  df <- df %>%
+  df %>%
     mutate(
       winner = case_when(
         M12 < M11 ~ "M12 better",
@@ -99,10 +85,6 @@ plot_m11_vs_m12 <- function(path, scenario_label) {
       ),
       scenario = scenario_label
     )
-
-  n_total <- nrow(df)
-  n_m12_better <- sum(df$winner == "M12 better")
-  df
 }
 
 m11_m12_mk <- plot_m11_vs_m12(file.path(PATHS$results_dir, "tree_accuracy", "tree_similarity_table_wide_mk.csv"), "mk")
@@ -135,9 +117,7 @@ if (nrow(m11_m12_combined) > 0) {
   message("Skipping figure 2 (M11 vs M12): no usable tree_similarity_table_wide_* files found")
 }
 
-# ---------------------------------------------------------------------------
-# 3. Coverage-failure rate by model, mk vs nt
-# ---------------------------------------------------------------------------
+# 3. coverage-failure rate by model, mk vs nt
 table2 <- safe_read_csv(file.path(PATHS$results_dir, "known_answer", "table2_mk_vs_nt_comparison.csv"))
 
 if (!is.null(table2) && all(c("modelID", "pct_below_95_mk", "pct_below_95_nt") %in% names(table2))) {
@@ -165,9 +145,7 @@ if (!is.null(table2) && all(c("modelID", "pct_below_95_mk", "pct_below_95_nt") %
   message("Skipping figure 3 (coverage failure): table2_mk_vs_nt_comparison.csv not found or missing expected columns")
 }
 
-# ---------------------------------------------------------------------------
-# 4. MSE vs. coverage-failure -- overconfident vs erratic typology
-# ---------------------------------------------------------------------------
+# 4. mse vs coverage-failure - overconfident vs erratic typology
 table10 <- safe_read_csv(file.path(PATHS$results_dir, "known_answer", "table10_robustness_summary.csv"))
 
 if (!is.null(table10) && all(c("mean_mse", "mean_cov", "sd_cov", "modelID") %in% names(table10))) {
@@ -194,17 +172,14 @@ if (!is.null(table10) && all(c("mean_mse", "mean_cov", "sd_cov", "modelID") %in%
   message("Skipping figure 4 (MSE vs coverage failure): table10_robustness_summary.csv not found or missing expected columns")
 }
 
-# ---------------------------------------------------------------------------
-# 5. Variance decomposition: grid-cell vs model (table, not a chart)
-# ---------------------------------------------------------------------------
+# 5. variance decomposition: grid-cell vs model
 decompose_variance <- function(path, scenario_label) {
   df <- safe_read_csv(path)
   if (is.null(df)) return(NULL)
 
-  model_cols <- intersect(names(df), MODEL_LABELS)
+  # readable tables use m1..m12-style column headers; fall back to any
+  # column matching ^m\d+ if the exact label match finds nothing
   model_cols <- names(df)[names(df) %in% c(MODEL_IDS, unname(MODEL_LABELS))]
-  # readable tables use M1..M12-style column headers; fall back to any
-  # column matching ^M\d+ if the exact label match above finds nothing
   if (length(model_cols) == 0) {
     model_cols <- grep("^M\\d+", names(df), value = TRUE)
   }
@@ -261,9 +236,7 @@ if (nrow(var_decomp) > 0) {
   message("Skipping figure 5 (variance decomposition): no usable readable_table files found, or aov() failed -- check the grid-cell id column matches expectations")
 }
 
-# ---------------------------------------------------------------------------
-# 6. n_char = 200's double-edged effect on tree-length MSE
-# ---------------------------------------------------------------------------
+# 6. n_char = 200's double-edged effect on tree-length mse
 known_answer <- safe_read_csv(file.path(PATHS$results_dir, "known_answer", "known_answer_summary.csv"))
 
 if (!is.null(known_answer) && all(c("tree_length", "mse_tree_len", "n_char") %in% names(known_answer))) {
@@ -282,9 +255,7 @@ if (!is.null(known_answer) && all(c("tree_length", "mse_tree_len", "n_char") %in
   message("Skipping figure 6 (n_char=200 double edge): known_answer_summary.csv not found or missing expected columns")
 }
 
-# ---------------------------------------------------------------------------
-# 7. Win-count composition by character count, nt scenario
-# ---------------------------------------------------------------------------
+# 7. win-count composition by character count, nt scenario
 nt_wide <- safe_read_csv(file.path(PATHS$results_dir, "tree_accuracy", "tree_similarity_table_wide_nt.csv"))
 
 if (!is.null(nt_wide) && "n_char" %in% names(nt_wide)) {

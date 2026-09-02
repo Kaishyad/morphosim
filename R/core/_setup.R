@@ -1,4 +1,4 @@
-# --- Paths
+# paths
 options("ntOutDir"      = file.path(dirname(getwd()), "the-matrix"))
 options("ntRepoDir"     = file.path(getOption("ntOutDir"), "simulations"))
 options("ntSlurmDir"    = file.path(getwd(), "slurm"))
@@ -7,7 +7,6 @@ options("ntRemoteDir"   = paste0("/nobackup/", Sys.getenv("USER")))
 options("ntTmpDir"      = file.path(getOption("ntRemoteDir"), "tmp"))
 options("ntRbBinary"    = file.path(Sys.getenv("HOME"), "diss/revbayes/projects/cmake/build-mpi/rb-mpi"))
 
-
 library(ape)
 library(TreeTools)
 library(TreeDist)
@@ -15,13 +14,13 @@ library(mgcv)
 library(ggplot2)
 library(cli)
 
-#Source core files 
+# source core files
 for (f in list.files("R/core", pattern = "\\.R$", full.names = TRUE)) {
   if (grepl("_setup\\.R", f)) next
   source(f)
 }
 
-#Source function libraries 
+# source function libraries
 for (d in c("R/model", "R/simulation", "R/outputs")) {
   for (f in list.files(d, pattern = "\\.R$", full.names = TRUE)) {
     source(f)
@@ -29,18 +28,18 @@ for (d in c("R/model", "R/simulation", "R/outputs")) {
 }
 source("R/analysis/Convergence.R")
 source("R/analysis/TreeAnalysis.R")
-source("R/analysis/ThresholdGAM.R")   
+source("R/analysis/ThresholdGAM.R")
 
-# --- Constants
+# constants
 set.seed(636)
-N_TIP<- 50L
-N_REP<- 10L
+N_TIP <- 50L
+N_REP <- 10L
 MODEL_IDS <- paste0("model", 1:12)
 
-# Convergence thresholds 
-ESS_MIN   <- 256   # minimum ESS per parameter
-RHAT_MAX  <- 1.02  # rank-normalised R-hat ceiling
-ASDSF_MAX <- 0.05  # average SD of split frequencies ceiling
+# convergence thresholds
+ESS_MIN   <- 256   # minimum ess per parameter
+RHAT_MAX  <- 1.02  # rank-normalised r-hat ceiling
+ASDSF_MAX <- 0.05  # average sd of split frequencies ceiling
 
 .config <- list(
   grid          = PARAM_GRID,

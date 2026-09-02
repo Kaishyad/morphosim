@@ -1,13 +1,12 @@
-#Asymmetry alone
+# model 3: asymmetry alone
+#
+# partitioning : single
+# q            : asymmetric (fnFreeBinary: gain != loss), single q on neo+trans combined
+#                (no separate neo/trans treatment here, unlike m4+)
+# aprv         : absent
+# acrv         : absent
+# root freq    : stationary
 
-#Partitioning : Single
-#Q : Asymmetric (fnFreeBinary: gain != loss), single Q applied to neo+trans combined
-#(single partition -- there's no separate neo/trans treatment here, unlike M4+)
-#APRV : Absent
-#ACRV : Absent
-# Root freq : Stationary
-
-#--- Single partition
 allChars <- concatenate(neo, trans)
 taxa  <- allChars.names()
 nTaxa <- allChars.size()
@@ -15,12 +14,12 @@ nEdge <- 2 * nTaxa - 3
 
 moves = VectorMoves()
 
-#--- Tree topology 
+# tree topology
 topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-#--- Branch lengths
+# branch lengths
 gamma_shape <- 2
 exp_steps   <- 1
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
@@ -33,7 +32,7 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-#--- Model: single ASYMMETRIC Q for all characters (no APRV, no ACRV)
+# model: single asymmetric q for all characters (no aprv, no acrv)
 gain_loss_ratio ~ dnLognormal(0, 1)  # prior centred on 1 (symmetric case)
 moves.append( mvScale(gain_loss_ratio, weight = 1.0) )
 
@@ -47,7 +46,7 @@ m_morph ~ dnPhyloCTMC(
 )
 m_morph.clamp(allChars)
 
-#--- Monitors
+# monitors
 mymodel = model(phylogeny)
 monitors = VectorMonitors()
 monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )

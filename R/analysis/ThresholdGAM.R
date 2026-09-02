@@ -1,16 +1,8 @@
-#Fits Generalised Additive Models (GAMs(Wood 2017)) to identify parameter thresholds at which each model outperforms the SCENARIO baseline in topological accuracy.
+# fits generalised additive models (gams, wood 2017) to identify parameter thresholds at which each model outperforms the scenario baseline in topological accuracy
 
-#' Compute per-replicate CID improvement of a model over its scenario baseline
-#' delta_CID = CID_baseline - CID_model. Positive values mean the evaluatedmodel is more accurate (lower distance to true tree) than the baseline
-#' for that replicate.
-#'
-#' @param cid_data   Data frame with columns: scenario, gridTag, repID,
-#'                   modelID, median_cid. Produced by run/tree_accuracy/tree_accuracy.R.
-#' @param modelID    
-#' @param baselineID Baseline model to compare against. 
-#' @return Data frame with columns: repID, gridTag, tree_length, gain_loss,
-#'   n_char, chars_per_taxon, rate_ratio, improvement.
-#' @export
+#per-replicate cid improvement of a model over its scenario baseline:
+#delta_cid = cid_baseline - cid_model. positive values mean the evaluated
+#model is more accurate (lower distance to true tree) than the baseline.
 ComputeImprovement <- function(cid_data, modelID, baselineID = NULL, scenario   = "nt") {
   if (is.null(baselineID)) {
     baselineID <- BASELINE_BY_SCENARIO[[scenario]]
@@ -44,23 +36,12 @@ ComputeImprovement <- function(cid_data, modelID, baselineID = NULL, scenario   
   merged[, c("repID", "gridTag", "tree_length", "gain_loss", "n_char", "chars_per_taxon", "rate_ratio", "improvement")]
 }
 
-#' Fit a threshold GAM for one inference model
-#'improvement ~ s(tree_length, k=k) + s(rate_ratio, k=k) + s(chars_per_taxon, k=k)
-#' using mgcv::gam() with a Gaussian family (improvement is continuous).
-#' Basis dimension k is checked with mgcv::gam.check(); a warning is issued  if any smooth is near the boundary (p < 0.05 in k-index test).
-#'
-#' @param improvement_df  Data frame from ComputeImprovement().
-#' @param k               Requested basis dimension for all smooths (default
-#'                        10). Capped per-predictor at the number of unique
-#'                        observed values for that predictor (see Details).
-#' @param verbose         Print gam.check() output (default FALSE).
-#' @return A fitted \code{mgcv::gam} object.
-#' @details If a predictor has fewer unique values than \code{k} (e.g. a
-#'   coarse factorial parameter grid), its basis dimension is silently
-#'   reduced to \code{max(3, n_unique - 1)} and a warning is issued, rather
-#'   than letting \code{mgcv::gam()} error out.
-#' @importFrom mgcv gam gam.check s
-#' @export
+# fits improvement ~ s(tree_length) + s(rate_ratio) + s(chars_per_taxon) via
+# mgcv::gam() (gaussian family). if a predictor has fewer unique values than
+# k (e.g. a coarse factorial grid), its basis dimension is reduced to
+# max(3, n_unique - 1), or the term is linearised/dropped below 4/2 unique
+# values, rather than letting gam() error out. gam.check() is run to flag a
+# basis dimension that's too small (k-index test).
 FitThresholdGAM <- function(improvement_df, k = 10L, verbose = FALSE) {
   if (nrow(improvement_df) < k * 3L) {
     warning("Fewer observations than 3*k; reducing k to ",
@@ -68,8 +49,9 @@ FitThresholdGAM <- function(improvement_df, k = 10L, verbose = FALSE) {
     k <- max(3L, floor(nrow(improvement_df) / 3L))
   }
 
-  #Cap k per-predictor at unique observed values (mgcv requires >= k unique covariate values per smooth). Below 4 unique values a smooth is
-  #rank-deficient, so fall back to a linear term (2-3 values) or drop the term entirely (constant predictor).
+  # cap k per-predictor at unique observed values (mgcv requires >= k unique
+  # covariate values per smooth); below 4 unique values a smooth is
+  # rank-deficient, so fall back to linear (2-3 values) or drop (constant)
   predictors <- c("tree_length", "rate_ratio", "chars_per_taxon")
 
   term_info <- lapply(predictors, function(p) {
@@ -135,26 +117,11 @@ FitThresholdGAM <- function(improvement_df, k = 10L, verbose = FALSE) {
   fit
 }
 
-#' Extract the threshold at which the GAM smooth crosses zero
-#'
-#' For a given parameter axis, extracts the marginal smooth from the fitted
-#' GAM (holding other predictors at their medians), then uses uniroot() to
-#' find the parameter value where the predicted improvement crosses zero.
-#' A positive-to-zero crossing means NT starts to outperform Mk above this
-#' threshold.
-#'
-#' @param gam_fit     A fitted mgcv::gam object from FitThresholdGAM().
-#' @param predictor   Name of the smooth predictor: "tree_length",
-#'                    "rate_ratio", or "chars_per_taxon".
-#' @param data        The data frame used to fit the GAM (for predictor range).
-#' @param n_grid      Resolution of the prediction grid (default 500).
-#' @return Named list:
-#'   \item{threshold}{Estimated crossing value, or NA if no crossing found.}
-#'   \item{direction}{"above" (NT better above threshold) or "below", or NA.}
-#'   \item{pred_range}{Numeric vector c(min, max) of predictor values searched.}
-#' @importFrom mgcv predict.gam
-#' @importFrom stats uniroot median
-#' @export
+# extracts the threshold at which the gam smooth crosses zero. for a given
+# parameter axis, takes the marginal smooth from the fitted gam (holding
+# other predictors at their medians), then uses uniroot() to find the
+# parameter value where predicted improvement crosses zero - a
+# positive-to-zero crossing means nt starts to outperform mk above it.
 ExtractThreshold <- function(gam_fit, predictor, data, n_grid = 500L) {
   pred_range <- range(data[[predictor]], na.rm = TRUE)
   pred_seq   <- seq(pred_range[1], pred_range[2], length.out = n_grid)
@@ -210,21 +177,9 @@ ExtractThreshold <- function(gam_fit, predictor, data, n_grid = 500L) {
        pred_range = pred_range)
 }
 
-#' Check threshold stability by doubling the basis dimension k
-#'
-#' Refits the GAM with k * 2 and compares threshold estimates on each
-#' parameter axis. A shift > `tol` (on the standardised scale) is flagged
-#' as unstable.
-#'
-#' @param improvement_df  Data frame from ComputeImprovement().
-#' @param thresholds_orig Named list of thresholds from the original fit
-#'                        (output of ExtractThreshold() for each axis).
-#' @param k_orig          Original basis dimension (default 10).
-#' @param tol             Relative tolerance for flagging instability
-#'                        (default 0.10 = 10% of predictor range).
-#' @return Data frame with columns: predictor, threshold_orig, threshold_2k,
-#'   relative_shift, stable.
-#' @export
+# checks threshold stability by refitting with k doubled and comparing
+# threshold estimates on each axis; a shift > tol (relative to the
+# predictor's range) is flagged as unstable
 SensitivityCheck <- function(improvement_df, thresholds_orig,
                               k_orig = 10L, tol = 0.10) {
   fit_2k <- tryCatch(
@@ -267,29 +222,11 @@ SensitivityCheck <- function(improvement_df, thresholds_orig,
   do.call(rbind, rows)
 }
 
-#' Threshold summary across all 12 inference models
-#'
-#' For each model in model_ids:
-#'   1. Computes CID improvement over Mk baseline.
-#'   2. Fits a threshold GAM.
-#'   3. Extracts thresholds for all three parameter axes.
-#'   4. Optionally runs SensitivityCheck().
-#'
-#' @param cid_data      Per-replicate CID data frame.
-#' @param model_ids     Model IDs to evaluate. Default NULL resolves to
-#'                      "all models except the scenario's own baseline"
-#'                      (setdiff(MODEL_IDS, baselineID), computed after
-#'                      baselineID is resolved) -- so under "nt" this
-#'                      correctly excludes model8, not model1.
-#' @param baselineID    Baseline model ID. Default NULL resolves to
-#'                      BASELINE_BY_SCENARIO[[scenario]] -- model1 for mk,
-#'                      model8 for nt.
-#' @param scenario      Generative scenario, "mk" or "nt" (default "nt").
-#' @param k             GAM basis dimension (default 10).
-#' @param sensitivity   Run SensitivityCheck() for each model (default TRUE).
-#' @return Data frame with columns: modelID, predictor, threshold, direction,
-#'   stable (if sensitivity = TRUE).
-#' @export
+# threshold summary across all 12 inference models: computes cid improvement
+# over the scenario baseline, fits a threshold gam, extracts thresholds for
+# all three parameter axes, and optionally runs SensitivityCheck(). model_ids
+# defaults to all models except the scenario's own baseline (model1 for mk,
+# model8 for nt).
 ThresholdSummary <- function(cid_data,
                              model_ids   = NULL,
                              baselineID  = NULL,

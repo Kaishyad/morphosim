@@ -1,5 +1,5 @@
-#Merges per-model/scenario convergence_summary_<scenario>_<model>.rds files
-#when run one-model-at-a-time in parallel)
+# merges per-model/scenario convergence_summary_<scenario>_<model>.rds files
+# (when checked one model at a time in parallel)
 
 source("R/core/_setup.R")
 
@@ -23,7 +23,7 @@ cli::cli_ul(basename(per_model_files))
 per_model_dfs <- lapply(per_model_files, readRDS)
 new_df <- do.call(rbind, per_model_dfs)
 
-#Merge with any existing combined summary 
+# merge with any existing combined summary
 existing_df <- if (file.exists(conv_rds)) readRDS(conv_rds) else NULL
 
 combined_df <- if (!is.null(existing_df)) rbind(existing_df, new_df) else new_df
@@ -33,7 +33,7 @@ combined_df <- combined_df[!duplicated(key, fromLast = TRUE), ]
 saveRDS(combined_df, conv_rds)
 cli::cli_alert_success("Merged combined summary saved to: {conv_rds} ({nrow(combined_df)} total rows)")
 
-#Rebuild requeue list from the merged, de-duplicated dataset
+# rebuild requeue list from the merged, de-duplicated dataset
 failed_runs <- combined_df[!combined_df$pass, ]
 
 if (nrow(failed_runs) == 0L) {
@@ -54,7 +54,7 @@ if (nrow(failed_runs) == 0L) {
   cli::cli_alert_warning("{nrow(failed_runs)} failed run(s) written to: {requeue_f}")
 }
 
-#Summary printout
+# summary printout
 n_pass <- sum(combined_df$pass, na.rm = TRUE)
 n_fail <- sum(!combined_df$pass, na.rm = TRUE)
 n_tot  <- nrow(combined_df)

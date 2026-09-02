@@ -1,51 +1,48 @@
-#Model 1: Mk baseline
+# model 1: mk baseline
+#
+# partitioning : single (neo + trans combined)
+# neo q        : symmetric (gain = loss)
+# trans q      : symmetric (gain = loss)
+# aprv         : absent (only one partition)
+# acrv         : absent (no among-character rate variation)
+# root freq    : stationary (equal frequencies)
 
-#Partitioning : Single (neo + trans combined)
-#Neo Q: Symmetric (gain = loss)
-#Trans Q: Symmetric (gain = loss) 
-#APRV: Absent (only one partition)
-#ACRV: Absent (no among-character rate variation)
-#Root freq: Stationary (equal frequencies)
-
-
-#Single partition
 allChars <- concatenate(neo, trans)
-taxa  <- allChars.names()  # taxon names from the character matrix
-nTaxa <- allChars.size()   # number of taxa
-nEdge <- 2 * nTaxa - 3  # number of edges in an unrooted binary tree
+taxa  <- allChars.names()
+nTaxa <- allChars.size()
+nEdge <- 2 * nTaxa - 3
 
 moves = VectorMoves()
 
-#--- Tree topology, uniform prior
+# tree topology, uniform prior
 topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-#--- Branch lengths, compound Dirichlet parameterisation
-gamma_shape <- 2  # Gamma(2,2) prior centres on 1 change per site with moderate variance
-exp_steps   <- 1  # expected changes per site across the tree
-tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps) #total expected character changes across all branches
+# branch lengths, compound dirichlet parameterisation
+gamma_shape <- 2  # gamma(2,2) prior centres on 1 change per site with moderate variance
+exp_steps   <- 1
+tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
 moves.append( mvScale(tree_length, weight = 1.0) )
 
-rel_br_lengths ~ dnDirichlet( rep(1.0, nEdge) ) #proportional allocation of tree_length across edges, uniform over the simplex, so no branch is favoured a priori
+rel_br_lengths ~ dnDirichlet( rep(1.0, nEdge) )
 moves.append( mvBetaSimplex(rel_br_lengths, weight = nEdge / 3.0) )
 moves.append( mvDirichletSimplex(rel_br_lengths, weight = nEdge / 20.0) )
-br_lengths := rel_br_lengths * tree_length #absolute branch lengths = proportions * total length
+br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-#--- Model
-#fnJC(2): gain rate = loss rate, stationary root frequencies are 0.5/0.5
-#No APRV (single partition) and no ACRV (no site rate categories)
+# model: fnJC(2), gain rate = loss rate, stationary root frequencies 0.5/0.5
+# no aprv (single partition) and no acrv (no site rate categories)
 m_morph ~ dnPhyloCTMC(
   tree   = phylogeny,
   Q      = fnJC(2),
   type   = "Standard",
-  coding = "variable" 
+  coding = "variable"
 )
-m_morph.clamp(allChars) 
+m_morph.clamp(allChars)
 
-#--- Monitors
+# monitors
 mymodel = model(phylogeny)
 monitors = VectorMonitors()
 monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )

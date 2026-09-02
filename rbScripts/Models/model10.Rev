@@ -1,17 +1,17 @@
-# Model 10
-
-# Partitioning : Two (neo | trans)
-# Neo Q  : Asymmetric fnFreeBinary
-# Trans Q  : Symmetric fnJC(2) -- matches the nt simulation's trans generative process
-# APRV  : Present (partition rate scalar)
-# ACRV : Present (shared lognormal, 4 categories)
-# Root freq  : Free (estimated from data)
-
-#Ptests root prior misspecification. All other settings are identical to M8 
-#The stationary root assumed by M8 fixes root state frequencies at the equilibrium
-#of the Q matrix. Here, root frequencies are instead drawn from a flat Dirichlet and estimated freely. If M10 performs worse than M8
-#on NT-simulated data, the free root adds unnecessary noise. If it performs similarly, the root prior is inconsequential. This is a
-#targeted misspecification test for one assumption of the generative model.
+# model 10
+#
+# partitioning : two (neo | trans)
+# neo q        : asymmetric fnFreeBinary
+# trans q      : symmetric fnJC(2) - matches the nt simulation's trans generative process
+# aprv         : present (partition rate scalar)
+# acrv         : present (shared lognormal, 4 categories)
+# root freq    : free (estimated from data)
+#
+# tests root prior misspecification. all other settings are identical to
+# m8. the stationary root m8 assumes fixes root state frequencies at the
+# equilibrium of the q matrix; here root frequencies are drawn from a flat
+# dirichlet and estimated freely. if m10 underperforms m8, the free root
+# adds unnecessary noise; if similar, the root prior is inconsequential.
 
 taxa  <- neo.names()
 nTaxa <- neo.size()
@@ -19,12 +19,12 @@ nEdge <- 2 * nTaxa - 3
 
 moves = VectorMoves()
 
-#--- Tree topology
+# tree topology
 topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-#--- Branch lengths (compound Dirichlet)
+# branch lengths (compound dirichlet)
 gamma_shape <- 2
 exp_steps   <- 1
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
@@ -37,21 +37,19 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-#--- APRV: partition rate scalar
+# aprv: partition rate scalar
 part_rate_neo   <- 1.0
 part_rate_trans ~ dnExponential(1.0)
 moves.append( mvScale(part_rate_trans, weight = 1.0) )
 
-#--- Asymmetric Q matrices
+# asymmetric q matrices
 gain_loss_neo ~ dnLognormal(0, 1)
 moves.append( mvScale(gain_loss_neo, weight = 1.0) )
 Q_neo := fnFreeBinary( simplex(1, gain_loss_neo), rescaled = TRUE )
 
-
 Q_trans <- fnJC(2)
 
-
-#--- ACRV: shared lognormal (identical to M8)
+# acrv: shared lognormal (identical to m8)
 NUM_RATE_CATS <- 4
 acrv_sd ~ dnExponential(1.0)
 moves.append( mvScale(acrv_sd, weight = 1.0) )
@@ -59,16 +57,16 @@ site_rates := fnDiscretizeDistribution(
   dnLognormal(-acrv_sd^2 / 2, acrv_sd), NUM_RATE_CATS
 )
 
-#--- Free root frequencies
-#Flat Dirichlet(1,1) places equal prior probability over all root state frequency vectors, making no assumption about stationarity.
-#Separate root freq vectors per partition — each partition's root state is estimated independently.
+# free root frequencies: flat dirichlet(1,1) places equal prior probability
+# over all root state frequency vectors, making no stationarity assumption.
+# separate root freq vectors per partition, each estimated independently.
 root_freq_neo   ~ dnDirichlet( simplex(1, 1) )
 moves.append( mvBetaSimplex(root_freq_neo, weight = 1.0) )
 
 root_freq_trans ~ dnDirichlet( simplex(1, 1) )
 moves.append( mvBetaSimplex(root_freq_trans, weight = 1.0) )
 
-#--- Model: two partitions, asymmetric Q, lognormal ACRV, free root
+# model: two partitions, asymmetric q, lognormal acrv, free root
 m_neo ~ dnPhyloCTMC(
   tree        = phylogeny,
   Q           = Q_neo,
@@ -91,7 +89,7 @@ m_trans ~ dnPhyloCTMC(
 )
 m_trans.clamp(trans)
 
-#--- Monitors
+# monitors
 mymodel = model(phylogeny)
 monitors = VectorMonitors()
 monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )

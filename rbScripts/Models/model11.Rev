@@ -1,17 +1,19 @@
-#Model 11
-
-# Partitioning : Single (neo + trans combined)
-# Q  : Symmetric Mk, 9 states (fnJC(9))
-# APRV  : Absent
-# ACRV  : Absent
-# Root freq : Stationary
-
-#targeted misspecification test for state space. The NT generative model uses binary (2-state) characters. This model
-#applies a 9-state Mk matrix (fnJC(9)) to the same binary data, treating each character as if it could take 9 values rather than 2.
-#This mimics a common real-world error where researchers apply multistate Mk to data that may be better described by a binary
-#process. The 9-state choice reflects the typical upper bound of morphological character states in empirical datasets. Any degradation
-# in tree accuracy or missing data imputation relative to M1 is attributable solely to state space misspecification.
-
+# model 11
+#
+# partitioning : single (neo + trans combined)
+# q            : symmetric mk, 9 states (fnJC(9))
+# aprv         : absent
+# acrv         : absent
+# root freq    : stationary
+#
+# targeted misspecification test for state space. the nt generative model
+# uses binary (2-state) characters; this model applies a 9-state mk matrix
+# to the same binary data, as if each character could take 9 values rather
+# than 2 - mimicking a common real-world error of applying multistate mk to
+# data better described by a binary process (9 states reflects the typical
+# upper bound of morphological character states in empirical datasets). any
+# degradation in tree accuracy relative to m1 is attributable solely to
+# state space misspecification.
 
 allChars <- concatenate(neo, trans)
 taxa  <- allChars.names()
@@ -20,12 +22,12 @@ nEdge <- 2 * nTaxa - 3
 
 moves = VectorMoves()
 
-#--- Tree topology
+# tree topology
 topology ~ dnUniformTopology(taxa)
 moves.append( mvNNI(topology, weight = nEdge / 2.0) )
 moves.append( mvSPR(topology, weight = nEdge / 8.0) )
 
-#--- Branch lengths (compound Dirichlet)
+# branch lengths (compound dirichlet)
 gamma_shape <- 2
 exp_steps   <- 1
 tree_length ~ dnGamma(shape = gamma_shape, rate = gamma_shape / exp_steps)
@@ -38,10 +40,10 @@ br_lengths := rel_br_lengths * tree_length
 
 phylogeny := treeAssembly(topology, br_lengths)
 
-#--- Model: single partition, 9-state symmetric Mk
-#fnJC(9) produces a 9x9 equal-rates matrix with stationary
-#frequencies fixed at 1/9 each. Applied to binary data, only
-#the 0 and 1 rows/columns will have non-zero data likelihood.
+# model: single partition, 9-state symmetric mk. fnJC(9) produces a 9x9
+# equal-rates matrix with stationary frequencies fixed at 1/9 each; applied
+# to binary data, only the 0 and 1 rows/columns will have non-zero data
+# likelihood.
 m_morph ~ dnPhyloCTMC(
   tree   = phylogeny,
   Q      = fnJC(9),
@@ -50,7 +52,7 @@ m_morph ~ dnPhyloCTMC(
 )
 m_morph.clamp(allChars)
 
-#--- Monitors
+# monitors
 mymodel = model(phylogeny)
 monitors = VectorMonitors()
 monitors.append( mnScreen(printgen = 300, prior = FALSE, posterior = FALSE) )

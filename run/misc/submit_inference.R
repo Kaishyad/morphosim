@@ -1,20 +1,12 @@
-# Generate and submit SLURM jobs for all model x simulation combinations.
-
-#Rscript run/submit_inference.R              # write SLURM scripts only
-#Rscript run/submit_inference.R --submit     # also run sbatch
-#Rscript run/submit_inference.R --requeue    # re-submit only failed runs
+# generates and submits slurm jobs for all model x simulation combinations
+#
+# Rscript run/misc/submit_inference.R              # write slurm scripts only
+# Rscript run/misc/submit_inference.R --submit     # also run sbatch
+# Rscript run/misc/submit_inference.R --requeue    # re-submit only failed runs
 
 source("R/core/_setup.R")
 
-
-#' Fill the mc3sim.sh template and write to slurmPath
-#'
-#' @param scenario  "nt" or "mk"
-#' @param gridTag   Grid tag string
-#' @param repID     Replicate ID e.g. "sim001"
-#' @param modelID   Model script name e.g. "model4"
-#' @param slurmPath Output path for the filled script
-#' @noRd
+# fills the mc3sim.sh template and writes it to slurmPath
 .WriteSlurmScript <- function(scenario, gridTag, repID, modelID, slurmPath) {
   template <- SlurmTemplate()
   if (!file.exists(template)) {
@@ -23,8 +15,7 @@ source("R/core/_setup.R")
 
   lines <- readLines(template)
 
-  # Extract seed integer from repID e.g. "sim007" -> 7
-  seed_int <- as.integer(sub("sim0*", "", repID))
+  seed_int <- as.integer(sub("sim0*", "", repID))   # "sim007" -> 7
 
   lines <- gsub("%SIMSCENARIO%", scenario,               lines)
   lines <- gsub("%GRID_TAG%",    gridTag,                lines)
@@ -37,13 +28,12 @@ source("R/core/_setup.R")
   invisible(slurmPath)
 }
 
-# --- Parse command-line flags ---
 args    <- commandArgs(trailingOnly = TRUE)
 submit  <- "--submit"  %in% args
 requeue <- "--requeue" %in% args
 scenarios <- c("nt", "mk")
 
-# --- Requeue mode: read failed run list from check_convergence.R ---
+# requeue mode: reads the failed-run list from check_convergence.R
 if (requeue) {
   requeue_f <- file.path(OutputDir(), "results", "requeue_list.txt")
   if (!file.exists(requeue_f)) {
@@ -87,7 +77,7 @@ if (requeue) {
   quit(save = "no", status = 0L)
 }
 
-# --- Normal mode: iterate full grid ---
+# normal mode: iterates the full grid
 
 seeds     <- seq_len(N_REP)
 model_ids <- MODEL_IDS
@@ -108,7 +98,7 @@ for (scenario in scenarios) {
         gridTag     <- GridTag(PARAM_GRID[gi, ])
         result_file <- ResultFile(scenario, gridTag, simID, modelID)
 
-        # Skip if result .rds already exists (run completed and processed)
+        # skip if result .rds already exists (run completed and processed)
         if (file.exists(result_file)) {
           n_skipped <- n_skipped + 1L
           next

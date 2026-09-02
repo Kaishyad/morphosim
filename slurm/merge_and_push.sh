@@ -7,11 +7,11 @@
 #SBATCH --output=logs/merge_%j.out
 #SBATCH --error=logs/merge_%j.err
 
-# Under sbatch, SLURM copies this script into a job-specific spool directory
-# before executing it, so ${BASH_SOURCE[0]} no longer points at its real
-# location in the repo. SLURM sets SLURM_SUBMIT_DIR to the directory `sbatch`
-# was run from, which is what we actually want. Fall back to BASH_SOURCE-based
-# resolution for the case where this script is run directly (not via sbatch).
+# under sbatch, slurm copies this script into a job-specific spool directory
+# before running it, so BASH_SOURCE no longer points at its real repo
+# location. SLURM_SUBMIT_DIR is the directory sbatch was run from, which is
+# what we want; fall back to BASH_SOURCE resolution when this script is run
+# directly (not via sbatch).
 if [ -n "$SLURM_SUBMIT_DIR" ]; then
   SCRIPT_DIR="$SLURM_SUBMIT_DIR/slurm"
 else

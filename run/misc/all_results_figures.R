@@ -7,76 +7,14 @@
 #SBATCH --output=logs/all_figures_%j.out
 #SBATCH --error=logs/all_figures_%j.err
 #
-# run/misc/all_results_figures.R
-#
-# Consolidated, fixed version of BOTH figure sets:
-#   - run/misc/new_results_figures.R   (the numbered 41-47 series)
-#   - run/misc/results_figures_extra.R (the 5 unnumbered figures:
-#     convergence heatmaps, CID boxplots, GAM threshold curves,
-#     calibration plot, ASDSF/R-hat diagnostic scatter)
-#
-# Run from the morphosim repo root:
+# consolidated, corrected version of the two figure sets in
+# new_results_figures.R (numbered 41-47) and results_figures_extra.R
+# (unnumbered: heatmaps, boxplots, gam curves, calibration, diagnostic
+# scatter). run from the morphosim repo root:
 #   Rscript run/misc/all_results_figures.R
 #
-# Output: PNG only (no PDF -- see note below) saved to BOTH:
-#   1. $MATRIX_DIR/figures/misc/
-#   2. <morphosim repo root>/figures/misc/
-#
-# ---------------------------------------------------------------------------
-# FIXES APPLIED IN THIS VERSION (vs. the two scripts above):
-#
-# 41_convergence_vs_accuracy_scatter
-#   - OLD: correlation computed on 12 model-level MEANS (one point per
-#     model), so a single model (M12) could dominate a rho computed from
-#     n=12. Annotated rho values were also hardcoded from a prior run
-#     rather than computed live.
-#   - NEW: uses cross_metric_gridcell.csv (one row per scenario x gridTag
-#     x modelID -- hundreds of points, not 12) and computes rho/p live
-#     with cor.test(), reporting the actual n used in the label.
-#
-# 43_coverage_failure_rate_by_model / 44_mse_vs_coverage_failure_typology
-#   - No numeric fix needed; both already read from real tables. Kept as-is
-#     structurally.
-#
-# 44 title/subtitle truncation
-#   - OLD: long subtitle clipped by default plot width (8in) -- "indicate
-#     consistent ov..." cut off.
-#   - NEW: subtitle wrapped with str_wrap(), and save width increased to
-#     10in for this figure specifically.
-#
-# 46_nchar200_tree_length_mse_double_edge
-#   - OLD: single linear mean trend line drawn through visibly
-#     heteroscedastic, outlier-heavy data (MSE fans out sharply at
-#     tree_length=5 & n_char=200, with points >40-60 dominating a linear
-#     fit).
-#   - NEW: y-axis switched to log10 scale (compresses the outlier-driven
-#     fan-out so the "double edge" pattern the title claims is actually
-#     visible), and the trend line switched to a loess smooth rather than
-#     a straight mean line, which tracks the heteroscedastic pattern
-#     instead of averaging over it.
-#
-# 47_win_composition_by_nchar_nt
-#   - OLD: nt scenario only, hard to compare against mk.
-#   - NEW: faceted mk vs nt side by side (mk trivially collapses to the
-#     baseline winning almost everywhere, which is itself worth showing
-#     next to nt's much more varied composition).
-#
-# Figures 1-5 (unnumbered: heatmaps, boxplots, GAM curves, calibration,
-# diagnostic scatter) are carried over unchanged from
-# results_figures_extra.R -- no reported issues with those.
-#
-# NOTE on PDF output: dropped by request (redundant with PNG for this
-# use). Change `formats = c("png")` below to `c("png","pdf")` in
-# save_fig_both() if you want vector copies back for LaTeX insertion.
-#
-# NOTE (carried over): the existing GAM improvement-over-baseline plot
-# elsewhere in the pipeline is reported broken (empty panels, likely a
-# newdata/label mismatch in predict.gam()) -- NOT reused here. Figure 3
-# below re-derives its own newdata grids directly against each fitted
-# model's own factor levels, so it does not inherit that bug, but if you
-# still see empty panels here too, check FitThresholdGAM()'s newdata
-# construction against the fitted gam object's terms.
-# ---------------------------------------------------------------------------
+# writes png to both $MATRIX_DIR/figures/misc/ and <repo root>/figures/misc/.
+# set formats = c("png","pdf") in save_fig_both() below for vector copies.
 
 suppressPackageStartupMessages({
   library(tidyverse)
@@ -110,14 +48,10 @@ parse_grid_tag <- function(df) {
   df
 }
 
-# =============================================================================
-# NUMBERED SERIES (41-47), fixed
-# =============================================================================
+# numbered series (41-47)
 
-# ---------------------------------------------------------------------------
-# 41. Convergence quality vs. accuracy -- FIXED to use per-grid-cell data
-#     and a live-computed correlation instead of 12 model-level means.
-# ---------------------------------------------------------------------------
+# 41. convergence quality vs accuracy, per grid-cell x model with a live
+# spearman correlation (not model-level means)
 cross_cell <- safe_read_csv(file.path(PATHS$results_dir, "cross_metric_gridcell.csv"))
 
 if (!is.null(cross_cell) && all(c("median_cid", "mean_asdsf", "scenario", "modelID") %in% names(cross_cell))) {
@@ -160,9 +94,7 @@ if (!is.null(cross_cell) && all(c("median_cid", "mean_asdsf", "scenario", "model
   message("Skipping figure 41: cross_metric_gridcell.csv not found or missing expected columns")
 }
 
-# ---------------------------------------------------------------------------
-# 42. M11 vs M12, matched cell-by-cell (unchanged)
-# ---------------------------------------------------------------------------
+# 42. m11 vs m12, matched cell-by-cell
 load_m11_m12 <- function(path, scenario_label) {
   df <- safe_read_csv(path)
   if (is.null(df)) return(NULL)
@@ -212,9 +144,7 @@ if (nrow(m11_m12) > 0) {
   message("Skipping figure 42: no usable tree_similarity_table_wide_* files found")
 }
 
-# ---------------------------------------------------------------------------
-# 43. Coverage-failure rate by model (unchanged)
-# ---------------------------------------------------------------------------
+# 43. coverage-failure rate by model
 table2 <- safe_read_csv(file.path(PATHS$results_dir, "known_answer", "table2_mk_vs_nt_comparison.csv"))
 
 if (!is.null(table2) && all(c("modelID", "pct_below_95_mk", "pct_below_95_nt") %in% names(table2))) {
@@ -242,9 +172,7 @@ if (!is.null(table2) && all(c("modelID", "pct_below_95_mk", "pct_below_95_nt") %
   message("Skipping figure 43: table2_mk_vs_nt_comparison.csv not found or missing expected columns")
 }
 
-# ---------------------------------------------------------------------------
-# 44. MSE vs. coverage-failure typology -- FIXED truncated title/subtitle
-# ---------------------------------------------------------------------------
+# 44. mse vs coverage-failure typology
 table10 <- safe_read_csv(file.path(PATHS$results_dir, "known_answer", "table10_robustness_summary.csv"))
 
 if (!is.null(table10) && all(c("mean_mse", "mean_cov", "sd_cov", "modelID") %in% names(table10))) {
@@ -273,9 +201,7 @@ if (!is.null(table10) && all(c("mean_mse", "mean_cov", "sd_cov", "modelID") %in%
   message("Skipping figure 44: table10_robustness_summary.csv not found or missing expected columns")
 }
 
-# ---------------------------------------------------------------------------
-# 45. Variance decomposition (unchanged)
-# ---------------------------------------------------------------------------
+# 45. variance decomposition: how much of cid variance is grid cell vs model
 decompose_variance <- function(path, scenario_label) {
   df <- safe_read_csv(path)
   if (is.null(df)) return(NULL)
@@ -328,9 +254,8 @@ if (nrow(var_decomp) > 0) {
   message("Skipping figure 45: no usable readable_table files found, or aov() failed")
 }
 
-# ---------------------------------------------------------------------------
-# 46. n_char=200 double-edge on tree-length MSE -- FIXED log-scale + loess
-# ---------------------------------------------------------------------------
+# 46. n_char=200 double-edge on tree-length mse; log scale + loess to show
+# the heteroscedastic fan-out that a linear mean trend would hide
 known_answer <- safe_read_csv(file.path(PATHS$results_dir, "known_answer", "known_answer_summary.csv"))
 
 if (!is.null(known_answer) && all(c("tree_length", "mse_tree_len", "n_char") %in% names(known_answer))) {
@@ -349,9 +274,7 @@ if (!is.null(known_answer) && all(c("tree_length", "mse_tree_len", "n_char") %in
   message("Skipping figure 46: known_answer_summary.csv not found or missing expected columns")
 }
 
-# ---------------------------------------------------------------------------
-# 47. Win-count composition by character count -- FIXED to facet mk vs nt
-# ---------------------------------------------------------------------------
+# 47. win-count composition by character count, mk vs nt faceted side by side
 win_comp <- function(path, scenario_label) {
   df <- safe_read_csv(path)
   if (is.null(df) || !("n_char" %in% names(df))) return(NULL)
@@ -386,13 +309,9 @@ if (nrow(win_all) > 0) {
   message("Skipping figure 47: no usable tree_similarity_table_wide_* files found")
 }
 
-# =============================================================================
-# UNNUMBERED SERIES (carried over unchanged from results_figures_extra.R)
-# =============================================================================
+# unnumbered series, carried over from results_figures_extra.R
 
-# ---------------------------------------------------------------------------
-# A. Convergence pass-rate heatmap (model x n_char, per scenario)
-# ---------------------------------------------------------------------------
+# a. convergence pass-rate heatmap (model x n_char, per scenario)
 conv <- safe_read_rds(PATHS$convergence)
 
 if (is.null(conv)) {
@@ -442,9 +361,7 @@ if (is.null(conv)) {
   }
 }
 
-# ---------------------------------------------------------------------------
-# B. CID boxplots by model, faceted by generative scenario
-# ---------------------------------------------------------------------------
+# b. cid boxplots by model, faceted by generative scenario
 cid_rep <- safe_read_rds(PATHS$tree_accuracy_rep)
 
 if (is.null(cid_rep)) {
@@ -466,9 +383,7 @@ if (is.null(cid_rep)) {
   save_fig_both(pC, "cid_boxplots_by_model", height = 8)
 }
 
-# ---------------------------------------------------------------------------
-# C. GAM threshold curves
-# ---------------------------------------------------------------------------
+# c. gam threshold curves
 if (is.null(cid_rep)) {
   message("Skipping GAM threshold curves: needs tree_accuracy_per_rep.rds.")
 } else {
@@ -536,9 +451,7 @@ if (is.null(cid_rep)) {
   }
 }
 
-# ---------------------------------------------------------------------------
-# D. Calibration plot
-# ---------------------------------------------------------------------------
+# d. calibration plot: observed vs nominal coverage
 ka <- safe_read_rds(PATHS$known_answer)
 
 if (is.null(ka)) {

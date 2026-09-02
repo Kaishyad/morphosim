@@ -1,10 +1,10 @@
-#Mk Simulatior
+# mk simulator
 
-outDir = args[1] 
+outDir = args[1]
 n_taxa = args[2] * 1
 n_neo  = args[3] * 1
 n_trans= args[4] * 1
-# args[5] (gain_loss) null bc it wont be asym
+# args[5] (gain_loss) unused - mk has no asymmetry
 length = args[6] * 1
 seed_v = args[7] * 1
 
@@ -12,7 +12,7 @@ write("Writing Mk simulation output to", outDir)
 seed(seed_v)
 write(seed_v, filename = outDir + "/seed.txt")
 
-#Taxa 
+# taxa
 for (i in 1:n_taxa) {
   if (i < 10) {
     taxa[i] = taxon("tip_0" + i)
@@ -21,7 +21,7 @@ for (i in 1:n_taxa) {
   }
 }
 
-#Tree 
+# tree
 n_edge = 2 * n_taxa - 3
 rel_br_lengths ~ dnDirichlet(rep(1.0, n_edge))
 br_lengths := rel_br_lengths * length
@@ -29,14 +29,12 @@ topology ~ dnUniformTopology(taxa, clade(taxa[1]))
 tr := treeAssembly(topology, br_lengths)
 write(tr, filename = outDir + "/tree.nwk")
 
+# root frequencies, equal
+rootFreqMk := Simplex(1.0, 1.0)
 
-#Root frequencies
-rootFreqMk := Simplex(1.0, 1.0) #equal root frequencies.
+# single partition, simulated apart but combined in the inference so it's ok
 
-
-#Single Partition, simulated apart but combined in the inference so its ok
-
-#Simulate neomorphic characters 
+# neomorphic characters
 neo_chars ~ dnPhyloCTMC(
   tree = tr,
   Q = fnJC(2),
@@ -47,7 +45,7 @@ neo_chars ~ dnPhyloCTMC(
 )
 writeNexus(filename = outDir + "/neo.nex", neo_chars)
 
-#Simulate transformational characters
+# transformational characters
 trans_chars ~ dnPhyloCTMC(
   tree = tr,
   Q = fnJC(2),
@@ -59,4 +57,3 @@ trans_chars ~ dnPhyloCTMC(
 
 writeNexus(filename = outDir + "/trans.nex", trans_chars)
 write("Mk simulation complete.")
-

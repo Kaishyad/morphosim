@@ -7,7 +7,7 @@ sum_df <- sum_df %>% filter(!is.na(median_cid))
 
 sum_df$cell_label <- sprintf("TL=%.1f  GL=%.2f  NC=%d", sum_df$tree_length, sum_df$gain_loss, sum_df$n_char)
 
-#Order models best-to-worst by mean CID (pooled across scenarios), used
+#order models best-to-worst by mean cid, pooled across scenarios
 model_order <- sum_df %>%
   group_by(modelID) %>%
   summarise(mean_cid = mean(median_cid, na.rm = TRUE), .groups = "drop") %>%
@@ -20,7 +20,7 @@ sum_df <- sum_df %>%
 mk_df <- sum_df %>% filter(scenario == "mk")
 nt_df <- sum_df %>% filter(scenario == "nt")
 
-#Heatmap: every grid cell x every model, coloured by median CID.
+#heatmap: every grid cell x every model, colored by median cid
 .HeatmapCells <- function(df, facet_by_part_rate = FALSE) {
   df <- df %>%
     arrange(tree_length, gain_loss, n_char) %>%
@@ -55,7 +55,7 @@ if (nrow(nt_df) > 0L) {
   save_fig(p2, "27_tree_similarity_heatmap_nt_by_part_rate", subdir = "tree_accuracy", width = 20, height = 12)
 }
 
-# Best model per grid cell -- which model wins where.
+# best model per grid cell -- which model wins where
 .BestModelPerCell <- function(df) {
   df %>%
     group_by(scenario, gridTag, cell_label, tree_length, gain_loss, n_char,
@@ -99,7 +99,7 @@ if (nrow(best_nt) > 0L) {
   save_fig(p4, "29_best_model_per_cell_nt_by_part_rate", subdir = "tree_accuracy", width = 14, height = 12)
 }
 
-# Top/bottom 10 (model, parameter combination) pairs per scenario.
+# top/bottom 10 (model, parameter combination) pairs per scenario
 extremes <- sum_df %>%
   group_by(scenario) %>%
   group_modify(~ bind_rows(
@@ -121,7 +121,7 @@ if (nrow(extremes) > 0L) {
   save_fig(p5, "30_best_worst_model_gridcell_combos", subdir = "tree_accuracy", width = 11, height = 10)
 }
 
-# Tables. Long CSV for filtering/pivoting yourself, plus a wide table
+# tables: long csv for filtering/pivoting yourself, plus a wide table
 export_cols <- intersect(c("scenario", "modelID", "gridTag", "tree_length", "gain_loss",
                            "n_char", "part_rate", "median_cid", "iqr_cid", "n_reps"),
                          colnames(sum_df))

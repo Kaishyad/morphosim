@@ -1,21 +1,11 @@
-
-#' All-models-against-each-other comparison, within one scenario
-#'
-#' Runs a Friedman test (non-parametric repeated-measures ANOVA analogue, appropriate since the same grid cells are shared across models) to test
-#' whether CID differs across the 12 models at all, then pairwise Wilcoxon signed-rank tests between every model pair with Holm correction for
-#' multiple comparisons. Models are also ranked by median CID (lower =  more accurate).
-#'
-#' @param cid_data  Data frame from run/tree_accuracy.R.
-#' @param scenario  
-#' @param models   
-#' @return List with: `friedman` (htest), `pairwise` (data frame of pairwise p-values), `ranking` (data frame of median CID per model, sorted best to worst).
-#' @export
+# all-models-against-each-other comparison, within one scenario. runs a friedman test to test whether cid differs
+#across the 12 models at all, then pairwise wilcoxon signed-rank tests
+#between every model pair with holm correction. models are also ranked by median cid (lower = more accurate).
 AllModelsComparison <- function(cid_data, scenario, models = NULL) {
   sub <- cid_data[cid_data$scenario == scenario, ]
   if (is.null(models)) models <- sort(unique(sub$modelID))
   sub <- sub[sub$modelID %in% models, ]
 
-  
   wide <- reshape(
     sub[, c("gridTag", "repID", "modelID", "median_cid")],
     idvar     = c("gridTag", "repID"),
@@ -41,7 +31,8 @@ AllModelsComparison <- function(cid_data, scenario, models = NULL) {
 
   friedman <- stats::friedman.test(mat)
 
-  #Pairwise Wilcoxon (paired, since same grid cell/replicate under each model), Holm-corrected across all pairs.
+  #pairwise wilcoxon (paired, since same grid cell/replicate under each
+  #model), holm-corrected across all pairs
   pairwise <- stats::pairwise.wilcox.test(
     x = as.vector(mat),
     g = factor(rep(models, each = nrow(mat)), levels = models),
@@ -63,11 +54,7 @@ AllModelsComparison <- function(cid_data, scenario, models = NULL) {
        n_dropped = n_dropped, n_complete = nrow(complete))
 }
 
-#' A single model vs itself: nt-generated data vs mk-generated data
-#' @param cid_data  
-#' @param modelID  
-#' @return List with: `wilcox` (paired Wilcoxon signed-rank htest),  `summary` (median CID under each scenario + the paired difference).
-#' @export
+#a single model vs itself: nt-generated data vs mk-generated data
 ScenarioContrast <- function(cid_data, modelID) {
   sub <- cid_data[cid_data$modelID == modelID, ]
 
@@ -79,7 +66,8 @@ ScenarioContrast <- function(cid_data, modelID) {
   nt_cid <- merge(sub[sub$scenario == "nt", ], nt_grid[, c("gridTag", match_cols)], by = "gridTag")
   mk_cid <- merge(sub[sub$scenario == "mk", ], mk_grid[, c("gridTag", match_cols)], by = "gridTag")
 
-  #Pool nt across part_rate per matched cell (median), then match on the shared axes only.
+  #pool nt across part_rate per matched cell (median), then match on the
+  #shared axes only
   nt_pooled <- stats::aggregate(median_cid ~ tree_length + gain_loss + n_char + n_taxa,
                                 data = nt_cid, FUN = stats::median)
 

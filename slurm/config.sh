@@ -1,11 +1,8 @@
 #!/bin/bash
-# Shared configuration for every script in slurm/.
-#
-# Every slurm/*.sh script sources this file first, so there's one place to
-# change the repo locations and git branch instead of editing them in ~20
-# scripts. Defaults assume the standard Hamilton /nobackup/<user>/ layout;
-# override any of them by exporting the variable before you run/submit a
-# script, e.g.:
+# shared configuration for every script in slurm/. sourced first by each
+# script, so repo locations and the git branch only need changing here.
+# defaults assume the standard hamilton /nobackup/<user>/ layout; override
+# any of them by exporting the variable before running/submitting a script:
 #
 #   export MORPHOSIM_DIR=/nobackup/abcd12/dev-morphosim
 #   sbatch slurm/run_convergence.sh

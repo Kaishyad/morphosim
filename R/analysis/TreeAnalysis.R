@@ -1,27 +1,12 @@
-#Computes Clustering Information Distance (CID) between posterior tree samples and the known true simulated tree for each replicate and model.
-#adapted from TreeAnalysis.R in neotrans (Smith, 2026)
+#computes clustering information distance (cid) between posterior tree samples and the known true simulated tree, for each replicate and model.
+#adapted from TreeAnalysis.R in neotrans (smith, 2026)
 
-# Tree accuracy
-#' Compute CID between posterior tree samples and the true tree
-#'
-#' Reads the posterior tree file for a replicate and model, roots all trees on the first tip, and computes the normalised Clustering Information
-#' Distance between each posterior sample and the known true tree.
-#'
-#' @param scenario  
-#' @param gridTag  
-#' @param repID     
-#' @param modelID   
-#' @param nRuns    
-#' @param burnFrac  Fraction of trees to discard as burnin (default 0.1)
-#' @return Numeric vector of CID values (one per posterior tree sample), or NULL if the tree file is missing.
-#' @importFrom ape read.tree
-#' @importFrom TreeTools RootTree
-#' @importFrom TreeDist ClusteringInfoDistance
-#' @export
+#reads the posterior tree file for a replicate and model, roots all trees on the first tip, and computes the normalised cid between each posterior
+#sample and the known true tree
 TreeAccuracy <- function(scenario, gridTag, repID, modelID,
                          nRuns = 2, burnFrac = 0.1) {
 
-  #Read true tree
+  # read true tree
   trueFile <- SimTreeFile(scenario, gridTag, repID)
   if (!file.exists(trueFile)) {
     warning("True tree not found: ", trueFile)
@@ -29,7 +14,7 @@ TreeAccuracy <- function(scenario, gridTag, repID, modelID,
   }
   trueTree <- ape::read.tree(trueFile)
 
-  #Read and pool posterior trees across runs
+  #read and pool posterior trees across runs
   postTrees <- unlist(lapply(seq_len(nRuns), function(run) {
     gz <- TreeGzFile(scenario, gridTag, repID, modelID, run)
     tr <- sub("\\.tar\\.gz$", ".trees", gz)
@@ -56,25 +41,19 @@ TreeAccuracy <- function(scenario, gridTag, repID, modelID,
     return(NULL)
   }
 
-  #Root all trees on first tip label for consistent comparison
+  #root all trees on first tip label for consistent comparison
   rootTip   <- trueTree$tip.label[[1]]
   trueTree  <- TreeTools::RootTree(trueTree, rootTip)
   postTrees <- lapply(postTrees, TreeTools::RootTree, outgroupTip = rootTip)
 
-  #CID between each posterior sample and the true tree
+  #cid between each posterior sample and the true tree
   vapply(postTrees, function(pt) {
     TreeDist::ClusteringInfoDistance(trueTree, pt, normalize = TRUE)
   }, numeric(1))
 }
 
-#' Summarise tree accuracy across all replicates for one model and grid cell
-#' Returns median and IQR of CID values, following the reporting convention  in the literature review (Wright & Hillis 2014; Wright et al. 2016).
-#' @param scenario 
-#' @param gridTag  
-#' @param modelID  
-#' @param nRep    
-#' @return Data frame with columns: scenario, gridTag, modelID, median_cid, iqr_cid, n_reps (number of replicates with valid results).
-#' @export
+#summarises tree accuracy across all replicates for one model and grid
+#median and iqr of cid values, following the the (wright & hillis 2014; wright et al. 2016)
 TreeAccuracySummary <- function(scenario, gridTag, modelID,
                                 nRep = N_REP) {
   cids <- unlist(lapply(seq_len(nRep), function(rep) {
@@ -92,16 +71,11 @@ TreeAccuracySummary <- function(scenario, gridTag, modelID,
   )
 }
 
-
-#' Summarise dispersion of tree distances within and between runs
-#'large between-run distances relative to within-run distances indicate the two chains have not mixed.
-#'Adapted from Dispersion() (supervisor / neotrans TreeAnalysis.R).
-#'
-#' @param d A distance matrix from ClusteringInfoDistance() with trees from  both runs concatenated (run 1 first, run 2 second, equal length).
-#' @return Named list with elements treePairs (data frame), spread (matrix),  mdmd (median-to-median distance), sil (silhouette width).
-#' @importFrom TreeDist DistanceFromMedian MeanMSTEdge MeanNN
-#' @importFrom cluster silhouette
-#' @export
+# summarises dispersion of tree distances within and between runs; large
+# between-run distances relative to within-run distances indicate the two
+# chains haven't mixed. adapted from Dispersion() (supervisor / neotrans
+# TreeAnalysis.R). d is a distance matrix from ClusteringInfoDistance() with
+# trees from both runs concatenated (run 1 first, run 2 second, equal length).
 Dispersion <- function(d) {
   if (is.null(d)) return(NULL)
 

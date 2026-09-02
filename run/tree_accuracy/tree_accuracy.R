@@ -1,13 +1,13 @@
-#Computes Clustering Information Distance (CID) between posterior trees and the known true tree for all converged runs under both generative scenarios.
+# computes clustering information distance (cid) between posterior trees and the known true tree for all converged runs under both generative scenarios
 
 source("R/core/_setup.R")
 
-args_cli      <- commandArgs(trailingOnly = TRUE)
+args_cli  <- commandArgs(trailingOnly = TRUE)
 scenario_flag <- args_cli[which(args_cli == "--scenario") + 1]
 model_flag    <- args_cli[which(args_cli == "--model")    + 1]
 
-SCENARIOS  <- if (!is.na(scenario_flag[1])) scenario_flag else c("nt", "mk")
-MODEL_IDS  <- if (!is.na(model_flag[1]))    model_flag    else MODEL_IDS
+SCENARIOS <- if (!is.na(scenario_flag[1])) scenario_flag else c("nt", "mk")
+MODEL_IDS <- if (!is.na(model_flag[1]))    model_flag    else MODEL_IDS
 
 message(sprintf("Scenarios: %s | Models: %s",
                 paste(SCENARIOS,  collapse = ", "),
@@ -28,7 +28,7 @@ dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
   }
 }
 
-cid_rds     <- file.path(results_dir, "tree_accuracy_summary.rds")
+cid_rds  <- file.path(results_dir, "tree_accuracy_summary.rds")
 cid_rep_rds <- file.path(results_dir, "tree_accuracy_per_rep.rds")
 
 # convergence filter
@@ -47,8 +47,7 @@ cli::cli_alert_info(
   "{nrow(converged)} converged run(s) across selected scenarios and models."
 )
 
-# Per-replicate CID
-
+# per-replicate cid
 per_rep_rows <- vector("list", nrow(converged))
 
 cli::cli_h1("Computing per-replicate CID")
@@ -73,13 +72,13 @@ for (ri in seq_len(nrow(converged))) {
     modelID    = row$modelID,
     median_cid = if (!is.null(cid_vec)) median(cid_vec, na.rm = TRUE) else NA_real_,
     iqr_cid    = if (!is.null(cid_vec)) IQR(cid_vec,    na.rm = TRUE) else NA_real_,
-    n_trees    = if (!is.null(cid_vec)) sum(!is.na(cid_vec))          else 0L,
+    n_trees    = if (!is.null(cid_vec)) sum(!is.na(cid_vec))  else 0L,
     stringsAsFactors = FALSE
   )
 
   if (ri %% 100L == 0L) {
     cli::cli_alert_info("  {ri}/{nrow(converged)} replicates processed...")
-    #save progress so a walltime kill doesn't lose everything
+    # save progress so a walltime kill doesn't lose everything
     partial <- do.call(rbind, per_rep_rows[seq_len(ri)])
     saveRDS(partial, .RepFile(SCENARIOS[1]))
   }
@@ -97,8 +96,7 @@ if (SINGLE_MODEL_MODE) {
   cli::cli_alert_success("Per-replicate CID saved to: {cid_rep_rds}")
 }
 
-# Grid-cell summary (median of medians)
-
+# grid-cell summary (median of medians)
 cli::cli_h1("Summarising by grid cell")
 
 summary_rows <- vector("list", 0L)
@@ -116,11 +114,11 @@ for (scenario in SCENARIOS) {
       cell <- sub[sub$gridTag == gt, ]
       summary_rows[[length(summary_rows) + 1L]] <- data.frame(
         scenario   = scenario,
-        gridTag    = gt,
-        modelID    = mid,
+        gridTag   = gt,
+        modelID  = mid,
         median_cid = median(cell$median_cid, na.rm = TRUE),
-        iqr_cid    = IQR(cell$median_cid,    na.rm = TRUE),
-        n_reps     = sum(!is.na(cell$median_cid)),
+        iqr_cid = IQR(cell$median_cid,    na.rm = TRUE),
+        n_reps = sum(!is.na(cell$median_cid)),
         stringsAsFactors = FALSE
       )
     }
@@ -129,7 +127,7 @@ for (scenario in SCENARIOS) {
 
 summary_df <- do.call(rbind, summary_rows)
 
-#Join grid parameters per-scenario to avoid cross-contamination when both scenarios are processed in the same run. Merge separately then combine.
+#join grid parameters per-scenario to avoid cross-contamination when both scenarios are processed in the same run; merge separately then combine
 summary_df <- do.call(rbind, lapply(SCENARIOS, function(sc) {
   sc_grid<- ScenarioGrid(sc)
   sc_grid$gridTag <- vapply(seq_len(nrow(sc_grid)),
@@ -142,8 +140,7 @@ summary_df <- do.call(rbind, lapply(SCENARIOS, function(sc) {
 saveRDS(summary_df, cid_rds)
 cli::cli_alert_success("Tree accuracy summary saved to: {cid_rds}")
 
-#report
-
+# report
 cli::cli_h2("CID summary (mk scenario, model1)")
 
 mk_m1 <- summary_df[summary_df$scenario == "mk" &
