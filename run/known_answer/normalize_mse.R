@@ -1,17 +1,3 @@
-# Adds scale-normalized error columns so tree_length and gain-loss rate MSE
-# can be compared on the same footing (raw MSE cannot -- gain-loss rate true
-# values run 1-10, tree_length true values run 1-5, so raw squared error is
-# mechanically larger for the rate parameter regardless of estimation quality).
-#
-# Normalization is done PER GRID CELL (not from a single global mean), using
-# each row's own true tree_length, since MSE already varies by which grid
-# cell each row summarises.
-#
-# True rate-loss value is derived as 1/gain_loss (the model's own tracked
-# "gain_loss_neo" true_value follows this pattern -- verify this matches
-# your Rev model's own parameterisation before trusting the derived column;
-# it was reverse-engineered from cgr_coverage.rds's true_value column, not
-# read directly from the RevBayes spec).
 
 library(dplyr)
 library(readr)
@@ -24,8 +10,8 @@ ka <- readRDS(PATHS$known_answer)
 ka <- ka %>%
   mutate(
     true_rate_loss = 1 / gain_loss,
-    # Relative MSE = MSE / true_value^2, equivalent to (RMSE / true_value)^2.
-    # This puts both parameters on a unitless, comparable scale.
+    #relative MSE = MSE / true_value^2, equivalent to (RMSE / true_value)^2.
+    #puts both parameters on a comparable scale
     rel_mse_tree_len  = mse_tree_len  / (tree_length^2),
     rel_mse_rate_loss = mse_rate_loss / (true_rate_loss^2)
   )

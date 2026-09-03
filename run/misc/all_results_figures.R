@@ -6,15 +6,6 @@
 #SBATCH --job-name=all_figures
 #SBATCH --output=logs/all_figures_%j.out
 #SBATCH --error=logs/all_figures_%j.err
-#
-# consolidated, corrected version of the two figure sets in
-# new_results_figures.R (numbered 41-47) and results_figures_extra.R
-# (unnumbered: heatmaps, boxplots, gam curves, calibration, diagnostic
-# scatter). run from the morphosim repo root:
-#   Rscript run/misc/all_results_figures.R
-#
-# writes png to both $MATRIX_DIR/figures/misc/ and <repo root>/figures/misc/.
-# set formats = c("png","pdf") in save_fig_both() below for vector copies.
 
 suppressPackageStartupMessages({
   library(tidyverse)
