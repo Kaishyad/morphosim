@@ -8,28 +8,62 @@ rep_df <- rep_df %>%
   rename(cid = median_cid) %>%
   label_models()
 
-# plot 1: cid distribution by model, faceted by scenario
-p1 <- ggplot(rep_df, aes(x = modelID, y = cid, fill = scenario)) +
-  geom_boxplot(outlier.alpha = 0.3, width = 0.6, position = position_dodge(0.7)) +
-  scale_fill_manual(values = SCENARIO_COLORS, name = "Generative scenario") +
+# plot 1: compact dot-and-errorbar (median + IQR), replacing the 24-box
+# boxplot. Same information (median, IQR) as the boxplot and the summary
+# table, but roughly a third of the vertical space and much faster to
+# scan -- the boxplot's per-box width/whisker detail wasn't carrying any
+# extra signal beyond what's already reported numerically in the text.
+# Colored per model (not just per scenario) so each model keeps a
+# consistent identity across the two facets.
+
+model_levels <- levels(rep_df$modelID)
+model_colors <- setNames(model_palette(length(model_levels)), model_levels)
+
+summary_df <- rep_df %>%
+  group_by(modelID, scenario) %>%
+  summarise(
+    median_cid = median(cid, na.rm = TRUE),
+    q1 = quantile(cid, 0.25, na.rm = TRUE),
+    q3 = quantile(cid, 0.75, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# order every facet by the same reference ranking (NT-scenario median)
+# so the model order stays identical left-to-right across both panels
+nt_order <- summary_df %>%
+  filter(scenario == "nt") %>%
+  arrange(median_cid) %>%
+  pull(modelID)
+
+summary_df <- summary_df %>%
+  mutate(
+    modelID = factor(modelID, levels = rev(nt_order)),
+    scenario_label = recode(scenario, mk = "Mk-generated", nt = "NT-generated")
+  )
+
+p1 <- ggplot(summary_df, aes(x = modelID, y = median_cid, colour = modelID)) +
+  geom_errorbar(aes(ymin = q1, ymax = q3), width = 0, linewidth = 0.9) +
+  geom_point(size = 3) +
+  scale_colour_manual(values = model_colors, guide = "none") +
   coord_flip() +
+  facet_wrap(~scenario_label) +
   labs(
     title = "Tree accuracy (Clustering Information Distance) by model",
-    subtitle = "Lower CID = more accurate topology recovery. One row per (scenario, grid cell, replicate).",
+    subtitle = "Point = median CID, bar = interquartile range. One panel per generative scenario.",
     x = NULL, y = "Clustering Information Distance (CID)"
   )
-save_fig(p1, "01_cid_by_model_scenario", subdir = "tree_accuracy", height = 7)
+save_fig(p1, "01_cid_by_model_scenario", subdir = "tree_accuracy", height = 6, width = 9)
 
 # plot 2: delta-cid relative to the scenario-appropriate baseline
 delta_list <- lapply(names(BASELINE_BY_SCENARIO), function(sc) {
   base_id  <- BASELINE_BY_SCENARIO[[sc]]
   sc_df    <- rep_df %>% filter(scenario == sc)
-
+  
   base_df <- sc_df %>%
     filter(modelID == MODEL_LABELS[[base_id]]) %>%
     group_by(gridTag, repID) %>%
     summarise(baseline_cid = mean(cid), .groups = "drop")
-
+  
   sc_df %>%
     filter(modelID != MODEL_LABELS[[base_id]]) %>%
     inner_join(base_df, by = c("gridTag", "repID")) %>%
@@ -98,7 +132,7 @@ if (!is.null(sum_df)) {
     ungroup() %>%
     label_models() %>%
     count(scenario, modelID, name = "n_wins")
-
+  
   # keep every model in the plot even if it never wins, per scenario
   all_combos <- expand_grid(
     scenario = names(BASELINE_BY_SCENARIO),
@@ -107,7 +141,7 @@ if (!is.null(sum_df)) {
   win_df <- all_combos %>%
     left_join(winners, by = c("scenario", "modelID")) %>%
     mutate(n_wins = replace_na(n_wins, 0L))
-
+  
   p5 <- ggplot(win_df, aes(x = modelID, y = n_wins, fill = scenario)) +
     geom_col(position = position_dodge(0.7), width = 0.6) +
     facet_wrap(~ scenario, scales = "free_x") +
