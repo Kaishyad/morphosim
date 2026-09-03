@@ -31,8 +31,7 @@ AllModelsComparison <- function(cid_data, scenario, models = NULL) {
 
   friedman <- stats::friedman.test(mat)
 
-  #pairwise wilcoxon (paired, since same grid cell/replicate under each
-  #model), holm-corrected across all pairs
+  #pairwise wilcoxon paired, since same grid cell/replicate under each model, holm-corrected across all pairs
   pairwise <- stats::pairwise.wilcox.test(
     x = as.vector(mat),
     g = factor(rep(models, each = nrow(mat)), levels = models),

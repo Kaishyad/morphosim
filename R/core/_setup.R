@@ -37,9 +37,9 @@ N_REP <- 10L
 MODEL_IDS <- paste0("model", 1:12)
 
 # convergence thresholds
-ESS_MIN   <- 256   # minimum ess per parameter
-RHAT_MAX  <- 1.02  # rank-normalised r-hat ceiling
-ASDSF_MAX <- 0.05  # average sd of split frequencies ceiling
+ESS_MIN   <- 256   #minimum ess per parameter
+RHAT_MAX  <- 1.02  #rank-normalised r-hat ceiling
+ASDSF_MAX <- 0.05  #average sd of split frequencies ceiling
 
 .config <- list(
   grid          = PARAM_GRID,

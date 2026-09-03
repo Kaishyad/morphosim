@@ -1,13 +1,13 @@
 # "do models that produce better trees also have better results?"
 
 source("R/core/_setup.R")
-source("R/analysis/Correlation.R")   # for SpearmanCorrelation(), reused by CrossMetric.R
+source("R/analysis/Correlation.R")   #for SpearmanCorrelation(), also by CrossMetric.R
 source("R/analysis/CrossMetric.R")
 
 results_dir <- file.path(OutputDir(), "results", "cross_metric")
 dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
 
-# each input file below is owned/written by a different upstream script, so it lives in that script's own results subfolder, not in cross_metric's own output folder
+#each input file below is owned/written by a different upstream script, so it lives in that script's own results subfolder, not in cross_metric's own output folder
 .INPUT_DIR <- function(name) {
   owner <- switch(name,
     "tree_accuracy_summary.rds" = "tree_accuracy",
@@ -20,7 +20,7 @@ dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
   else file.path(OutputDir(), "results", owner)
 }
 
-# load inputs
+#inputs
 .Load <- function(name, required = TRUE) {
   path <- file.path(.INPUT_DIR(name), name)
   if (!file.exists(path)) {
@@ -72,7 +72,7 @@ for (scen in unique(scorecard$scenario)) {
   print(sub[, print_cols], row.names = FALSE)
 }
 
-# model-level rank correlations (the headline result)
+#model-level rank correlations 
 cli::cli_h1("Does tree-accuracy rank predict rank on other metrics? (model-level)")
 rank_corr <- ModelRankCorrelations(scorecard, B = 1000L)
 saveRDS(rank_corr, file.path(results_dir, "cross_metric_rank_correlations.rds"))
@@ -101,7 +101,7 @@ for (scen in unique(rank_corr$scenario)) {
   }
 }
 
-# grid-cell-level correlations (within-model, higher-powered)
+#grid-cell-level correlations within-model
 cli::cli_h1("Within-model grid-cell correlations (CID vs other metrics)")
 cell_corr <- GridCellCorrelations(cross_df, B = 1000L)
 saveRDS(cell_corr, file.path(results_dir, "cross_metric_gridcell_correlations.rds"))

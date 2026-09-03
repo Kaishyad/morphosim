@@ -1,4 +1,4 @@
-# full parameter grid; simulation variables saved here and passed to rev scripts
+# full parameter grid simulation variables saved and passed to rev scripts
 
 .NEO_FRAC <- 0.47
 

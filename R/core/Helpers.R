@@ -95,8 +95,8 @@ AsHMS <- function(secs) {
   )
 }
 
-# has an analysis converged? adapted from neotrans (smith, 2026), used
-# directly instead of the newer checkconvergence() in convergence.r
+#has an analysis converged? adapted from neotrans (smith, 2026), used
+#directly instead of the newer checkconvergence() in convergence.r
 HasConverged <- function(pID, scriptID,
                          pt = .config$psrfThreshold,
                          et = .config$essThreshold) {

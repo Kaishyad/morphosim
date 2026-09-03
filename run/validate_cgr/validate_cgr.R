@@ -22,7 +22,7 @@ cli::cli_h1("CGR / simulation-based calibration")
 MISSING_ANY <- setdiff(EVAL_MODELS, unique(conv_df$modelID[conv_df$pass]))
 if (length(MISSING_ANY) > 0L) {
   cli::cli_alert_warning(
-    "No converged runs anywhere for: {paste(MISSING_ANY, collapse = ', ')} -- will be skipped per-scenario below."
+    "No converged runs anywhere for: {paste(MISSING_ANY, collapse = ', ')} - will be skipped per-scenario below."
   )
 }
 

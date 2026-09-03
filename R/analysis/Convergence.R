@@ -1,11 +1,7 @@
-#mcmc convergence diagnostics for inference runs:
-#rank-normalised r-hat < RHAT_MAX, ess > ESS_MIN for all continuous
-#parameters, asdsf < ASDSF_MAX across paired tree files
+#mcmc convergence diagnostics for inference runs: rank-normalised r-hat < RHAT_MAX, ess > ESS_MIN for all continuous parameters, asdsf < ASDSF_MAX across paired tree files
 
-# rank-normalised split r-hat (vehtari et al. 2021). reads the .p.log file
-# for each run, splits each chain's samples in half, rank-normalises all
-# splits, then computes the standard gelman-rubin variance ratio - catches
-# convergence failures in heavy-tailed posteriors that plain psrf can miss.
+#rank-normalised split r-hat (vehtari et al. 2021). reads the .p.log file for each run, splits each chain's samples in half, rank-normalises all
+#splits, then computes the standard gelman-rubin variance ratio - catches convergence failures in heavy-tailed posteriors that plain psrf can miss.
 ComputeRhat <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   logs <- lapply(seq_len(nRuns), function(run) {
     f <- ParamLogFile(scenario, gridTag, repID, modelID, run)
@@ -18,17 +14,17 @@ ComputeRhat <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
     return(NULL)
   }
 
-  # drop iteration column; keep only numeric parameters
+  #drop iteration column keep only numeric parameters
   params <- intersect(colnames(logs[[1]]), colnames(logs[[2]]))
   params <- params[params != "Iteration"]
 
-  # rank-normalise: convert each chain's samples to normal scores
+  #rank-normalise convert each chain's samples to normal scores
   .RankNorm <- function(x) {
     r <- rank(x, ties.method = "average")
     qnorm((r - 0.375) / (length(r) + 0.25))
   }
 
-  # split each run in half to create 2*nRuns chains
+  #split each run in half to create 2*nRuns chains
   chains <- unlist(lapply(logs, function(log) {
     n   <- nrow(log)
     mid <- floor(n / 2)
@@ -46,8 +42,7 @@ ComputeRhat <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   }, numeric(1))
 }
 
-# effective sample size per parameter, via the autocorrelation-based
-# estimator; flags parameters below ESS_MIN
+#effective sample size per parameter, via the autocorrelation-based estimator stops parameters below ESS_MIN
 ComputeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   logs <- lapply(seq_len(nRuns), function(run) {
     f <- ParamLogFile(scenario, gridTag, repID, modelID, run)
@@ -65,7 +60,7 @@ ComputeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   .ESS1 <- function(x) {
     n  <- length(x)
     ac <- acf(x, lag.max = n - 1, plot = FALSE)$acf[-1]
-    # geyer's initial positive sequence estimator
+    #geyer's initial positive sequence estimator
     pairs   <- ac[seq(1, length(ac) - 1, 2)] + ac[seq(2, length(ac), 2)]
     cutoff  <- which(pairs < 0)[1]
     if (is.na(cutoff)) cutoff <- length(pairs)
@@ -73,15 +68,14 @@ ComputeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
     max(1, n / rho_sum)
   }
 
-  # pool ess across runs (sum of independent ess values)
+  #pool ess across runs (sum of independent ess values)
   vapply(params, function(p) {
     ess_per_run <- vapply(logs, function(log) .ESS1(log[[p]]), numeric(1))
     sum(ess_per_run)
   }, numeric(1))
 }
 
-# loads posterior tree samples for one run. extracted tempfiles under
-# TmpDir() are always removed on exit.
+# loads posterior tree samples for one run. extracted tempfiles under TmpDir() are always removed on exit.
 .LoadTrees <- function(scenario, gridTag, repID, modelID, run) {
   gz <- TreeGzFile(scenario, gridTag, repID, modelID, run)
   tr <- sub("\\.tar\\.gz$", ".trees", gz)
@@ -98,11 +92,9 @@ ComputeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   }
 }
 
-# average standard deviation of split frequencies (lakner et al. 2008): mean
-# absolute difference in clade posterior probabilities between two
-# independent runs. values < ASDSF_MAX indicate topological convergence.
-# takes pre-loaded tree lists via treesList (shared with ComputeTreeESS from
-# CheckConvergence()), or loads trees itself if treesList is NULL.
+#average standard deviation of split frequencies (lakner et al. 2008): mean absolute difference in clade posterior probabilities between two
+#independent runs. values < ASDSF_MAX indicate topological convergence.
+#takes pre-loaded tree lists via treesList (shared with ComputeTreeESS from CheckConvergence()), or loads trees itself if treesList is NULL.
 ComputeASDSF <- function(scenario, gridTag, repID, modelID, nRuns = 2,
                           treesList = NULL) {
   if (nRuns != 2) stop("ASDSF requires exactly 2 runs")
@@ -163,12 +155,12 @@ ComputeASDSF <- function(scenario, gridTag, repID, modelID, nRuns = 2,
   )
 }
 
-# distance-based tree topology ess. estimates ess for tree topology by
-# computing pairwise cid distances across the posterior sample, then
-# applying geyer's autocorrelation ess estimator to the mean distance
-# series; pools across runs by summing independent ess values, consistent
-# with ComputeESS(). pairwise distance computation is O(n^2), so each run is
-# wrapped in a wall-clock timeout.
+#distance-based tree topology ess. estimates ess for tree topology by
+#computing pairwise cid distances across the posterior sample, then
+#applying geyer's autocorrelation ess estimator to the mean distance
+#series; pools across runs by summing independent ess values, consistent
+#with ComputeESS(). pairwise distance computation is O(n^2), so each run is
+#wrapped in a wall-clock timeout.
 ComputeTreeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2,
                             timeoutSec = if (exists("TREE_ESS_TIMEOUT_SEC")) TREE_ESS_TIMEOUT_SEC else 60,
                             treesList = NULL) {
@@ -188,14 +180,14 @@ ComputeTreeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2,
 
     if (is.null(trees) || length(trees) < 4) return(NA_real_)
 
-    # cap trees used for the O(n^2) distance matrix, evenly spaced
+    #cap trees used for the O(n^2) distance matrix, evenly spaced
     MAX_TREES_FOR_DIST <- if (exists("TREE_ESS_MAX_TREES")) TREE_ESS_MAX_TREES else 1000L
     if (length(trees) > MAX_TREES_FOR_DIST) {
       idx   <- round(seq(1, length(trees), length.out = MAX_TREES_FOR_DIST))
       trees <- trees[idx]
     }
 
-    # mean cid distance from each tree to all others
+    #mean cid distance from each tree to all others
     dmat    <- TreeDist::ClusteringInfoDistance(trees)
     mn_dist <- rowMeans(as.matrix(dmat))
     .ESS1(mn_dist)
@@ -209,9 +201,9 @@ ComputeTreeESS <- function(scenario, gridTag, repID, modelID, nRuns = 2,
   sum(ess_per_run, na.rm = TRUE)
 }
 
-# checks convergence for one inference run: combines r-hat, ess, asdsf, and
-# tree topology ess into a single pass/fail with a summary list, and writes
-# a diagnostic file to the-matrix/diagnostics/
+#checks convergence for one inference run: combines r-hat, ess, asdsf, and
+#tree topology ess into a single pass/fail with a summary list, and writes
+#a diagnostic file to the-matrix/diagnostics/
 CheckConvergence <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   rhat <- ComputeRhat(scenario, gridTag, repID, modelID, nRuns)
   ess  <- ComputeESS( scenario, gridTag, repID, modelID, nRuns)
@@ -255,8 +247,7 @@ CheckConvergence <- function(scenario, gridTag, repID, modelID, nRuns = 2) {
   result
 }
 
-# checks convergence across all grid cells for one model; one row per
-# replicate with convergence columns
+#checks convergence across all grid cells for one model; one row per replicate with convergence columns
 ConvergenceSummary <- function(scenario, modelID,
                                grid = PARAM_GRID,
                                nRep = N_REP) {

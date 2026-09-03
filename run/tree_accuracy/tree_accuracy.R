@@ -1,4 +1,4 @@
-# computes clustering information distance (cid) between posterior trees and the known true tree for all converged runs under both generative scenarios
+#does clustering information distance (cid) between posterior trees and the known true tree for all converged runs under both generative scenarios
 
 source("R/core/_setup.R")
 
@@ -13,7 +13,7 @@ message(sprintf("Scenarios: %s | Models: %s",
                 paste(SCENARIOS,  collapse = ", "),
                 paste(MODEL_IDS,  collapse = ", ")))
 
-# model output paths
+#model outpt paths
 SINGLE_MODEL_MODE <- !is.na(model_flag[1])
 
 results_dir <- file.path(OutputDir(), "results", "tree_accuracy")
@@ -31,7 +31,7 @@ dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
 cid_rds  <- file.path(results_dir, "tree_accuracy_summary.rds")
 cid_rep_rds <- file.path(results_dir, "tree_accuracy_per_rep.rds")
 
-# convergence filter
+#convergence 
 conv_rds <- file.path(OutputDir(), "results", "convergence_summary.rds")
 
 if (!file.exists(conv_rds)) {
@@ -47,7 +47,7 @@ cli::cli_alert_info(
   "{nrow(converged)} converged run(s) across selected scenarios and models."
 )
 
-# per-replicate cid
+#per-replicate cid
 per_rep_rows <- vector("list", nrow(converged))
 
 cli::cli_h1("Computing per-replicate CID")
@@ -67,8 +67,8 @@ for (ri in seq_len(nrow(converged))) {
 
   per_rep_rows[[ri]] <- data.frame(
     scenario   = row$scenario,
-    gridTag    = row$gridTag,
-    repID      = row$repID,
+    gridTag   = row$gridTag,
+    repID    = row$repID,
     modelID    = row$modelID,
     median_cid = if (!is.null(cid_vec)) median(cid_vec, na.rm = TRUE) else NA_real_,
     iqr_cid    = if (!is.null(cid_vec)) IQR(cid_vec,    na.rm = TRUE) else NA_real_,
@@ -96,7 +96,7 @@ if (SINGLE_MODEL_MODE) {
   cli::cli_alert_success("Per-replicate CID saved to: {cid_rep_rds}")
 }
 
-# grid-cell summary (median of medians)
+#grid-cell summary median of medians
 cli::cli_h1("Summarising by grid cell")
 
 summary_rows <- vector("list", 0L)
@@ -140,7 +140,7 @@ summary_df <- do.call(rbind, lapply(SCENARIOS, function(sc) {
 saveRDS(summary_df, cid_rds)
 cli::cli_alert_success("Tree accuracy summary saved to: {cid_rds}")
 
-# report
+#report
 cli::cli_h2("CID summary (mk scenario, model1)")
 
 mk_m1 <- summary_df[summary_df$scenario == "mk" &

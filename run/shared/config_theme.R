@@ -1,4 +1,4 @@
-#shared config, palette, and ggplot theme for morphosim/viz
+#all palette, and ggplot theme for figures
 
 if (!file.exists("R/core/_setup.R")) {
   stop("Run viz scripts from the morphosim repo root (R/core/_setup.R not found ",

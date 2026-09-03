@@ -1,4 +1,4 @@
-#Checks that 95% posterior credible intervals contain the true simulated value in ~95% of replicates
+#checks that 95% posterior credible intervals contain the true simulated value in ~95% of replicates
 
 source("R/core/_setup.R")
 
@@ -13,7 +13,7 @@ message(sprintf("Scenarios: %s | Models: %s",
                 paste(SCENARIOS,    collapse = ", "),
                 paste(EVAL_MODELS,  collapse = ", ")))
 
-#Per-model-job output paths
+#per-model-job output paths
 SINGLE_MODEL_MODE <- !is.na(model_flag[1])
 
 results_dir <- file.path(OutputDir(), "results", "known_answer")
@@ -106,7 +106,7 @@ if (SINGLE_MODEL_MODE) {
   cli::cli_alert_success("Per-model known-answer saved to: {per_model_rds}")
   cli::cli_alert_info("Run merge_known_answer.R after all model jobs finish.")
 } else {
-  #Full run, load existing, merge, de-duplicate, save combined
+  #load existing, merge, de-duplicate, save combined
   existing_df <- if (file.exists(ka_rds)) readRDS(ka_rds) else NULL
   combined_df <- if (!is.null(existing_df)) {
     key <- with(rbind(existing_df, summary_df),
@@ -122,7 +122,7 @@ if (SINGLE_MODEL_MODE) {
   cli::cli_alert_success("  CSV : {ka_csv}")
 }
 
-#Console report
+#report
 cli::cli_h2("Coverage rates (target ~0.95)")
 
 for (mid in EVAL_MODELS) {

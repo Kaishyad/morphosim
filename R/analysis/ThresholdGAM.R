@@ -117,11 +117,9 @@ FitThresholdGAM <- function(improvement_df, k = 10L, verbose = FALSE) {
   fit
 }
 
-# extracts the threshold at which the gam smooth crosses zero. for a given
-# parameter axis, takes the marginal smooth from the fitted gam (holding
-# other predictors at their medians), then uses uniroot() to find the
-# parameter value where predicted improvement crosses zero - a
-# positive-to-zero crossing means nt starts to outperform mk above it.
+#extracts the threshold at which the gam smooth crosses zero. for a given parameter axis, takes the marginal smooth from the fitted gam (holding
+#other predictors at their medians), then uses uniroot() to find the parameter value where predicted improvement crosses zero - a
+#positive-to-zero crossing means nt starts to outperform mk above it.
 ExtractThreshold <- function(gam_fit, predictor, data, n_grid = 500L) {
   pred_range <- range(data[[predictor]], na.rm = TRUE)
   pred_seq   <- seq(pred_range[1], pred_range[2], length.out = n_grid)
@@ -177,9 +175,7 @@ ExtractThreshold <- function(gam_fit, predictor, data, n_grid = 500L) {
        pred_range = pred_range)
 }
 
-# checks threshold stability by refitting with k doubled and comparing
-# threshold estimates on each axis; a shift > tol (relative to the
-# predictor's range) is flagged as unstable
+#checks threshold stability by refitting with k doubled and comparing threshold estimates on each axis; a shift > tol (relative to the  predictor's range) is stopped as unstable
 SensitivityCheck <- function(improvement_df, thresholds_orig,
                               k_orig = 10L, tol = 0.10) {
   fit_2k <- tryCatch(
@@ -222,11 +218,8 @@ SensitivityCheck <- function(improvement_df, thresholds_orig,
   do.call(rbind, rows)
 }
 
-# threshold summary across all 12 inference models: computes cid improvement
-# over the scenario baseline, fits a threshold gam, extracts thresholds for
-# all three parameter axes, and optionally runs SensitivityCheck(). model_ids
-# defaults to all models except the scenario's own baseline (model1 for mk,
-# model8 for nt).
+# threshold summary across all 12 inference models computes cid improvement over the scenario baseline, fits a threshold gam, extracts thresholds for
+# all three parameter axes, and optionally runs SensitivityCheck(). model_ids normal to all models except the scenario's own baseline (model1 for mk, model8 for nt).
 ThresholdSummary <- function(cid_data,
                              model_ids   = NULL,
                              baselineID  = NULL,
