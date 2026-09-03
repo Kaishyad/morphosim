@@ -31,13 +31,13 @@ results <- bind_rows(results)
 results$p_holm <- p.adjust(results$p_raw, method = "holm")
 
 cat("=== Full paired, Holm-adjusted pairwise comparisons (Model 12 excluded) ===\n")
-print(results %>% arrange(p_holm), n = Inf)
+print(as.data.frame(results %>% arrange(p_holm)))
 
 cat("\n=== Comparisons specifically against Model 8 (the NT baseline) ===\n")
 vs_m8 <- results %>% filter(model_a == "model8" | model_b == "model8") %>%
   mutate(other = ifelse(model_a == "model8", model_b, model_a)) %>%
   select(other, p_raw, p_holm) %>% arrange(p_holm)
-print(vs_m8, n = Inf)
+print(as.data.frame(vs_m8))
 
 # Re-rank medians using this same complete-case sample, for direct
 # comparison against the original (Model-12-included) ranking
@@ -49,7 +49,7 @@ ranking <- wide %>%
   mutate(rank = row_number())
 
 cat("\n=== Re-ranked median CID, NT, Model 12 excluded (paired-complete sample) ===\n")
-print(ranking, n = Inf)
+print(as.data.frame(ranking))
 
 saveRDS(list(pairwise = results, vs_m8 = vs_m8, ranking = ranking, n_blocks = nrow(wide)),
         file.path(PATHS$results_dir, "model_comparison", "model12_exclusion_paired.rds"))
